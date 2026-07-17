@@ -1,12 +1,12 @@
 {
   "name": "gcos-server",
-  "version": "0.11.0-beta.1",
+  "version": "0.12.0-beta.1",
   "private": true,
   "description": "Serveur local GCOS pour GentleCarE",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check local-store.js && node --check auth.js && node --check jarvis.js && node --check backup.js && node --check updater.js"
+    "check": "node --check server.js && node --check local-store.js && node --check auth.js && node --check jarvis.js && node --check backup.js && node --check updater.js && node --check airtable-sync.js"
   },
   "engines": {
     "node": ">=20"
