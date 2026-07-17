@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GCOS Alpha</title>
+  <style>
+    :root{font-family:Inter,system-ui,sans-serif;color:#111;background:#f3f4f6}*{box-sizing:border-box}body{margin:0}.top{background:#111;color:#fff;padding:18px 24px;display:flex;justify-content:space-between;align-items:center}.top h1{margin:0;font-size:22px}.badge{font-size:12px;background:#2f855a;padding:6px 10px;border-radius:999px}.wrap{max-width:1200px;margin:24px auto;padding:0 16px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card,.panel{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 12px rgba(0,0,0,.06)}.metric{font-size:30px;font-weight:800;margin-top:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.panel h2{margin-top:0}label{display:block;font-size:13px;font-weight:700;margin:10px 0 5px}input,select,textarea,button{font:inherit}input,select,textarea{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:9px}textarea{min-height:75px}button{margin-top:12px;border:0;border-radius:9px;padding:11px 14px;background:#111;color:#fff;font-weight:700;cursor:pointer}.list{margin-top:14px}.item{border-top:1px solid #e5e7eb;padding:12px 0}.muted{color:#6b7280;font-size:13px}.status{font-size:12px;padding:3px 8px;background:#e5e7eb;border-radius:999px}.error{color:#b91c1c}.ok{color:#166534}@media(max-width:800px){.cards,.grid{grid-template-columns:1fr}.top{align-items:flex-start;gap:12px;flex-direction:column}}
+  </style>
+</head>
+<body>
+  <header class="top"><div><h1>GCOS — GentleCarE</h1><div class="muted" style="color:#d1d5db">Première version d’essai locale</div></div><span class="badge" id="serverState">Connexion…</span></header>
+  <main class="wrap">
+    <section class="cards">
+      <div class="card"><div>Clients</div><div class="metric" id="clientsCount">0</div></div>
+      <div class="card"><div>Véhicules</div><div class="metric" id="vehiclesCount">0</div></div>
+      <div class="card"><div>Interventions</div><div class="metric" id="interventionsCount">0</div></div>
+      <div class="card"><div>En cours / prévues</div><div class="metric" id="openCount">0</div></div>
+    </section>
+
+    <section class="grid">
+      <div class="panel">
+        <h2>Nouveau client</h2>
+        <form id="clientForm">
+          <label>Nom complet</label><input name="name" required placeholder="Ex. Jean Dupont">
+          <label>Téléphone</label><input name="phone" placeholder="06…">
+          <label>E-mail</label><input name="email" type="email" placeholder="client@email.fr">
+          <label>Notes</label><textarea name="notes" placeholder="Club, remise, préférences…"></textarea>
+          <button>Enregistrer le client</button>
+        </form>
+        <div class="list" id="clientsList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Nouveau véhicule</h2>
+        <form id="vehicleForm">
+          <label>Client</label><select name="clientId" id="vehicleClient" required></select>
+          <label>Marque et modèle</label><input name="model" required placeholder="Ex. Ford Mustang GT">
+          <label>Immatriculation</label><input name="registration" placeholder="AA-123-BB">
+          <label>Année</label><input name="year" type="number" min="1900" max="2100">
+          <button>Enregistrer le véhicule</button>
+        </form>
+        <div class="list" id="vehiclesList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Nouvelle intervention</h2>
+        <form id="interventionForm">
+          <label>Véhicule</label><select name="vehicleId" id="interventionVehicle" required></select>
+          <label>Prestation</label><select name="service"><option>Cryonettoyage</option><option>Dinitrol</option><option>Pack Intégral Cryo + Dinitrol</option><option>Contrôle</option></select>
+          <label>Date prévue</label><input name="scheduledDate" type="date">
+          <label>Statut</label><select name="status"><option>Prévue</option><option>En cours</option><option>Terminée</option><option>Annulée</option></select>
+          <label>Observations</label><textarea name="notes"></textarea>
+          <button>Créer l’intervention</button>
+        </form>
+      </div>
+
+      <div class="panel">
+        <h2>Interventions</h2>
+        <div class="list" id="interventionsList"></div>
+      </div>
+    </section>
+    <p id="message" class="muted"></p>
+  </main>
+<script>
+const api='/api/local';let clients=[],vehicles=[];
+const esc=(s='')=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function request(path,options={}){const r=await fetch(api+path,{headers:{'Content-Type':'application/json'},...options});const data=await r.json();if(!r.ok)throw new Error(data.error||'Erreur GCOS');return data}
+function formData(form){return Object.fromEntries(new FormData(form).entries())}
+function message(text,ok=true){const el=document.querySelector('#message');el.textContent=text;el.className=ok?'ok':'error'}
+async function refresh(){
+ try{
+  const [health,summary,c,v,i]=await Promise.all([fetch('/health').then(r=>r.json()),request('/summary'),request('/clients'),request('/vehicles'),request('/interventions')]);
+  document.querySelector('#serverState').textContent='Serveur '+health.version;
+  clients=c.records;vehicles=v.records;
+  clientsCount.textContent=summary.clients;vehiclesCount.textContent=summary.vehicles;interventionsCount.textContent=summary.interventions;openCount.textContent=summary.openInterventions;
+  vehicleClient.innerHTML=clients.length?clients.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''):'<option value="">Créer d’abord un client</option>';
+  interventionVehicle.innerHTML=vehicles.length?vehicles.map(x=>`<option value="${x.id}">${esc(x.model)} — ${esc(x.registration||'sans immatriculation')}</option>`).join(''):'<option value="">Créer d’abord un véhicule</option>';
+  clientsList.innerHTML=clients.slice(0,8).map(x=>`<div class="item"><strong>${esc(x.name)}</strong><div class="muted">${esc(x.phone||'')} ${esc(x.email||'')}</div></div>`).join('')||'<div class="muted">Aucun client.</div>';
+  vehiclesList.innerHTML=vehicles.slice(0,8).map(x=>`<div class="item"><strong>${esc(x.model)}</strong><div class="muted">${esc(x.registration||'Sans immatriculation')} · ${esc(x.year||'')}</div></div>`).join('')||'<div class="muted">Aucun véhicule.</div>';
+  interventionsList.innerHTML=i.records.slice(0,12).map(x=>{const v=vehicles.find(y=>y.id===x.vehicleId);return `<div class="item"><strong>${esc(x.service)}</strong> <span class="status">${esc(x.status)}</span><div class="muted">${esc(v?.model||'Véhicule inconnu')} · ${esc(x.scheduledDate||'Date non définie')}</div></div>`}).join('')||'<div class="muted">Aucune intervention.</div>';
+ }catch(e){document.querySelector('#serverState').textContent='Serveur indisponible';message(e.message,false)}
+}
+for(const [id,path] of [['clientForm','/clients'],['vehicleForm','/vehicles'],['interventionForm','/interventions']]){
+ document.querySelector('#'+id).addEventListener('submit',async e=>{e.preventDefault();try{await request(path,{method:'POST',body:JSON.stringify(formData(e.currentTarget))});e.currentTarget.reset();message('Enregistrement effectué.');await refresh()}catch(err){message(err.message,false)}})
+}
+refresh();
+</script>
+</body>
+</html>
