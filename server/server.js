@@ -16,9 +16,7 @@ function loadEnv(filePath) {
     if (separator < 1) continue;
     const key = line.slice(0, separator).trim();
     let value = line.slice(separator + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1);
-    }
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
     if (!(key in process.env)) process.env[key] = value;
   }
 }
@@ -31,7 +29,7 @@ const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'app6i45G4WG2nmQff';
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN || '';
 const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN || '*';
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions']);
+const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications']);
 
 function commonHeaders(contentType) {
   return {
@@ -46,15 +44,8 @@ function commonHeaders(contentType) {
   };
 }
 
-function json(res, status, body) {
-  res.writeHead(status, commonHeaders('application/json; charset=utf-8'));
-  res.end(JSON.stringify(body));
-}
-
-function html(res, status, body) {
-  res.writeHead(status, commonHeaders('text/html; charset=utf-8'));
-  res.end(body);
-}
+function json(res, status, body) { res.writeHead(status, commonHeaders('application/json; charset=utf-8')); res.end(JSON.stringify(body)); }
+function html(res, status, body) { res.writeHead(status, commonHeaders('text/html; charset=utf-8')); res.end(body); }
 
 async function readBody(req) {
   const chunks = [];
@@ -65,11 +56,8 @@ async function readBody(req) {
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
-  try {
-    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
-  } catch {
-    throw Object.assign(new Error('GCOS_INVALID_JSON'), { status: 400 });
-  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw Object.assign(new Error('GCOS_INVALID_JSON'), { status: 400 }); }
 }
 
 function requireAirtable(res) {
@@ -81,15 +69,10 @@ function requireAirtable(res) {
 async function airtableRequest(table, options = {}) {
   const recordSuffix = options.recordId ? `/${encodeURIComponent(options.recordId)}` : '';
   const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(table)}${recordSuffix}`);
-  Object.entries(options.query || {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
-  });
+  Object.entries(options.query || {}).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value)); });
   const response = await fetch(url, {
     method: options.method || 'GET',
-    headers: {
-      Authorization: `Bearer ${AIRTABLE_TOKEN}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
     body: options.body ? JSON.stringify(options.body) : undefined
   });
   const payload = await response.json().catch(() => ({}));
@@ -110,34 +93,18 @@ function serveDashboard(res) {
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return json(res, 204, {});
   const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
-
   try {
-    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha')) {
-      return serveDashboard(res);
-    }
-
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha')) return serveDashboard(res);
     if (req.method === 'GET' && url.pathname === '/health') {
-      return json(res, 200, {
-        service: 'GCOS Server',
-        version: '0.4.0-alpha',
-        airtableConfigured: Boolean(AIRTABLE_TOKEN),
-        localStore: localStore.DATA_FILE,
-        host: HOST,
-        uptimeSeconds: Math.round(process.uptime()),
-        time: new Date().toISOString()
-      });
+      return json(res, 200, { service: 'GCOS Server', version: '0.5.0-alpha', airtableConfigured: Boolean(AIRTABLE_TOKEN), smsProviderConfigured: false, localStore: localStore.DATA_FILE, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString() });
     }
-
-    if (req.method === 'GET' && url.pathname === '/api/local/summary') {
-      return json(res, 200, localStore.summary());
-    }
+    if (req.method === 'GET' && url.pathname === '/api/local/summary') return json(res, 200, localStore.summary());
 
     const localRecordMatch = url.pathname.match(/^\/api\/local\/([^/]+)\/([^/]+)$/);
     if (localRecordMatch && req.method === 'PATCH') {
       const collection = decodeURIComponent(localRecordMatch[1]);
       if (!LOCAL_COLLECTIONS.has(collection)) return json(res, 404, { error: 'GCOS_COLLECTION_NOT_FOUND' });
-      const body = await readBody(req);
-      return json(res, 200, localStore.update(collection, decodeURIComponent(localRecordMatch[2]), body));
+      return json(res, 200, localStore.update(collection, decodeURIComponent(localRecordMatch[2]), await readBody(req)));
     }
 
     const localCollectionMatch = url.pathname.match(/^\/api\/local\/([^/]+)$/);
@@ -145,42 +112,25 @@ const server = http.createServer(async (req, res) => {
       const collection = decodeURIComponent(localCollectionMatch[1]);
       if (!LOCAL_COLLECTIONS.has(collection)) return json(res, 404, { error: 'GCOS_COLLECTION_NOT_FOUND' });
       if (req.method === 'GET') return json(res, 200, { records: localStore.list(collection) });
-      if (req.method === 'POST') {
-        const body = await readBody(req);
-        return json(res, 201, localStore.create(collection, body));
-      }
+      if (req.method === 'POST') return json(res, 201, localStore.create(collection, await readBody(req)));
     }
 
     const recordMatch = url.pathname.match(/^\/api\/airtable\/tables\/([^/]+)\/([^/]+)$/);
     if (recordMatch && req.method === 'PATCH') {
       if (!requireAirtable(res)) return;
-      const table = decodeURIComponent(recordMatch[1]);
-      const recordId = decodeURIComponent(recordMatch[2]);
-      const body = await readBody(req);
-      const payload = await airtableRequest(table, { method: 'PATCH', recordId, body });
+      const payload = await airtableRequest(decodeURIComponent(recordMatch[1]), { method: 'PATCH', recordId: decodeURIComponent(recordMatch[2]), body: await readBody(req) });
       return json(res, 200, payload);
     }
 
     const tableMatch = url.pathname.match(/^\/api\/airtable\/tables\/([^/]+)$/);
     if (tableMatch && req.method === 'GET') {
       if (!requireAirtable(res)) return;
-      const table = decodeURIComponent(tableMatch[1]);
-      const payload = await airtableRequest(table, {
-        query: {
-          maxRecords: url.searchParams.get('maxRecords') || 50,
-          view: url.searchParams.get('view') || undefined,
-          filterByFormula: url.searchParams.get('filterByFormula') || undefined
-        }
-      });
+      const payload = await airtableRequest(decodeURIComponent(tableMatch[1]), { query: { maxRecords: url.searchParams.get('maxRecords') || 50, view: url.searchParams.get('view') || undefined, filterByFormula: url.searchParams.get('filterByFormula') || undefined } });
       return json(res, 200, payload);
     }
-
     if (tableMatch && req.method === 'POST') {
       if (!requireAirtable(res)) return;
-      const table = decodeURIComponent(tableMatch[1]);
-      const body = await readBody(req);
-      const payload = await airtableRequest(table, { method: 'POST', body });
-      return json(res, 201, payload);
+      return json(res, 201, await airtableRequest(decodeURIComponent(tableMatch[1]), { method: 'POST', body: await readBody(req) }));
     }
 
     return json(res, 404, { error: 'GCOS_ROUTE_NOT_FOUND' });
