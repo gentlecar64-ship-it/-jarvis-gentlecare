@@ -98,9 +98,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha')) return servePage(res, 'alpha.html', 'GCOS Alpha introuvable');
     if (req.method === 'GET' && url.pathname === '/jarvis') return servePage(res, 'jarvis.html', 'Jarvis introuvable');
     if (req.method === 'GET' && url.pathname === '/health') {
-      return json(res, 200, { service: 'GCOS Server', version: '0.7.0-alpha', jarvis: true, airtableConfigured: Boolean(AIRTABLE_TOKEN), smsProviderConfigured: false, localStore: localStore.DATA_FILE, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString() });
+      return json(res, 200, { service: 'GCOS Server', version: '0.8.0-alpha', jarvis: true, knowledge: true, airtableConfigured: Boolean(AIRTABLE_TOKEN), smsProviderConfigured: false, localStore: localStore.DATA_FILE, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString() });
     }
     if (req.method === 'GET' && url.pathname === '/api/jarvis/brief') return json(res, 200, jarvis.brief(localStore));
+    if (req.method === 'GET' && url.pathname === '/api/jarvis/knowledge') return json(res, 200, jarvis.knowledge);
     if (req.method === 'POST' && url.pathname === '/api/jarvis/command') return json(res, 200, jarvis.execute(localStore, await readBody(req)));
     if (req.method === 'GET' && url.pathname === '/api/local/summary') return json(res, 200, localStore.summary());
 
