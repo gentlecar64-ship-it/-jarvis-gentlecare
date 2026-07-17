@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { URL } = require('node:url');
+const localStore = require('./local-store');
 
 function loadEnv(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -29,17 +30,30 @@ const HOST = process.env.GCOS_HOST || '127.0.0.1';
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'app6i45G4WG2nmQff';
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN || '';
 const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN || '*';
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions']);
 
-function json(res, status, body) {
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
+function commonHeaders(contentType) {
+  return {
+    'Content-Type': contentType,
     'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
     'Access-Control-Allow-Headers': 'Content-Type, X-GCOS-Client',
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
     'Cache-Control': 'no-store',
-    'X-Content-Type-Options': 'nosniff'
-  });
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'no-referrer'
+  };
+}
+
+function json(res, status, body) {
+  res.writeHead(status, commonHeaders('application/json; charset=utf-8'));
   res.end(JSON.stringify(body));
+}
+
+function html(res, status, body) {
+  res.writeHead(status, commonHeaders('text/html; charset=utf-8'));
+  res.end(body);
 }
 
 async function readBody(req) {
@@ -51,7 +65,11 @@ async function readBody(req) {
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  try {
+    return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  } catch {
+    throw Object.assign(new Error('GCOS_INVALID_JSON'), { status: 400 });
+  }
 }
 
 function requireAirtable(res) {
@@ -83,20 +101,54 @@ async function airtableRequest(table, options = {}) {
   return payload;
 }
 
+function serveDashboard(res) {
+  const filePath = path.join(PUBLIC_DIR, 'alpha.html');
+  if (!fs.existsSync(filePath)) return html(res, 404, '<h1>GCOS Alpha introuvable</h1>');
+  return html(res, 200, fs.readFileSync(filePath, 'utf8'));
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return json(res, 204, {});
   const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
 
   try {
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha')) {
+      return serveDashboard(res);
+    }
+
     if (req.method === 'GET' && url.pathname === '/health') {
       return json(res, 200, {
         service: 'GCOS Server',
-        version: '0.3.0',
+        version: '0.4.0-alpha',
         airtableConfigured: Boolean(AIRTABLE_TOKEN),
+        localStore: localStore.DATA_FILE,
         host: HOST,
         uptimeSeconds: Math.round(process.uptime()),
         time: new Date().toISOString()
       });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/local/summary') {
+      return json(res, 200, localStore.summary());
+    }
+
+    const localRecordMatch = url.pathname.match(/^\/api\/local\/([^/]+)\/([^/]+)$/);
+    if (localRecordMatch && req.method === 'PATCH') {
+      const collection = decodeURIComponent(localRecordMatch[1]);
+      if (!LOCAL_COLLECTIONS.has(collection)) return json(res, 404, { error: 'GCOS_COLLECTION_NOT_FOUND' });
+      const body = await readBody(req);
+      return json(res, 200, localStore.update(collection, decodeURIComponent(localRecordMatch[2]), body));
+    }
+
+    const localCollectionMatch = url.pathname.match(/^\/api\/local\/([^/]+)$/);
+    if (localCollectionMatch) {
+      const collection = decodeURIComponent(localCollectionMatch[1]);
+      if (!LOCAL_COLLECTIONS.has(collection)) return json(res, 404, { error: 'GCOS_COLLECTION_NOT_FOUND' });
+      if (req.method === 'GET') return json(res, 200, { records: localStore.list(collection) });
+      if (req.method === 'POST') {
+        const body = await readBody(req);
+        return json(res, 201, localStore.create(collection, body));
+      }
     }
 
     const recordMatch = url.pathname.match(/^\/api\/airtable\/tables\/([^/]+)\/([^/]+)$/);
@@ -140,6 +192,7 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`GCOS Server started on http://${HOST}:${PORT}`);
+  console.log(`Alpha dashboard: http://${HOST}:${PORT}/alpha`);
   console.log(`Airtable: ${AIRTABLE_TOKEN ? 'configured' : 'not configured'}`);
 });
 
