@@ -49,6 +49,7 @@ function commonHeaders(contentType) {
 
 function json(res, status, body) { res.writeHead(status, commonHeaders('application/json; charset=utf-8')); res.end(JSON.stringify(body)); }
 function html(res, status, body) { res.writeHead(status, commonHeaders('text/html; charset=utf-8')); res.end(body); }
+function redirect(res, location) { res.writeHead(302, { Location: location, 'Cache-Control': 'no-store' }); res.end(); }
 
 async function readBody(req) {
   const chunks = [];
@@ -87,10 +88,14 @@ async function airtableRequest(table, options = {}) {
   return payload;
 }
 
-function servePage(res, fileName, missingMessage) {
+const AUTH_BOOTSTRAP = `<script>(function(){const token=localStorage.getItem('gcos_session');if(!token){location.replace('/login');return;}const original=window.fetch;window.fetch=function(input,init){init=init||{};const headers=new Headers(init.headers||{});headers.set('Authorization','Bearer '+token);return original(input,{...init,headers}).then(function(r){if(r.status===401){localStorage.removeItem('gcos_session');location.replace('/login');}return r;});};})();</script>`;
+
+function servePage(res, fileName, missingMessage, protect = false) {
   const filePath = path.join(PUBLIC_DIR, fileName);
   if (!fs.existsSync(filePath)) return html(res, 404, `<h1>${missingMessage}</h1>`);
-  return html(res, 200, fs.readFileSync(filePath, 'utf8'));
+  let content = fs.readFileSync(filePath, 'utf8');
+  if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
+  return html(res, 200, content);
 }
 
 function requireUser(req) {
@@ -107,13 +112,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { service: 'Jarvis OS', version: '0.10.0-beta', multiUser: true, setupRequired: auth.setupRequired(), airtableConfigured: Boolean(AIRTABLE_TOKEN), host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString() });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 201, { user: auth.createInitialAdmin(await readBody(req)) });
-    if (req.method === 'POST' && url.pathname === '/api/auth/login') return json(res, 200, auth.login((await readBody(req)).username, (await readBody(req)).password));
-    if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest ? auth.tokenFromRequest(req) : String(req.headers['x-gcos-session'] || '')); return json(res, 200, { ok: true }); }
+    if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); return json(res, 200, auth.login(body.username, body.password)); }
+    if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }); }
 
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/jarvis') && !auth.authenticate(req)) return redirect(res, '/login');
     const user = requireUser(req);
 
-    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha')) return servePage(res, 'alpha.html', 'Jarvis OS introuvable');
-    if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable'); }
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha')) return servePage(res, 'alpha.html', 'Jarvis OS introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/api/auth/me') return json(res, 200, { user });
     if (req.method === 'GET' && url.pathname === '/api/users') return json(res, 200, { users: auth.listUsers(user), roles: auth.ROLE_PERMISSIONS });
     if (req.method === 'POST' && url.pathname === '/api/users') return json(res, 201, { user: auth.createUser(user, await readBody(req)) });
@@ -170,7 +176,7 @@ const server = http.createServer(async (req, res) => {
 backup.startAutomaticBackups();
 server.listen(PORT, HOST, () => {
   console.log(`Jarvis OS started on http://${HOST}:${PORT}`);
-  console.log(`Multi-user authentication: enabled`);
+  console.log('Multi-user authentication: enabled');
   console.log(`Initial setup required: ${auth.setupRequired() ? 'yes' : 'no'}`);
 });
 
