@@ -1,4 +1,4 @@
-const CACHE='jarvis-gentlecare-v16';
+const CACHE='jarvis-gentlecare-v17';
 const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./gcos-comms.js','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
