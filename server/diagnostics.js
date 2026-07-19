@@ -22,14 +22,18 @@ function writable(dir, name) { fs.mkdirSync(dir, { recursive: true }); const pro
 function cleanup(dir) { if (!fs.existsSync(dir)) return 0; let count = 0; for (const name of fs.readdirSync(dir)) { if (!name.endsWith('.tmp')) continue; const file = path.join(dir, name); try { if (Date.now() - fs.statSync(file).mtimeMs > 1800000) { fs.unlinkSync(file); count += 1; } } catch {} } return count; }
 function gitProbe() { return { version: execFileSync('git', ['--version'], { cwd: ROOT_DIR, encoding: 'utf8', windowsHide: true, timeout: 8000 }).trim(), commit: execFileSync('git', ['rev-parse', '--short', 'HEAD'], { cwd: ROOT_DIR, encoding: 'utf8', windowsHide: true, timeout: 8000 }).trim(), branch: execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: ROOT_DIR, encoding: 'utf8', windowsHide: true, timeout: 8000 }).trim() }; }
 
+function validateGeneratedPage(filePath) {
+  if (!fs.existsSync(filePath)) throw new Error(`INTERFACE_MISSING: ${path.basename(filePath)}`);
+  const content = fs.readFileSync(filePath, 'utf8');
+  if (!content.includes('data:image/png;base64,') || !content.includes('mavik-design-lock')) throw new Error(`DESIGN_LOCK_MISSING: ${path.basename(filePath)}`);
+  return content.length;
+}
+
 function installDesign() {
   const result = designInstaller.install();
-  const alpha = fs.readFileSync(result.target, 'utf8');
-  const login = fs.readFileSync(result.loginTarget, 'utf8');
-  const alphaOk = alpha.includes('gce-official-logo') && alpha.includes('data:image/png;base64,') && !alpha.includes('__OFFICIAL_LOGO__');
-  const loginOk = login.includes('GentleCarE') && login.includes('data:image/png;base64,') && !login.includes('__OFFICIAL_LOGO__');
-  if (!alphaOk || !loginOk) throw new Error('OFFICIAL_DESIGN_NOT_INSTALLED');
-  return { ...result, alphaOk, loginOk };
+  const pages = [result.target, result.loginTarget, result.profileTarget, result.jarvisTarget];
+  const size = pages.reduce((sum, file) => sum + validateGeneratedPage(file), 0);
+  return { ...result, validatedPages: pages.length, validatedSize: size };
 }
 
 try { installDesign(); } catch (error) { console.error('[MAVIK DESIGN]', safeMessage(error)); }
@@ -61,11 +65,11 @@ async function run(dependencies, options = {}) {
     }
 
     try {
-      const installed = installDesign();
-      if (repair) repairs.push(`Design GentleCarE PC et iPhone réinstallé (${installed.parts} parties du logo vérifiées)`);
-      checks.push(item('interface', 'Interface PC et iPhone', 'ok', 'Logo officiel, connexion mobile et tableau de bord responsive chargés'));
+      if (repair) { const installed = installDesign(); repairs.push(`Design GentleCarE verrouillé réinstallé sur ${installed.validatedPages} interfaces`); }
+      ['alpha.html', 'login.html', 'profile.html', 'jarvis.html'].forEach((name) => validateGeneratedPage(path.join(PUBLIC_DIR, name)));
+      checks.push(item('interface', 'Design GentleCarE verrouillé', 'ok', 'Tableau de bord, iPhone, connexion, profil et Jarvis utilisent la présentation validée'));
     } catch (error) {
-      checks.push(item('interface', 'Interface PC et iPhone', 'error', safeMessage(error), { critical: true, repairable: true, humanAction: 'Double-cliquez sur C:\\Mavik-GCOS\\REPARER-MAVIK.cmd puis rouvrez le lien /iphone dans Safari.' }));
+      checks.push(item('interface', 'Design GentleCarE verrouillé', 'error', safeMessage(error), { critical: true, repairable: true, humanAction: 'Double-cliquez sur C:\\Mavik-GCOS\\REPARER-MAVIK.cmd.' }));
     }
 
     try {
