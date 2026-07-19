@@ -4,6 +4,8 @@
   window.__MAVIK_NAVIGATION_ENHANCER__ = true;
 
   const WORKSHOP_URL = '/generated/workshop/index.html';
+  const LEGAL_URL = '/generated/legal/index.html';
+  const KEEPALIVE_INTERVAL_MS = 3 * 60 * 1000;
   const api = async (url, options = {}) => {
     const response = await fetch(url, { headers: { 'Content-Type': 'application/json', ...(options.headers || {}) }, ...options });
     const data = await response.json().catch(() => ({}));
@@ -65,18 +67,84 @@
   }
 
   function addLink(container, href, html, position = 'append') {
-    if (!container || container.querySelector(`a[href="${href}"]`)) return;
+    if (!container || container.querySelector(`a[href="${href}"]`)) return null;
     const link = document.createElement('a');
     link.href = href; link.innerHTML = html;
     if (position === 'prepend') container.prepend(link); else container.appendChild(link);
     return link;
   }
+
+  function removeRepairFromOperationalHeaders() {
+    if (location.pathname === '/profile') return;
+    document.querySelectorAll('button,a').forEach((element) => {
+      if (/réparer maintenant/i.test((element.textContent || '').trim())) element.remove();
+    });
+  }
+
+  function installClock() {
+    if (document.getElementById('mavikLiveClock')) return;
+    const header = document.querySelector('.topbar,.top,header.top,header');
+    if (!header) return;
+    const clock = document.createElement('div');
+    clock.id = 'mavikLiveClock';
+    clock.setAttribute('aria-label', 'Heure actuelle');
+    clock.style.cssText = 'min-width:120px;text-align:center;font-weight:900;font-size:18px;letter-spacing:.4px;color:#eef9fd;padding:7px 10px;border:1px solid rgba(218,241,249,.16);border-radius:12px;background:rgba(2,12,17,.55);box-shadow:0 0 18px rgba(145,210,238,.10) inset';
+    const update = () => {
+      const now = new Date();
+      clock.innerHTML = `${now.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}<div style="font-size:9px;color:#9ab0ba;font-weight:700;margin-top:2px">${now.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'short'})}</div>`;
+    };
+    update(); setInterval(update, 1000);
+    const actions = header.querySelector('.actions,.nav');
+    if (actions) actions.parentElement?.insertBefore(clock, actions); else header.appendChild(clock);
+  }
+
+  async function finishDay() {
+    if (!confirm('Terminer la journée et fermer votre session MAVIK sur cet appareil ?')) return;
+    try { await api('/api/auth/logout', { method: 'POST', body: '{}' }); } catch {}
+    localStorage.removeItem('gcos_session');
+    location.replace('/login?next=/alpha&finJournee=1');
+  }
+
+  function installLegalAndSessionFooter() {
+    if (document.getElementById('mavikLegalDock')) return;
+    const style = document.createElement('style');
+    style.textContent = `
+      .mavik-legal-dock{position:fixed;z-index:8800;right:12px;bottom:94px;max-width:330px;border:1px solid rgba(218,241,249,.14);border-radius:13px;padding:8px 10px;background:rgba(3,14,20,.92);backdrop-filter:blur(17px);box-shadow:0 18px 55px rgba(0,0,0,.35);font:700 10px/1.35 Inter,Segoe UI,system-ui,sans-serif;color:#a8bec7;text-align:right}.mavik-legal-dock a,.mavik-legal-dock button{color:#d8edf4;background:none;border:0;padding:2px 4px;font:inherit;cursor:pointer;text-decoration:underline}.mavik-legal-dock .online{color:#8fe19d}.mavik-legal-dock .offline{color:#ffcf72}.mavik-legal-dock .version{color:#91d2ee;border:0;padding:0;margin:0;font-size:9px}.mavik-legal-dock .row{display:flex;justify-content:flex-end;gap:5px;align-items:center;flex-wrap:wrap}
+      @media(max-width:700px){.mavik-legal-dock{position:fixed;right:5px;bottom:82px;max-width:245px;padding:6px 8px;font-size:9px}.mavik-legal-dock .legal-links{display:none}}
+    `;
+    document.head.appendChild(style);
+    const dock = document.createElement('aside');
+    dock.id = 'mavikLegalDock';
+    dock.className = 'mavik-legal-dock';
+    dock.innerHTML = `<div class="row"><span id="mavikOnlineState" class="online">● MAVIK en ligne</span><span id="mavikVersion" class="version"></span></div><div class="row legal-links"><a href="${LEGAL_URL}">Mentions légales</a><a href="https://www.gentlecare.fr/conditionsgenerales" target="_blank" rel="noopener">CGV</a><a href="https://www.gentlecare.fr/politiquedeconfidentialit%C3%A9" target="_blank" rel="noopener">Confidentialité</a></div><div class="row"><button id="mavikFinishDay" type="button">Fin de journée</button></div>`;
+    document.body.appendChild(dock);
+    document.getElementById('mavikFinishDay').onclick = finishDay;
+    api('/health').then((health) => { const version = document.getElementById('mavikVersion'); if (version) version.textContent = `v${health.version || ''}`; }).catch(() => {});
+  }
+
+  async function keepSessionAlive() {
+    const state = document.getElementById('mavikOnlineState');
+    try {
+      await api('/api/auth/me');
+      if (state) { state.textContent = '● MAVIK en ligne'; state.className = 'online'; }
+    } catch (error) {
+      if (state) { state.textContent = navigator.onLine ? '● Session à vérifier' : '● Hors connexion'; state.className = 'offline'; }
+    }
+  }
+
+  function installKeepAlive() {
+    keepSessionAlive();
+    setInterval(keepSessionAlive, KEEPALIVE_INTERVAL_MS);
+    window.addEventListener('online', keepSessionAlive);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) keepSessionAlive(); });
+  }
+
   function enhance() {
     document.querySelectorAll('a').forEach((link) => {
       const label = (link.textContent || '').trim().toLowerCase();
       if (label.includes('planning') && !link.href.includes('/planning')) link.href = '/planning';
     });
-    const sideNav = document.querySelector('.side .nav');
+    const sideNav = document.querySelector('.side .nav,.sidebar .nav');
     if (sideNav && !sideNav.querySelector('a[href="/quotes"]')) {
       const quote = document.createElement('a'); quote.href = '/quotes'; quote.innerHTML = '<b>€</b>Devis';
       sideNav.querySelector('a')?.insertAdjacentElement('afterend', quote);
@@ -107,6 +175,10 @@
     if (quick && !quick.querySelector(`a[href="${WORKSHOP_URL}"]`)) {
       const workshop = document.createElement('a'); workshop.href = WORKSHOP_URL; workshop.className = 'button'; workshop.textContent = '🛠 Procédure atelier'; quick.prepend(workshop);
     }
+    removeRepairFromOperationalHeaders();
+    installClock();
+    installLegalAndSessionFooter();
+    installKeepAlive();
     setTimeout(ensureWorkshopFiles, 700);
   }
 
