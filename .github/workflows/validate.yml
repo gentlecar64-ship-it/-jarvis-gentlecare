@@ -42,3 +42,5 @@ jobs:
         run: node tests/employee-flow-leave-morale-smoke.js
       - name: Emergency category quote request calendar and startup smoke test
         run: node tests/emergency-quote-request-calendar-smoke.js
+      - name: Workshop online procedure smoke test
+        run: node tests/workshop-online-smoke.js
