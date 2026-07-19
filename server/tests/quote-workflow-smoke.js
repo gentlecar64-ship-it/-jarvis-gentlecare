@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const workflow = require('../quote-workflow');
+const workflow = require('../quote-workflow-reference');
 
 const db = {
   clients: [], vehicles: [], quotes: [], interventions: [], tasks: [], communications: [], documents: [], photos: [], observations: [], stockItems: [], events: []
@@ -71,10 +71,16 @@ workflow.transition(store, db.quotes[0].number, 'delay', { extraDays: 1, reason:
 assert.equal(db.quotes[0].workflowStatus, 'Délai ajusté');
 assert.ok(db.communications.some((item) => /immédiatement dès que le véhicule sera terminé/i.test(item.message)));
 
-workflow.transition(store, db.quotes[0].number, 'complete', {}, user);
+const completed = workflow.transition(store, db.quotes[0].number, 'complete', { report: { clientRequest: 'Nettoyage et protection du dessous.', plannedZones: ['dessous'], depositNature: 'Dépôts routiers', managerValidation: 'David' } }, user);
 assert.ok(db.documents.some((item) => item.category === 'Rapport intervention'));
 assert.ok(db.documents.some((item) => item.category === 'Facture'));
 assert.equal(db.quotes[0].paymentStatus, 'Solde en attente');
+assert.ok(db.quotes[0].reportUrl.startsWith('/generated/reports/'));
+assert.equal(db.quotes[0].reportVersion, 1);
+assert.equal(completed.data.report.schemaVersion, '1.0');
+assert.equal(completed.data.report.identification.vehicle.registration, 'AB-123-CD');
+assert.ok(completed.links.some((item) => /rapport/i.test(item.label)));
+assert.ok(db.documents.some((item) => item.status === 'Remplacé par le rapport de référence versionné'));
 
 workflow.transition(store, db.quotes[0].number, 'payment-received', {}, user);
 assert.ok(db.tasks.some((item) => /transférer au showroom/i.test(item.title)));
@@ -93,4 +99,4 @@ workflow.transition(store, db.quotes[0].number, 'archive', {}, user);
 assert.equal(db.quotes[0].status, 'Archivé');
 assert.equal(db.interventions[0].status, 'Archivée');
 
-console.log('Voice quote workflow smoke test passed.');
+console.log('Voice quote workflow and reference report smoke test passed.');
