@@ -46,3 +46,5 @@ jobs:
         run: node tests/workshop-online-smoke.js
       - name: Continuous session legal quote and admin controls smoke test
         run: node tests/continuous-session-legal-admin-smoke.js
+      - name: Photo industrial delivery and workshop day smoke test
+        run: node tests/photo-industrial-delivery-workshop-smoke.js
