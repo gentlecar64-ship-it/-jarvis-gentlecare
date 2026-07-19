@@ -4,10 +4,13 @@
   const form = document.getElementById('jarvisForm');
   const input = document.getElementById('jarvisInput');
   const answer = document.getElementById('jarvisAnswer');
+  const voiceState = document.getElementById('voiceState');
   if (!form || !input || !answer) return;
 
   let photoDataUrl = '';
   let photoName = '';
+  let assistantName = 'MAVIK';
+  let voiceEnabled = true;
 
   const box = document.createElement('div');
   box.style.cssText = 'display:grid;grid-template-columns:1fr auto;gap:9px;margin-top:9px;align-items:center';
@@ -79,8 +82,7 @@
   };
 
   async function send(text) {
-    const assistant = window.user?.preferences?.assistantName || 'MAVIK';
-    setAnswer(`${assistant} analyse les informations et vérifie les doublons…`);
+    setAnswer(`${assistantName} analyse les informations et vérifie les doublons…`);
     showLinks([]);
     try {
       const response = await window.api('/api/jarvis/command', {
@@ -94,12 +96,42 @@
       else if (/quote/.test(String(response.type || ''))) status.textContent = 'Le document est préparé. Validation de David ou Bénédicte obligatoire avant tout envoi.';
       return response;
     } catch (error) {
-      setAnswer(`${assistant} : ${error.message || error}`);
+      setAnswer(`${assistantName} : ${error.message || error}`);
       return null;
     }
   }
 
+  function startEnhancedVoice() {
+    if (!voiceEnabled) {
+      setAnswer('La commande vocale est désactivée dans votre profil MAVIK.');
+      answer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setAnswer('La dictée vocale n’est pas disponible dans ce navigateur. Sur iPhone, ouvrez MAVIK dans Safari.');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'fr-FR';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+    if (voiceState) voiceState.classList.add('show');
+    recognition.onresult = (event) => {
+      const text = event.results?.[0]?.[0]?.transcript || '';
+      input.value = text;
+      if (text) send(text);
+    };
+    recognition.onerror = (event) => {
+      setAnswer(event.error === 'not-allowed' ? 'Autorisez le microphone pour parler à Jarvis.' : 'Je n’ai pas compris. Réessayez depuis le menu Parler.');
+    };
+    recognition.onend = () => { if (voiceState) voiceState.classList.remove('show'); };
+    recognition.start();
+    answer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   window.ask = send;
+  window.startVoice = startEnhancedVoice;
   form.onsubmit = (event) => {
     event.preventDefault();
     const text = input.value.trim();
@@ -107,4 +139,9 @@
     send(text);
     input.value = '';
   };
+
+  window.api('/api/profile').then((profile) => {
+    assistantName = profile.user?.preferences?.assistantName || 'MAVIK';
+    voiceEnabled = profile.user?.preferences?.voiceEnabled !== false;
+  }).catch(() => {});
 })();
