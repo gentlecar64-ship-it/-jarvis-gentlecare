@@ -38,3 +38,5 @@ jobs:
         run: node tests/intervention-report-smoke.js
       - name: Quote studio and planning smoke test
         run: node tests/quote-studio-planning-smoke.js
+      - name: Employee flow leave planning and Jarvis morale smoke test
+        run: node tests/employee-flow-leave-morale-smoke.js
