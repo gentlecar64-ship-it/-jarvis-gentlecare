@@ -8,8 +8,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'gcos-local.json');
 const EMPTY_DB = {
   clients: [], vehicles: [], interventions: [], observations: [], communications: [],
-  tasks: [], stockItems: [], quotes: [], documents: [], photos: [], planningBlocks: [],
-  workSessions: [], leaveRequests: [], events: []
+  tasks: [], stockItems: [], quotes: [], quoteRequests: [], documents: [], photos: [], planningBlocks: [],
+  workSessions: [], leaveRequests: [], externalCalendarEvents: [], events: []
 };
 const DEFAULT_CHECKLIST = {
   receptionPhotos: false, mileageRecorded: false, clientApproval: false,
@@ -21,7 +21,6 @@ function ensureStore() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(DATA_FILE)) fs.writeFileSync(DATA_FILE, JSON.stringify(EMPTY_DB, null, 2), 'utf8');
 }
-
 function readStore() {
   ensureStore();
   try {
@@ -34,18 +33,15 @@ function readStore() {
     throw Object.assign(new Error('GCOS_LOCAL_STORE_CORRUPT'), { cause: error, status: 500 });
   }
 }
-
 function writeStore(db) {
   ensureStore();
   const temp = `${DATA_FILE}.tmp`;
   fs.writeFileSync(temp, JSON.stringify(db, null, 2), 'utf8');
   fs.renameSync(temp, DATA_FILE);
 }
-
 function assertCollection(db, collection) {
   if (!Array.isArray(db[collection])) throw Object.assign(new Error('GCOS_COLLECTION_NOT_FOUND'), { status: 404 });
 }
-
 function nextNumber(items, prefix, width = 4) {
   const highest = items.reduce((max, item) => {
     if (!String(item.number || '').startsWith(prefix)) return max;
@@ -54,7 +50,6 @@ function nextNumber(items, prefix, width = 4) {
   }, 0);
   return `${prefix}${String(highest + 1).padStart(width, '0')}`;
 }
-
 function normalize(collection, input = {}, current = {}) {
   const clean = { ...input };
   if (collection === 'clients') {
@@ -69,6 +64,7 @@ function normalize(collection, input = {}, current = {}) {
   }
   if (collection === 'vehicles') {
     if (!(input.clientId ?? current.clientId)) throw Object.assign(new Error('CLIENT_REQUIRED'), { status: 400 });
+    clean.vehicleType = String(input.vehicleType ?? current.vehicleType ?? 'automobile').trim().toLowerCase() === 'moto' ? 'moto' : 'automobile';
     clean.registration = String(input.registration ?? current.registration ?? '').trim().toUpperCase();
     clean.vin = String(input.vin ?? current.vin ?? '').trim().toUpperCase();
     clean.mileage = Number(input.mileage ?? current.mileage ?? 0) || 0;
@@ -120,6 +116,18 @@ function normalize(collection, input = {}, current = {}) {
     clean.totalTtc = Number(input.totalTtc ?? current.totalTtc ?? 0) || 0;
     clean.validUntil = String(input.validUntil ?? current.validUntil ?? '').trim();
   }
+  if (collection === 'quoteRequests') {
+    clean.status = String(input.status ?? current.status ?? 'Brouillon enregistré').trim();
+    clean.vehicleType = String(input.vehicleType ?? current.vehicleType ?? 'automobile').trim().toLowerCase() === 'moto' ? 'moto' : 'automobile';
+    clean.clientName = String(input.clientName ?? current.clientName ?? '').trim();
+    clean.email = String(input.email ?? current.email ?? '').trim().toLowerCase();
+    clean.mobile = String(input.mobile ?? current.mobile ?? '').trim();
+    clean.brand = String(input.brand ?? current.brand ?? '').trim();
+    clean.model = String(input.model ?? current.model ?? '').trim();
+    clean.registration = String(input.registration ?? current.registration ?? '').trim().toUpperCase();
+    clean.targetPrice = Number(input.targetPrice ?? current.targetPrice ?? 0) || 0;
+    clean.finalPrice = Number(input.finalPrice ?? current.finalPrice ?? 0) || 0;
+  }
   if (collection === 'documents' || collection === 'photos') {
     clean.title = String(input.title ?? current.title ?? '').trim();
     clean.url = String(input.url ?? current.url ?? '').trim();
@@ -156,15 +164,21 @@ function normalize(collection, input = {}, current = {}) {
     clean.principleScore = Number(input.principleScore ?? current.principleScore ?? 0) || 0;
     clean.workdays = Number(input.workdays ?? current.workdays ?? 0) || 0;
   }
+  if (collection === 'externalCalendarEvents') {
+    clean.uid = String(input.uid ?? current.uid ?? '').trim();
+    clean.title = String(input.title ?? current.title ?? 'Événement agenda').trim();
+    clean.startDate = String(input.startDate ?? current.startDate ?? '').slice(0, 10);
+    clean.endDate = String(input.endDate ?? current.endDate ?? clean.startDate).slice(0, 10);
+    clean.status = String(input.status ?? current.status ?? 'CONFIRMED').trim();
+    clean.blocksWorkshop = input.blocksWorkshop === undefined ? Boolean(current.blocksWorkshop) : input.blocksWorkshop === true || input.blocksWorkshop === 'on';
+  }
   return clean;
 }
-
 function list(collection) {
   const db = readStore();
   assertCollection(db, collection);
   return db[collection];
 }
-
 function create(collection, input) {
   const db = readStore();
   assertCollection(db, collection);
@@ -173,6 +187,7 @@ function create(collection, input) {
   const year = new Date().getFullYear();
   if (collection === 'interventions') normalized.number = nextNumber(db.interventions, `GC-${year}-`);
   if (collection === 'quotes') normalized.number = nextNumber(db.quotes, `DEV-${year}-`);
+  if (collection === 'quoteRequests') normalized.number = nextNumber(db.quoteRequests, `DD-${year}-`);
   if (collection === 'leaveRequests') normalized.number = nextNumber(db.leaveRequests, `CONGE-${year}-`);
   const record = { id: crypto.randomUUID(), ...normalized, createdAt: now, updatedAt: now };
   db[collection].unshift(record);
@@ -180,7 +195,6 @@ function create(collection, input) {
   writeStore(db);
   return record;
 }
-
 function update(collection, id, input) {
   const db = readStore();
   assertCollection(db, collection);
@@ -193,7 +207,6 @@ function update(collection, id, input) {
   writeStore(db);
   return db[collection][index];
 }
-
 function remove(collection, id) {
   const db = readStore();
   assertCollection(db, collection);
@@ -204,16 +217,16 @@ function remove(collection, id) {
   writeStore(db);
   return record;
 }
-
 function summary() {
   const db = readStore();
   const today = new Date().toISOString().slice(0, 10);
   return {
     clients: db.clients.length, vehicles: db.vehicles.length, interventions: db.interventions.length,
     observations: db.observations.length, communications: db.communications.length,
-    tasks: db.tasks.length, quotes: db.quotes.length, documents: db.documents.length,
+    tasks: db.tasks.length, quotes: db.quotes.length, quoteRequests: db.quoteRequests.length, documents: db.documents.length,
     planningBlocks: db.planningBlocks.length, workSessions: db.workSessions.length,
     pendingLeaveRequests: db.leaveRequests.filter((item) => item.status === 'En attente de validation').length,
+    pendingQuoteRequests: db.quoteRequests.filter((item) => /validation|brouillon|analyse/i.test(item.status)).length,
     openInterventions: db.interventions.filter((item) => !['Terminée', 'Livrée', 'Annulée'].includes(item.status)).length,
     pausedInterventions: db.interventions.filter((item) => item.workStatus === 'En attente').length,
     todayInterventions: db.interventions.filter((item) => item.scheduledDate === today).length,
