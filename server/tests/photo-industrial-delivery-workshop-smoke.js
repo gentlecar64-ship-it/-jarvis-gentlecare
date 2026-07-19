@@ -13,57 +13,68 @@ class MemoryStore {
 const runtime = require('../feature-runtime-028');
 const photoIntake = require('../quote-photo-intake');
 const workshopDay = require('../workshop-day-plan');
-
+const mode = process.argv[2] || 'all';
+const run = (name) => mode === 'all' || mode === name;
 function addWorkdays(days) { const date=new Date(); let left=days; while(left>0){date.setDate(date.getDate()+1);if(![0,6].includes(date.getDay()))left-=1}return date.toISOString().slice(0,10); }
-
 const onePixelPng='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=';
-const store = new MemoryStore();
 const admin = { id:'admin-1', name:'David Test', role:'admin' };
 
-const industrial = photoIntake.analyze(store, {
-  requestCategory:'industriel', clientName:'Usine Test',
-  photos:[{name:'machine-presse-zone-generale.png',dataUrl:onePixelPng,role:'Vue générale',detectedText:'PRESSE INDUSTRIELLE REF 4587'},{name:'graisse-zone-moteur.png',dataUrl:onePixelPng,role:'Zone sale'}]
-}, admin);
-assert.equal(industrial.analysis.category,'industriel');
-assert.equal(industrial.photos.length,2);
-assert.ok(industrial.questions.some((item)=>item.key==='industrialConsignation'));
-assert.ok(industrial.questions.some((item)=>item.key==='industrialProductionConstraints'));
-assert.ok(!industrial.questions.some((item)=>/immatriculation/i.test(item.label)));
-assert.match(industrial.analysis.limitations,/ne prétend pas reconnaître/i);
+if (run('industrial')) {
+  const store=new MemoryStore();
+  const industrial=photoIntake.analyze(store,{requestCategory:'industriel',clientName:'Usine Test',photos:[{name:'machine-presse-zone-generale.png',dataUrl:onePixelPng,role:'Vue générale',detectedText:'PRESSE INDUSTRIELLE REF 4587'},{name:'graisse-zone-moteur.png',dataUrl:onePixelPng,role:'Zone sale'}]},admin);
+  assert.equal(industrial.analysis.category,'industriel');
+  assert.equal(industrial.photos.length,2);
+  assert.ok(industrial.questions.some((item)=>item.key==='industrialConsignation'));
+  assert.ok(industrial.questions.some((item)=>item.key==='industrialProductionConstraints'));
+  assert.ok(!industrial.questions.some((item)=>/immatriculation/i.test(item.label)));
+  assert.match(industrial.analysis.limitations,/ne prétend pas reconnaître/i);
+  const prepared=runtime.preparedQuoteInput({requestCategory:'industriel',industrialMachineFunction:'Presse hydraulique',finalPrice:1000,deliveryRequired:true,deliveryTrips:2,photoUrls:industrial.photos.map((item)=>item.url),photoAnalysisConfirmed:true});
+  assert.equal(prepared.model,'Presse hydraulique');
+  assert.equal(prepared.deliveryRateHt,85);
+  assert.equal(prepared.deliveryAmountHt,170);
+  assert.equal(prepared.deliveryAmountTtc,204);
+  assert.equal(prepared.finalPrice,1204);
+  console.log('Industrial photo intake passed.');
+}
 
-const prepared = runtime.preparedQuoteInput({ requestCategory:'industriel', industrialMachineFunction:'Presse hydraulique', finalPrice:1000, deliveryRequired:true, deliveryTrips:2, photoUrls:industrial.photos.map((item)=>item.url), photoAnalysisConfirmed:true });
-assert.equal(prepared.model,'Presse hydraulique');
-assert.equal(prepared.deliveryRateHt,85);
-assert.equal(prepared.deliveryAmountHt,170);
-assert.equal(prepared.deliveryAmountTtc,204);
-assert.equal(prepared.finalPrice,1204);
+if (run('delivery')) {
+  const store=new MemoryStore();
+  const quote=store.create('quotes',{number:'DEV-2026-TEST',requestCategory:'voiture',clientId:'client-1',vehicleId:'vehicle-1',deliveryRequired:true,deliveryTrips:2,deliveryDestination:'Bayonne',estimatedDryIceKg:20,proposedDropoffDate:addWorkdays(3),estimatedStartDate:addWorkdays(4),estimatedEndDate:addWorkdays(5),estimatedDeliveryDate:addWorkdays(6),status:'À valider'});
+  const blocks=runtime.createDeliveryBlocks(store,quote,admin);
+  assert.equal(blocks.length,2);
+  assert.ok(blocks.every((item)=>item.assignedUserName==='Séverine'));
+  assert.ok(blocks.every((item)=>item.resource==='Camion'));
+  assert.ok(blocks.every((item)=>item.startTime==='08:30'&&item.endTime==='09:30'));
+  assert.ok(blocks.every((item)=>/En livraison/.test(item.title)));
+  console.log('Delivery blocks passed.');
+}
 
-const quote = store.create('quotes',{number:'DEV-2026-TEST',requestCategory:'voiture',clientId:'client-1',vehicleId:'vehicle-1',deliveryRequired:true,deliveryTrips:2,deliveryDestination:'Bayonne',estimatedDryIceKg:20,proposedDropoffDate:addWorkdays(3),estimatedStartDate:addWorkdays(4),estimatedEndDate:addWorkdays(5),estimatedDeliveryDate:addWorkdays(6),status:'À valider'});
-store.create('stockItems',{name:'Glace carbonique pellets',quantity:50,unit:'kg'});
-const stock=runtime.dryIceGate(store,quote,quote.estimatedStartDate,admin);
-assert.equal(stock.ok,true);
-assert.equal(stock.orderRequired,false);
-const blocks=runtime.createDeliveryBlocks(store,quote,admin);
-assert.equal(blocks.length,2);
-assert.ok(blocks.every((item)=>item.assignedUserName==='Séverine'));
-assert.ok(blocks.every((item)=>item.resource==='Camion'));
-assert.ok(blocks.every((item)=>item.startTime==='08:30'&&item.endTime==='09:30'));
-assert.ok(blocks.every((item)=>/En livraison/.test(item.title)));
+if (run('stock')) {
+  const quote={id:'quote-1',number:'DEV-2026-TEST',requestCategory:'voiture',clientId:'client-1',vehicleId:'vehicle-1',estimatedDryIceKg:20};
+  const store=new MemoryStore({quotes:[quote],stockItems:[{id:'stock-ok',name:'Glace carbonique pellets',quantity:50,unit:'kg'}]});
+  const stock=runtime.dryIceGate(store,quote,addWorkdays(4),admin);
+  assert.equal(stock.ok,true);
+  assert.equal(stock.orderRequired,false);
+  const lowStockStore=new MemoryStore({quotes:[quote],stockItems:[{id:'stock-1',name:'Glace carbonique',quantity:0}],tasks:[]});
+  const futureGate=runtime.dryIceGate(lowStockStore,quote,addWorkdays(3),admin);
+  assert.equal(futureGate.orderRequired,true);
+  assert.ok(lowStockStore.list('tasks').some((item)=>/Commander la glace carbonique/.test(item.title)));
+  assert.throws(()=>runtime.dryIceGate(lowStockStore,quote,new Date().toISOString().slice(0,10),admin),/DRY_ICE_STOCK_OR_ORDER_LEAD_REQUIRED/);
+  console.log('Dry-ice stock gate passed.');
+}
 
-const lowStockStore=new MemoryStore({quotes:[quote],stockItems:[{id:'stock-1',name:'Glace carbonique',quantity:0}],tasks:[]});
-const futureGate=runtime.dryIceGate(lowStockStore,quote,addWorkdays(3),admin);
-assert.equal(futureGate.orderRequired,true);
-assert.ok(lowStockStore.list('tasks').some((item)=>/Commander la glace carbonique/.test(item.title)));
-assert.throws(()=>runtime.dryIceGate(lowStockStore,quote,new Date().toISOString().slice(0,10),admin),/DRY_ICE_STOCK_OR_ORDER_LEAD_REQUIRED/);
+if (run('workshop')) {
+  const today=new Date().toISOString().slice(0,10);
+  const dayStore=new MemoryStore({planningBlocks:[{id:'delivery-1',title:'Camion — En livraison — DEV-1',type:'Livraison',startDate:today,endDate:today,startTime:'08:30',endTime:'09:30',status:'Active',assignedUserName:'Séverine',assignee:'Séverine',resource:'Camion'}]});
+  const plan=workshopDay.build(dayStore,{employeeName:'Séverine',date:today,now:`${today}T08:45:00`},{id:'associate-1',name:'Bénédicte',role:'associate'});
+  assert.equal(plan.dayStart,'08:30');
+  assert.equal(plan.dayEnd,'17:00');
+  assert.equal(plan.summary.deliveries,1);
+  assert.equal(plan.current.phase,'active');
+  assert.match(plan.current.instruction,/livraison/i);
+  assert.equal(plan.policy.workshopCalendarPriority,'highest');
+  assert.throws(()=>workshopDay.build(dayStore,{employeeName:'Séverine'},{id:'tech-1',name:'Autre Employé',role:'technician'}),/WORKSHOP_DAY_OTHER_EMPLOYEE_FORBIDDEN/);
+  console.log('Dynamic workshop day passed.');
+}
 
-const dayStore=new MemoryStore({planningBlocks:[{id:'delivery-1',title:'Camion — En livraison — DEV-1',type:'Livraison',startDate:new Date().toISOString().slice(0,10),endDate:new Date().toISOString().slice(0,10),startTime:'08:30',endTime:'09:30',status:'Active',assignedUserName:'Séverine',assignee:'Séverine',resource:'Camion'}],interventions:[],tasks:[],leaveRequests:[]});
-const plan=workshopDay.build(dayStore,{employeeName:'Séverine',date:new Date().toISOString().slice(0,10),now:`${new Date().toISOString().slice(0,10)}T08:45:00`},{id:'associate-1',name:'Bénédicte',role:'associate'});
-assert.equal(plan.dayStart,'08:30');
-assert.equal(plan.dayEnd,'17:00');
-assert.equal(plan.summary.deliveries,1);
-assert.equal(plan.current.phase,'active');
-assert.match(plan.current.instruction,/livraison/i);
-assert.equal(plan.policy.workshopCalendarPriority,'highest');
-assert.throws(()=>workshopDay.build(dayStore,{employeeName:'Séverine'},{id:'tech-1',name:'Autre Employé',role:'technician'}),/WORKSHOP_DAY_OTHER_EMPLOYEE_FORBIDDEN/);
-
-console.log('Photo-first industrial quote, delivery, dry-ice gate and workshop day smoke test passed.');
+console.log(`MAVIK 0.28 smoke mode ${mode} passed.`);
