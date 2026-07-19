@@ -1,5 +1,5 @@
-const CACHE='jarvis-gentlecare-v27';
-const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./gcos-comms.js','./jarvis-core.js','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css'];
+const CACHE='jarvis-gentlecare-v28';
+const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./gcos-comms.js','./jarvis-core.js','./mavik-insights.js','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim())});
 self.addEventListener('fetch',event=>{
@@ -12,7 +12,7 @@ self.addEventListener('fetch',event=>{
       if(!contentType.includes('text/html'))return response;
       let html=await response.text();
       if(url.pathname.endsWith('/employe.html')&&!html.includes('atelier-responsive.css')){
-        html=html.replace('</head>','<link rel="stylesheet" href="atelier-responsive.css?v=27"></head>');
+        html=html.replace('</head>','<link rel="stylesheet" href="atelier-responsive.css?v=28"></head>');
       }
       if(url.pathname.endsWith('/admin.html')){
         html=html.replace("['▤','Devis','Offres et validations','']","['▤','Devis','Offres et validations','devis.html']")
@@ -23,8 +23,9 @@ self.addEventListener('fetch',event=>{
           .replace("['🚘','Véhicules','Dossiers et photos','clients.html']","['🚘','Véhicules 360°','Historique et diagnostic Jarvis','vehicule.html']")
           .replace("['🎓','Formation','Compétences','']","['📊','Direction','Rentabilité et prévisions','direction.html']");
       }
-      if(!html.includes('gcos-comms.js'))html=html.replace('</body>','<script src="gcos-comms.js?v=27"></script></body>');
-      if(!html.includes('jarvis-core.js'))html=html.replace('</body>','<script src="jarvis-core.js?v=27"></script></body>');
+      if(!html.includes('mavik-insights.js'))html=html.replace('</body>','<script src="mavik-insights.js?v=28"></script></body>');
+      if(!html.includes('gcos-comms.js'))html=html.replace('</body>','<script src="gcos-comms.js?v=28"></script></body>');
+      if(!html.includes('jarvis-core.js'))html=html.replace('</body>','<script src="jarvis-core.js?v=28"></script></body>');
       if(!html.includes('jarvisGlobalButton')){
         html=html.replace('</body>',`<style>#jarvisGlobalButton{position:fixed;right:18px;bottom:18px;z-index:41000;width:62px;height:62px;border-radius:50%;border:1px solid #80e8ff;background:radial-gradient(circle at 35% 30%,#eaffff,#46d9ff 25%,#087fa8 50%,#03131c 76%);color:#fff;font-size:1.55rem;box-shadow:0 0 24px #00cfff88;cursor:pointer}#jarvisGlobalButton:active{transform:scale(.94)}@media(max-width:720px){#jarvisGlobalButton{right:14px;bottom:78px;width:56px;height:56px}}</style><button id="jarvisGlobalButton" aria-label="Ouvrir Jarvis" title="Parler à Jarvis">🎙</button></body>`);
       }
