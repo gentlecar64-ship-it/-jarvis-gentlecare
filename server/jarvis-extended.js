@@ -2,8 +2,8 @@
 
 const core = require('./jarvis');
 const quoteWorkflow = require('./quote-workflow-reference');
-const quoteStudio = require('./quote-studio');
-const planning = require('./planning');
+const quoteStudio = require('./quote-studio-service');
+const planning = require('./planning-service');
 const clientIntake = require('./client-intake');
 const intelligence = require('./jarvis-intelligence');
 const interventionReport = require('./intervention-report');
