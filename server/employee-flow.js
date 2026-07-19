@@ -58,15 +58,11 @@ function pauseRecord(store, type, record, user, options = {}) {
 }
 function pauseCompanions(store, targetType, target, user, options = {}) {
   const paused = [];
-  if (targetType === 'intervention') {
-    for (const current of activeForUser(store, 'intervention', user)) {
-      if (current.id !== target.id) {
-        paused.push(pauseRecord(store, 'intervention', current, user, options));
-        for (const task of activeForUser(store, 'task', user).filter((item) => item.interventionId === current.id)) paused.push(pauseRecord(store, 'task', task, user, options));
-      }
+  for (const type of ['intervention', 'task']) {
+    for (const current of activeForUser(store, type, user)) {
+      if (type === targetType && current.id === target.id) continue;
+      paused.push(pauseRecord(store, type, current, user, options));
     }
-  } else {
-    for (const current of activeForUser(store, 'task', user)) if (current.id !== target.id) paused.push(pauseRecord(store, 'task', current, user, options));
   }
   return paused;
 }
@@ -83,7 +79,7 @@ function startRecord(store, type, record, user, options = {}) {
   const late = Boolean(plannedDate && plannedDate < today());
   const patch = {
     workStatus: ACTIVE,
-    status: type === 'intervention' ? 'En cours' : 'En cours',
+    status: 'En cours',
     activeByUserId: user.id || '', activeByName: user.name || '',
     startedByUserId: record.startedByUserId || user.id || '', startedByName: record.startedByName || user.name || '',
     actualStartAt: record.actualStartAt || now(), resumedAt: record.actualStartAt ? now() : '',
@@ -116,18 +112,20 @@ function act(store, input = {}, user = {}) {
   return { item: startRecord(store, targetType, record, user, input), paused };
 }
 function queue(store, user = {}) {
+  const privileged = ['admin', 'associate'].includes(user.role);
+  const visible = (record) => privileged || userMatches(record, user);
   const interventions = safeList(store, 'interventions')
-    .filter((record) => userMatches(record, user) && !TERMINAL.test(record.status || ''))
+    .filter((record) => visible(record) && !TERMINAL.test(record.status || ''))
     .map((record) => ({ ...record, targetType: 'intervention', displayLabel: label(record, 'intervention'), canStartEarly: Boolean((record.scheduledDate || record.estimatedStartDate) > today()), canDelay: false }));
   const tasks = safeList(store, 'tasks')
-    .filter((record) => userMatches(record, user) && !TERMINAL.test(record.status || ''))
+    .filter((record) => visible(record) && !TERMINAL.test(record.status || ''))
     .map((record) => ({ ...record, targetType: 'task', displayLabel: label(record, 'task'), canStartEarly: Boolean(record.dueDate > today()), canDelay: false }));
   const sessions = safeList(store, 'workSessions').filter((record) => record.employeeId === user.id).slice(0, 30);
   return {
     employee: { id: user.id || '', name: user.name || user.username || '' },
     policy: { earlyStartAllowed: true, employeeDelayAllowed: false, promisedDatesPreserved: true },
-    activeInterventions: interventions.filter((item) => statusOf(item) === ACTIVE),
-    activeTasks: tasks.filter((item) => statusOf(item) === ACTIVE),
+    activeInterventions: interventions.filter((item) => statusOf(item) === ACTIVE && userMatches(item, user)),
+    activeTasks: tasks.filter((item) => statusOf(item) === ACTIVE && userMatches(item, user)),
     interventions,
     tasks,
     sessions
