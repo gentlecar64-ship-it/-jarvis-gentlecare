@@ -32,3 +32,5 @@ jobs:
         run: node tests/reputation-client-intake-smoke.js
       - name: Jarvis contextual intelligence smoke test
         run: node tests/jarvis-intelligence-smoke.js
+      - name: Command dock internal messaging smoke test
+        run: node tests/command-dock-messaging-smoke.js
