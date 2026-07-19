@@ -9,6 +9,7 @@ const intelligence = require('./jarvis-intelligence');
 const interventionReport = require('./intervention-report');
 
 function normalize(value) { return String(value || '').trim().toLowerCase(); }
+function presentEntries(value = {}) { return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== '' && item !== 0 && item !== undefined && item !== null)); }
 
 function isQuoteCreation(text) {
   const value = normalize(text);
@@ -102,10 +103,47 @@ function handlePlanning(store, text) {
   };
 }
 
+function packageKeyFromSpeech(text) {
+  const value = normalize(text);
+  if (/fondateur/.test(value)) return 'integral-founder';
+  if (/tarif club|membre.*club|\bclub\b/.test(value)) return 'integral-club';
+  if (/pack intégral|pack integral|cryo.*dinitrol|dinitrol.*cryo/.test(value)) return 'integral-public';
+  return '';
+}
+
+function activeDossierInput(store, user) {
+  const context = intelligence.linkedContext(store, user);
+  const client = context.client || {};
+  const vehicle = context.vehicle || {};
+  return presentEntries({
+    clientId: client.id,
+    clientName: client.name,
+    email: client.email,
+    mobile: client.mobile || client.phone,
+    address: client.address,
+    preferredChannel: client.preferredChannel,
+    vehicleId: vehicle.id,
+    brand: vehicle.brand,
+    model: vehicle.model,
+    trim: vehicle.trim || vehicle.series,
+    registration: vehicle.registration,
+    vin: vehicle.vin,
+    color: vehicle.color,
+    year: vehicle.year,
+    mileage: vehicle.mileage,
+    photoUrl: vehicle.photoUrl,
+    vehicleNotes: vehicle.notes,
+    clientEstimatedValue: vehicle.clientEstimatedValue
+  });
+}
+
 function handleQuoteStudio(store, input, text, user) {
   if (!isQuoteCreation(text)) return null;
-  const parsed = quoteStudio.parseSpeech({ text });
-  const hasDossierInformation = Boolean(parsed.name || parsed.email || parsed.mobile || parsed.brand || parsed.model || parsed.registration);
+  const parsed = presentEntries(quoteStudio.parseSpeech({ text }));
+  const activeDossier = activeDossierInput(store, user);
+  const packageKey = packageKeyFromSpeech(text);
+  const dossierInput = { ...activeDossier, ...presentEntries(input), ...parsed, ...(packageKey ? { packageKey } : {}), text };
+  const hasDossierInformation = Boolean(dossierInput.clientId || dossierInput.clientName || dossierInput.email || dossierInput.mobile || dossierInput.brand || dossierInput.model || dossierInput.registration);
   if (!hasDossierInformation) {
     return {
       type: 'quote-studio-open',
@@ -113,7 +151,7 @@ function handleQuoteStudio(store, input, text, user) {
       links: [{ label: 'Ouvrir l’atelier Devis', url: '/quotes' }]
     };
   }
-  const result = quoteStudio.preview(store, { ...input, ...parsed, text }, user);
+  const result = quoteStudio.preview(store, dossierInput, user);
   return {
     type: 'quote-studio-voice-preview',
     answer: `J’ai analysé la demande sans créer de fiche ni de devis. ${result.data.missingFields.length ? `Il manque : ${result.data.missingFields.join(', ')}.` : 'Les informations principales sont présentes.'} Ouvrez l’atelier Devis pour vérifier le prix, les valeurs du véhicule, l’expertise éventuelle et le planning avant validation.`,
