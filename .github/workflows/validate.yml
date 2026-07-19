@@ -42,3 +42,31 @@ jobs:
         run: node tests/employee-flow-leave-morale-smoke.js
       - name: Emergency quote request calendar and motorcycle smoke test
         run: node tests/emergency-quote-request-calendar-smoke.js
+
+  quote-workflow-diagnostic:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Capture quote workflow log
+        run: |
+          set +e
+          node tests/quote-workflow-smoke.js > quote-workflow.log 2>&1
+          echo $? > quote-workflow.exit
+          exit 0
+      - name: Upload quote workflow log
+        uses: actions/upload-artifact@v4
+        with:
+          name: quote-workflow-log
+          path: |
+            server/quote-workflow.log
+            server/quote-workflow.exit
+      - name: Enforce result
+        run: test "$(cat quote-workflow.exit)" = "0"
