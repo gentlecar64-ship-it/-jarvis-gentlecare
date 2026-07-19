@@ -8,7 +8,8 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'gcos-local.json');
 const EMPTY_DB = {
   clients: [], vehicles: [], interventions: [], observations: [], communications: [],
-  tasks: [], stockItems: [], quotes: [], documents: [], photos: [], planningBlocks: [], events: []
+  tasks: [], stockItems: [], quotes: [], documents: [], photos: [], planningBlocks: [],
+  workSessions: [], leaveRequests: [], events: []
 };
 const DEFAULT_CHECKLIST = {
   receptionPhotos: false, mileageRecorded: false, clientApproval: false,
@@ -75,11 +76,13 @@ function normalize(collection, input = {}, current = {}) {
   if (collection === 'interventions') {
     if (!(input.vehicleId ?? current.vehicleId)) throw Object.assign(new Error('VEHICLE_REQUIRED'), { status: 400 });
     clean.status = input.status ?? current.status ?? 'Prévue';
+    clean.workStatus = input.workStatus ?? current.workStatus ?? '';
     clean.technician = String(input.technician ?? current.technician ?? '').trim();
     clean.arrivalTime = String(input.arrivalTime ?? current.arrivalTime ?? '').trim();
     clean.departureTime = String(input.departureTime ?? current.departureTime ?? '').trim();
     clean.mileage = Number(input.mileage ?? current.mileage ?? 0) || 0;
     clean.checklist = { ...DEFAULT_CHECKLIST, ...(current.checklist || {}), ...(input.checklist || {}) };
+    clean.workstationReleased = input.workstationReleased === undefined ? Boolean(current.workstationReleased) : input.workstationReleased === true || input.workstationReleased === 'on';
   }
   if (collection === 'observations') {
     if (!(input.interventionId ?? current.interventionId)) throw Object.assign(new Error('INTERVENTION_REQUIRED'), { status: 400 });
@@ -98,9 +101,11 @@ function normalize(collection, input = {}, current = {}) {
   if (collection === 'tasks') {
     clean.title = String(input.title ?? current.title ?? '').trim();
     clean.status = input.status ?? current.status ?? 'À faire';
+    clean.workStatus = input.workStatus ?? current.workStatus ?? '';
     clean.priority = input.priority ?? current.priority ?? 'Normale';
     clean.dueDate = String(input.dueDate ?? current.dueDate ?? '').trim();
     clean.assignee = String(input.assignee ?? current.assignee ?? '').trim();
+    clean.workstationReleased = input.workstationReleased === undefined ? Boolean(current.workstationReleased) : input.workstationReleased === true || input.workstationReleased === 'on';
   }
   if (collection === 'stockItems') {
     clean.name = String(input.name ?? current.name ?? '').trim();
@@ -128,6 +133,28 @@ function normalize(collection, input = {}, current = {}) {
     clean.startTime = String(input.startTime ?? current.startTime ?? '08:30').trim();
     clean.endTime = String(input.endTime ?? current.endTime ?? '17:00').trim();
     clean.status = String(input.status ?? current.status ?? 'Active').trim();
+    clean.blocksWorkshop = input.blocksWorkshop === undefined ? Boolean(current.blocksWorkshop) : input.blocksWorkshop === true || input.blocksWorkshop === 'on';
+  }
+  if (collection === 'workSessions') {
+    clean.employeeId = String(input.employeeId ?? current.employeeId ?? '').trim();
+    clean.employeeName = String(input.employeeName ?? current.employeeName ?? '').trim();
+    clean.targetType = String(input.targetType ?? current.targetType ?? '').trim();
+    clean.targetId = String(input.targetId ?? current.targetId ?? '').trim();
+    clean.targetLabel = String(input.targetLabel ?? current.targetLabel ?? '').trim();
+    clean.action = String(input.action ?? current.action ?? '').trim();
+    clean.reason = String(input.reason ?? current.reason ?? '').trim();
+    clean.happenedAt = String(input.happenedAt ?? current.happenedAt ?? new Date().toISOString()).trim();
+    clean.workstationReleased = input.workstationReleased === undefined ? Boolean(current.workstationReleased) : input.workstationReleased === true || input.workstationReleased === 'on';
+  }
+  if (collection === 'leaveRequests') {
+    clean.employeeId = String(input.employeeId ?? current.employeeId ?? '').trim();
+    clean.employeeName = String(input.employeeName ?? current.employeeName ?? '').trim();
+    clean.startDate = String(input.startDate ?? current.startDate ?? '').trim();
+    clean.endDate = String(input.endDate ?? current.endDate ?? clean.startDate).trim();
+    clean.status = String(input.status ?? current.status ?? 'En attente de validation').trim();
+    clean.principleStatus = String(input.principleStatus ?? current.principleStatus ?? '').trim();
+    clean.principleScore = Number(input.principleScore ?? current.principleScore ?? 0) || 0;
+    clean.workdays = Number(input.workdays ?? current.workdays ?? 0) || 0;
   }
   return clean;
 }
@@ -146,6 +173,7 @@ function create(collection, input) {
   const year = new Date().getFullYear();
   if (collection === 'interventions') normalized.number = nextNumber(db.interventions, `GC-${year}-`);
   if (collection === 'quotes') normalized.number = nextNumber(db.quotes, `DEV-${year}-`);
+  if (collection === 'leaveRequests') normalized.number = nextNumber(db.leaveRequests, `CONGE-${year}-`);
   const record = { id: crypto.randomUUID(), ...normalized, createdAt: now, updatedAt: now };
   db[collection].unshift(record);
   db.events.unshift({ id: crypto.randomUUID(), type: `${collection}.created`, recordId: record.id, interventionId: collection === 'interventions' ? record.id : record.interventionId || '', createdAt: now });
@@ -184,8 +212,10 @@ function summary() {
     clients: db.clients.length, vehicles: db.vehicles.length, interventions: db.interventions.length,
     observations: db.observations.length, communications: db.communications.length,
     tasks: db.tasks.length, quotes: db.quotes.length, documents: db.documents.length,
-    planningBlocks: db.planningBlocks.length,
+    planningBlocks: db.planningBlocks.length, workSessions: db.workSessions.length,
+    pendingLeaveRequests: db.leaveRequests.filter((item) => item.status === 'En attente de validation').length,
     openInterventions: db.interventions.filter((item) => !['Terminée', 'Livrée', 'Annulée'].includes(item.status)).length,
+    pausedInterventions: db.interventions.filter((item) => item.workStatus === 'En attente').length,
     todayInterventions: db.interventions.filter((item) => item.scheduledDate === today).length,
     pendingTasks: db.tasks.filter((item) => item.status !== 'Terminée').length,
     pendingQuotes: db.quotes.filter((item) => ['Brouillon', 'Envoyé', 'À relancer', 'À valider', 'Expertise à décider'].includes(item.status)).length,
