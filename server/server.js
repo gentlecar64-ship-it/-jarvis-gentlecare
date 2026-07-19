@@ -55,9 +55,11 @@ function commonHeaders(contentType) {
   };
 }
 
-function json(res, status, body) { res.writeHead(status, commonHeaders('application/json; charset=utf-8')); res.end(JSON.stringify(body)); }
+function json(res, status, body, extraHeaders = {}) { res.writeHead(status, { ...commonHeaders('application/json; charset=utf-8'), ...extraHeaders }); res.end(JSON.stringify(body)); }
 function html(res, status, body) { res.writeHead(status, commonHeaders('text/html; charset=utf-8')); res.end(body); }
 function redirect(res, location) { res.writeHead(302, { Location: location, ...commonHeaders('text/plain; charset=utf-8') }); res.end(); }
+function sessionCookie(token) { return `gcos_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(auth.SESSION_TTL_MS / 1000)}`; }
+function clearSessionCookie() { return 'gcos_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'; }
 
 async function readBody(req) {
   const chunks = [];
@@ -103,7 +105,7 @@ async function airtableRequest(table, options = {}) {
   }
 }
 
-const AUTH_BOOTSTRAP = `<script>(function(){const device=/iPhone|iPad|iPod/i.test(navigator.userAgent)?'iphone':'pc';let deviceId=localStorage.getItem('gcos_device_id');if(!deviceId){deviceId=(crypto&&crypto.randomUUID?crypto.randomUUID():'dev-'+Date.now()+'-'+Math.random().toString(16).slice(2));localStorage.setItem('gcos_device_id',deviceId);}const token=localStorage.getItem('gcos_session');const login=()=>location.replace('/login?next='+encodeURIComponent(location.pathname));if(!token){login();return;}const original=window.fetch;window.fetch=function(input,init){init=init||{};const headers=new Headers(init.headers||{});headers.set('Authorization','Bearer '+token);headers.set('X-GCOS-Client',device);headers.set('X-GCOS-Device-ID',deviceId);return original(input,{...init,cache:'no-store',headers}).then(function(r){if(r.status===401){localStorage.removeItem('gcos_session');login();}return r;});};})();</script>`;
+const AUTH_BOOTSTRAP = `<script>(function(){const device=/iPhone|iPad|iPod/i.test(navigator.userAgent)?'iphone':'pc';let deviceId=localStorage.getItem('gcos_device_id');if(!deviceId){deviceId=(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():'dev-'+Date.now()+'-'+Math.random().toString(16).slice(2));localStorage.setItem('gcos_device_id',deviceId);}const token=localStorage.getItem('gcos_session');const login=()=>location.replace('/login?next='+encodeURIComponent(location.pathname));const original=window.fetch;window.fetch=function(input,init){init=init||{};const headers=new Headers(init.headers||{});if(token)headers.set('Authorization','Bearer '+token);headers.set('X-GCOS-Client',device);headers.set('X-GCOS-Device-ID',deviceId);return original(input,{...init,cache:'no-store',headers,credentials:'same-origin'}).then(function(r){if(r.status===401){localStorage.removeItem('gcos_session');login();}return r;});};})();</script>`;
 
 function servePage(res, fileName, missingMessage, protect = false) {
   const filePath = path.join(PUBLIC_DIR, fileName);
@@ -125,19 +127,9 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'GET' && url.pathname === '/login') return servePage(res, 'login.html', 'Connexion introuvable');
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
-      service: 'MAVIK GCOS',
-      version: updater.currentVersion(),
-      multiUser: true,
-      device: auth.deviceFromRequest(req),
-      setupRequired: auth.setupRequired(),
-      airtableConfigured: Boolean(AIRTABLE_TOKEN),
-      airtableSync: airtableSync.status(),
-      insights: insightsStore.status(),
-      updater: updater.state(),
-      diagnostics: diagnostics.readLastReport(),
-      host: HOST,
-      uptimeSeconds: Math.round(process.uptime()),
-      time: new Date().toISOString()
+      service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
+      airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(),
+      diagnostics: diagnostics.readLastReport(), host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
     });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') {
@@ -147,10 +139,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/login') {
       const body = await readBody(req);
-      const context = auth.deviceContextFromRequest(req);
-      return json(res, 200, auth.login(body.username, body.password, context));
+      const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req));
+      return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) });
     }
-    if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }); }
+    if (req.method === 'POST' && url.pathname === '/api/auth/logout') {
+      auth.logout(auth.tokenFromRequest(req));
+      return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() });
+    }
 
     const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) {
@@ -166,19 +161,19 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/profile') return json(res, 200, { user, design: { locked: true, version: auth.DESIGN_LOCK } });
     if (req.method === 'PATCH' && url.pathname === '/api/profile') return json(res, 200, { user: auth.updateMyProfile(user, await readBody(req), context) });
-    if (req.method === 'POST' && (url.pathname === '/api/profile/pin' || url.pathname === '/api/auth/pin')) return json(res, 200, auth.changeMyPin(user, await readBody(req)));
+    if (req.method === 'POST' && (url.pathname === '/api/profile/pin' || url.pathname === '/api/auth/pin')) {
+      const result = auth.changeMyPin(user, await readBody(req));
+      return json(res, 200, result, { 'Set-Cookie': clearSessionCookie() });
+    }
     if (req.method === 'POST' && url.pathname === '/api/profile/devices/revoke') {
       const body = await readBody(req);
-      return json(res, 200, { user: auth.revokeTrustedDevice(user, body.deviceId) });
+      return json(res, 200, { user: auth.revokeTrustedDevice(user, body.deviceId, context) });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/users') return json(res, 200, { users: auth.listUsers(user), roles: auth.ROLE_PERMISSIONS });
     if (req.method === 'POST' && url.pathname === '/api/users') return json(res, 201, { user: auth.createUser(user, await readBody(req)) });
 
-    if (req.method === 'GET' && url.pathname === '/api/system/diagnostics') {
-      auth.requirePermission(user, 'dashboard.read');
-      return json(res, 200, diagnostics.readLastReport() || await diagnostics.run(diagnosticDependencies));
-    }
+    if (req.method === 'GET' && url.pathname === '/api/system/diagnostics') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, diagnostics.readLastReport() || await diagnostics.run(diagnosticDependencies)); }
     if (req.method === 'POST' && url.pathname === '/api/system/diagnostics/repair') {
       auth.requirePermission(user, 'users.manage');
       const report = await diagnostics.run(diagnosticDependencies, { repair: true });
@@ -195,8 +190,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/insights/status') { auth.requirePermission(user, 'users.manage'); return json(res, 200, insightsStore.status()); }
     if (req.method === 'POST' && url.pathname === '/api/insights/events') {
       auth.requirePermission(user, 'jarvis.use');
-      const body = await readBody(req);
-      const result = insightsStore.appendBatch(body.events, user);
+      const result = insightsStore.appendBatch((await readBody(req)).events, user);
       return json(res, 202, { ...result, stored: insightsStore.status().storedEvents });
     }
 
@@ -288,16 +282,7 @@ function shutdown(signal, exitCode = 0) {
   server.close(() => process.exit(exitCode));
   setTimeout(() => process.exit(exitCode || 1), 5000).unref();
 }
-
 process.on('SIGINT', () => shutdown('SIGINT', 0));
 process.on('SIGTERM', () => shutdown('SIGTERM', 0));
-process.on('uncaughtException', (error) => {
-  diagnostics.recordCrash(error, 'UNCAUGHT_EXCEPTION');
-  console.error('[MAVIK CRASH]', error);
-  shutdown('UNCAUGHT_EXCEPTION', 1);
-});
-process.on('unhandledRejection', (error) => {
-  diagnostics.recordCrash(error, 'UNHANDLED_REJECTION');
-  console.error('[MAVIK REJECTION]', error);
-  shutdown('UNHANDLED_REJECTION', 1);
-});
+process.on('uncaughtException', (error) => { diagnostics.recordCrash(error, 'UNCAUGHT_EXCEPTION'); console.error('[MAVIK CRASH]', error); shutdown('UNCAUGHT_EXCEPTION', 1); });
+process.on('unhandledRejection', (error) => { diagnostics.recordCrash(error, 'UNHANDLED_REJECTION'); console.error('[MAVIK REJECTION]', error); shutdown('UNHANDLED_REJECTION', 1); });
