@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 function exists(file) { try { return fs.existsSync(file); } catch { return false; } }
+function anyExists(relatives) { return relatives.some((relative) => exists(path.join(__dirname, relative))); }
 function shortCommit(value) { return String(value || '').slice(0, 12) || 'inconnu'; }
 function build(input = {}) {
   const failures = [];
@@ -19,11 +20,18 @@ function build(input = {}) {
   try { git = input.updater.gitStatus(); } catch (error) { failures.push(`Git : ${error.message}`); }
   try { update = input.updater.state(); } catch (error) { failures.push(`Mise à jour : ${error.message}`); }
 
-  const requiredFiles = [
-    'public/alpha.html','public/login.html','public/profile.html','public/quotes.html','public/planning.html',
-    'public/quote-studio-client.js','public/planning-client.js','public/command-dock.js'
+  const requiredGroups = [
+    { label:'Tableau de bord', files:['public/alpha.html','public/alpha.template.html'] },
+    { label:'Connexion', files:['public/login.html','public/login.template.html'] },
+    { label:'Profil', files:['public/profile.html','public/profile.template.html'] },
+    { label:'Jarvis', files:['public/jarvis.html','public/jarvis.template.html'] },
+    { label:'Demandes et devis', files:['public/quotes.html'] },
+    { label:'Planning', files:['public/planning.html'] },
+    { label:'Moteur devis', files:['public/quote-studio-client.js'] },
+    { label:'Moteur planning', files:['public/planning-client.js'] },
+    { label:'Commandes MAVIK', files:['public/command-dock.js'] }
   ];
-  for (const relative of requiredFiles) if (!exists(path.join(__dirname, relative))) failures.push(`Fichier manquant : ${relative}`);
+  for (const group of requiredGroups) if (!anyExists(group.files)) failures.push(`Interface manquante : ${group.label}`);
   const expectedCategories = ['voiture','moto','utilitaire','camion','avion','helicoptere','industriel','autre'];
   const procedureCategories = new Set(procedures.map((item) => item.requestCategory || item.vehicleType));
   for (const category of expectedCategories) if (!procedureCategories.has(category)) failures.push(`Procédure manquante : ${category}`);
