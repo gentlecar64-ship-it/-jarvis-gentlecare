@@ -48,7 +48,7 @@ assert.match(proposal.answer, /kilométrage|couleur|estimation/i);
 const confirmed = jarvis.execute(store, { text: 'Oui confirme', user });
 assert.equal(confirmed.type, 'intelligence-update');
 assert.equal(db.vehicles[0].mileage, 125000);
-assert.equal(db.vehicles[0].color, 'Bleue');
+assert.equal(db.vehicles[0].color, 'Bleu');
 assert.equal(db.vehicles[0].clientEstimatedValue, 60000);
 
 const summary = jarvis.execute(store, { text: 'Résume le dossier courant', user });
