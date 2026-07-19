@@ -5,6 +5,7 @@ const quoteStudio = require('./quote-studio-service');
 const procedures = require('./workshop-procedures');
 
 function text(value) { return String(value || '').trim(); }
+function normalized(value) { return text(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 function digits(value) { return text(value).replace(/\D/g, ''); }
 function registration(value) { return text(value).toUpperCase().replace(/\s+/g, '-'); }
 function safeList(store, collection) { try { return store.list(collection) || []; } catch { return []; } }
@@ -12,10 +13,14 @@ function meaningful(input = {}) {
   return ['requestCategory','clientName','email','mobile','brand','model','registration','service','targetPrice','vehicleNotes','voiceText'].some((key) => text(input[key]));
 }
 function detectCategory(input = {}) {
-  const direct = procedures.normalizeType(input.requestCategory || input.vehicleType);
-  if (direct) return direct;
-  const spoken = text(input.voiceText || input.text);
-  return procedures.normalizeType(spoken);
+  const direct = text(input.requestCategory || input.vehicleType);
+  if (direct) return procedures.normalizeType(direct);
+  const spoken = normalized(input.voiceText || input.text);
+  if (!spoken) return '';
+  for (const category of procedures.categories()) {
+    if ((category.aliases || []).some((alias) => spoken.includes(normalized(alias)))) return category.key;
+  }
+  return '';
 }
 function sanitize(input = {}) {
   const requestCategory = detectCategory(input);
