@@ -40,6 +40,7 @@ function occupiedCounts(store, ignoreQuoteId = '') {
   const add = (date) => { if (date) counts.set(date, (counts.get(date) || 0) + 1); };
   for (const intervention of safeList(store, 'interventions')) {
     if (!activeStatus(intervention.status)) continue;
+    if (intervention.workStatus === 'En attente' && intervention.workstationReleased === true) continue;
     const start = intervention.scheduledDate || intervention.estimatedStartDate;
     const end = intervention.estimatedEndDate || start;
     if (!start) continue;
@@ -54,7 +55,7 @@ function occupiedCounts(store, ignoreQuoteId = '') {
     for (const date of dateRange(start, end)) if (isWorkday(date)) add(date);
   }
   for (const block of safeList(store, 'planningBlocks')) {
-    if (!activeStatus(block.status)) continue;
+    if (!activeStatus(block.status) || block.blocksWorkshop === false || /congé|conge/i.test(block.type || '')) continue;
     for (const date of dateRange(block.startDate, block.endDate || block.startDate)) if (isWorkday(date)) add(date);
   }
   return counts;
@@ -182,6 +183,7 @@ function createBlock(store, input = {}, user = {}) {
     endTime: text(input.endTime || DAY_END),
     notes: text(input.notes),
     status: 'Active',
+    blocksWorkshop: input.blocksWorkshop !== false,
     createdBy: user.id || '',
     createdByName: user.name || ''
   });
@@ -208,13 +210,14 @@ function overview(store, input = {}) {
   for (const intervention of safeList(store, 'interventions')) {
     const date = intervention.scheduledDate || intervention.estimatedStartDate;
     if (!within(date)) continue;
-    events.push({ id: `intervention-${intervention.id}`, date, endDate: intervention.estimatedEndDate || date, time: intervention.arrivalTime || DAY_START, endTime: intervention.departureTime || DAY_END, type: 'Intervention', status: intervention.status, title: intervention.service || intervention.number, client: clientName(intervention.clientId), vehicle: vehicleLabel(intervention.vehicleId), interventionId: intervention.id, number: intervention.number });
+    events.push({ id: `intervention-${intervention.id}`, date, endDate: intervention.estimatedEndDate || date, time: intervention.arrivalTime || DAY_START, endTime: intervention.departureTime || DAY_END, type: 'Intervention', status: intervention.workStatus || intervention.status, title: intervention.service || intervention.number, client: clientName(intervention.clientId), vehicle: vehicleLabel(intervention.vehicleId), assignee: intervention.technician || intervention.activeByName || '', interventionId: intervention.id, number: intervention.number, workstationReleased: intervention.workstationReleased === true, startedAheadOfSchedule: intervention.startedAheadOfSchedule === true });
   }
-  for (const task of safeList(store, 'tasks')) if (within(task.dueDate) && task.status !== 'Terminée') events.push({ id: `task-${task.id}`, date: task.dueDate, time: '', type: 'Tâche', status: task.priority || task.status, title: task.title, assignee: task.assignee, taskId: task.id });
-  for (const block of safeList(store, 'planningBlocks')) if (dateRange(block.startDate, block.endDate).some(within)) events.push({ id: `block-${block.id}`, date: block.startDate, endDate: block.endDate, time: block.startTime, endTime: block.endTime, type: block.type || 'Indisponibilité', status: block.status, title: block.title, notes: block.notes, blockId: block.id });
+  for (const task of safeList(store, 'tasks')) if (within(task.dueDate) && task.status !== 'Terminée') events.push({ id: `task-${task.id}`, date: task.dueDate, time: '', type: 'Tâche', status: task.workStatus || task.priority || task.status, title: task.title, assignee: task.assignee || task.activeByName, taskId: task.id });
+  for (const block of safeList(store, 'planningBlocks')) if (dateRange(block.startDate, block.endDate).some(within)) events.push({ id: `block-${block.id}`, date: block.startDate, endDate: block.endDate, time: block.startTime, endTime: block.endTime, type: block.type || 'Indisponibilité', status: block.status, title: block.title, notes: block.notes, assignee: block.assignedUserName || '', blockId: block.id });
+  for (const leave of safeList(store, 'leaveRequests')) if (leave.status === 'Approuvé' && dateRange(leave.startDate, leave.endDate).some(within)) events.push({ id: `leave-${leave.id}`, date: leave.startDate, endDate: leave.endDate, time: DAY_START, endTime: DAY_END, type: 'Congé', status: leave.status, title: `Congé ${leave.employeeName}`, assignee: leave.employeeName, leaveRequestId: leave.id });
   events.sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
   const unscheduledQuotes = safeList(store, 'quotes').filter((quote) => activeStatus(quote.status) && !quote.estimatedStartDate).map((quote) => ({ id: quote.id, number: quote.number, service: quote.service, client: clientName(quote.clientId), vehicle: vehicleLabel(quote.vehicleId), expertRequired: Boolean(quote.expertReviewRequired), expertReviewStatus: quote.expertReviewStatus || '' }));
-  return { from, until, days, capacity: WORKSHOP_CAPACITY, businessHours: { morning: '08:30–12:00', afternoon: '13:30–17:00' }, events, unscheduledQuotes };
+  return { from, until, days, capacity: WORKSHOP_CAPACITY, businessHours: { morning: '08:30–12:00', afternoon: '13:30–17:00' }, events, unscheduledQuotes, policy: { employeeEarlyStartAllowed: true, employeeDelayAllowed: false } };
 }
 
 module.exports = { WORKSHOP_CAPACITY, INSPECTION_SLOTS, propose, overview, scheduleQuote, createBlock, detectConflicts, isoDate, nextWorkday, workdayRange };
