@@ -35,8 +35,12 @@ jobs:
         run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-analyze
       - name: Industrial questions
         run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-questions
-      - name: Industrial pricing and delivery calculation
-        run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-price
+      - name: Industrial model fallback
+        run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-model
+      - name: Delivery hourly calculation
+        run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-rate
+      - name: Delivery total calculation
+        run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-total
       - name: Delivery resource blocks
         run: node tests/photo-industrial-delivery-workshop-smoke.js delivery
       - name: Dry ice stock gate
