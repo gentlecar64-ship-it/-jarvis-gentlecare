@@ -1,0 +1,35 @@
+name: Validate MAVIK 0.28 features
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'server/feature-runtime-028.js'
+      - 'server/quote-photo-intake.js'
+      - 'server/workshop-day-plan.js'
+      - 'server/public/quote-photo-client.js'
+      - 'server/public/workshop-day-client.js'
+      - 'server/tests/photo-industrial-delivery-workshop-smoke.js'
+      - '.github/workflows/validate-feature-028.yml'
+  push:
+    branches:
+      - 'feature/photo-first-industrial-delivery-workshop-planning'
+
+permissions:
+  contents: read
+
+jobs:
+  feature-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: New module syntax
+        run: node --check feature-runtime-028.js && node --check quote-photo-intake.js && node --check workshop-day-plan.js && node --check public/quote-photo-client.js && node --check public/workshop-day-client.js
+      - name: Photo industrial delivery and workshop day smoke test
+        run: node tests/photo-industrial-delivery-workshop-smoke.js
