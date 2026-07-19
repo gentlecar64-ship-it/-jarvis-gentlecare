@@ -113,8 +113,8 @@ function validateInstalledFiles() {
   const scripts = [
     'server.js', 'auth.js', 'jarvis.js', 'jarvis-extended.js', 'jarvis-knowledge.js', 'jarvis-intelligence.js', 'jarvis-morale.js',
     'emergency-alert.js', 'employee-flow.js', 'leave-planning.js',
-    'quote-workflow.js', 'quote-workflow-reference.js', 'quote-studio.js', 'quote-studio-service.js', 'quote-requests.js', 'tariff-catalog.js', 'workshop-procedures.js',
-    'planning.js', 'planning-service.js', 'calendar-bridge.js', 'intervention-report.js', 'client-intake.js', 'reputation.js',
+    'quote-workflow.js', 'quote-workflow-current.js', 'quote-workflow-reference.js', 'quote-studio.js', 'quote-studio-service.js', 'quote-requests.js', 'tariff-catalog.js', 'workshop-procedures.js',
+    'planning.js', 'planning-service.js', 'calendar-bridge.js', 'startup-status.js', 'intervention-report.js', 'client-intake.js', 'reputation.js',
     'internal-messaging.js', 'public/jarvis-quote.js', 'public/reputation-client.js', 'public/command-dock.js', 'public/navigation-enhancer.js', 'public/quote-studio-client.js',
     'public/planning-client.js', 'public/morale-client.js', 'airtable-sync.js', 'updater.js', 'diagnostics.js', 'design-installer.js', 'launcher-check.js', 'restart-helper.js'
   ];
