@@ -52,24 +52,20 @@ function normalizeDevice(value) {
   return /(iphone|ipad|ipod|ios|mobile-safari)/.test(input) ? 'iphone' : 'pc';
 }
 function sanitizeDeviceId(value) {
-  const clean = String(value || '').trim().replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 96);
-  return clean || '';
+  return String(value || '').trim().replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 96);
 }
 function deviceContextFromRequest(req) {
   const type = normalizeDevice(req?.headers?.['x-gcos-client'] || req?.headers?.['user-agent'] || 'pc');
   const supplied = sanitizeDeviceId(req?.headers?.['x-gcos-device-id']);
   const fallbackSource = `${type}|${req?.headers?.['user-agent'] || ''}|${req?.socket?.remoteAddress || ''}`;
   const fallback = `legacy-${type}-${crypto.createHash('sha256').update(fallbackSource).digest('hex').slice(0, 16)}`;
-  const label = type === 'iphone' ? 'iPhone' : 'PC';
-  return { id: supplied || fallback, type, label };
+  return { id: supplied || fallback, type, label: type === 'iphone' ? 'iPhone' : 'PC' };
 }
 function deviceFromRequest(req) { return deviceContextFromRequest(req).type; }
 
 function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
-  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
-  return `${salt}:${hash}`;
+  return `${salt}:${crypto.scryptSync(String(password), salt, 64).toString('hex')}`;
 }
-
 function verifyPassword(password, stored) {
   const [salt, expected] = String(stored || '').split(':');
   if (!salt || !expected) return false;
@@ -81,9 +77,8 @@ function verifyPassword(password, stored) {
 function normalizePreferences(input = {}) {
   const answerStyle = ['direct', 'balanced', 'detailed'].includes(input.answerStyle) ? input.answerStyle : DEFAULT_PREFERENCES.answerStyle;
   const preferredHome = ['dashboard', 'jarvis'].includes(input.preferredHome) ? input.preferredHome : DEFAULT_PREFERENCES.preferredHome;
-  const assistantName = String(input.assistantName || DEFAULT_PREFERENCES.assistantName).trim().slice(0, 30) || DEFAULT_PREFERENCES.assistantName;
   return {
-    assistantName,
+    assistantName: String(input.assistantName || DEFAULT_PREFERENCES.assistantName).trim().slice(0, 30) || DEFAULT_PREFERENCES.assistantName,
     answerStyle,
     voiceEnabled: input.voiceEnabled !== false,
     voiceLanguage: 'fr-FR',
@@ -99,13 +94,7 @@ function normalizeStoredUser(user = {}) {
   const canonicalHash = user.passwordHash || deviceHashes.pc || deviceHashes.iphone || '';
   const trustedDevices = Array.isArray(user.trustedDevices) ? user.trustedDevices.slice(0, 20) : [];
   const { devicePinHashes, ...rest } = user;
-  return {
-    ...rest,
-    passwordHash: canonicalHash,
-    preferences: normalizePreferences(user.preferences || {}),
-    trustedDevices,
-    designLock: DESIGN_LOCK
-  };
+  return { ...rest, passwordHash: canonicalHash, preferences: normalizePreferences(user.preferences || {}), trustedDevices, designLock: DESIGN_LOCK };
 }
 
 function readUsers() {
@@ -131,6 +120,14 @@ function publicUser(user, context = null) {
 
 function setupRequired() { return readUsers().length === 0; }
 
+function registerTrustedDevice(user, context) {
+  const now = new Date().toISOString();
+  const current = Array.isArray(user.trustedDevices) ? user.trustedDevices.find((item) => item.id === context.id) : null;
+  const devices = Array.isArray(user.trustedDevices) ? user.trustedDevices.filter((item) => item.id !== context.id) : [];
+  devices.unshift({ id: context.id, type: context.type, label: context.label || (context.type === 'iphone' ? 'iPhone' : 'PC'), trustedAt: current?.trustedAt || now, lastSeenAt: now });
+  return { ...user, trustedDevices: devices.slice(0, 20), updatedAt: now };
+}
+
 function createInitialAdmin(input = {}, context = {}) {
   if (!setupRequired()) throw Object.assign(new Error('GCOS_SETUP_ALREADY_COMPLETED'), { status: 409 });
   const name = String(input.name || 'David').trim();
@@ -141,15 +138,10 @@ function createInitialAdmin(input = {}, context = {}) {
   if (!validEmail(email)) throw Object.assign(new Error('INVALID_EMAIL'), { status: 400 });
   if (!validPin(password)) throw Object.assign(new Error('PIN_MUST_BE_4_DIGITS'), { status: 400 });
   const now = new Date().toISOString();
-  const user = normalizeStoredUser({
-    id: crypto.randomUUID(), name, username, email, role: 'admin', active: true,
-    passwordHash: hashPassword(password), preferences: DEFAULT_PREFERENCES,
-    trustedDevices: [], createdAt: now, updatedAt: now
-  });
   const ctx = context.id ? context : { id: 'setup-pc', type: normalizeDevice(context.device), label: normalizeDevice(context.device) === 'iphone' ? 'iPhone' : 'PC' };
-  const registered = registerTrustedDevice(user, ctx);
-  writeUsers([registered]);
-  return publicUser(registered, ctx);
+  const user = registerTrustedDevice(normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role: 'admin', active: true, passwordHash: hashPassword(password), preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now }), ctx);
+  writeUsers([user]);
+  return publicUser(user, ctx);
 }
 
 function createUser(actor, input = {}) {
@@ -167,11 +159,7 @@ function createUser(actor, input = {}) {
   if (users.some((user) => user.username === username)) throw Object.assign(new Error('USERNAME_ALREADY_EXISTS'), { status: 409 });
   if (users.some((user) => normalizeEmail(user.email) === email)) throw Object.assign(new Error('EMAIL_ALREADY_EXISTS'), { status: 409 });
   const now = new Date().toISOString();
-  const user = normalizeStoredUser({
-    id: crypto.randomUUID(), name, username, email, role, active: true,
-    passwordHash: hashPassword(password), preferences: DEFAULT_PREFERENCES,
-    trustedDevices: [], createdAt: now, updatedAt: now
-  });
+  const user = normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role, active: true, passwordHash: hashPassword(password), preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now });
   users.push(user);
   writeUsers(users);
   return publicUser(user);
@@ -182,17 +170,11 @@ function listUsers(actor) {
   return readUsers().map((user) => publicUser(user));
 }
 
-function recoveryKey(input = {}) {
-  return `${String(input.username || '').trim().toLowerCase()}|${normalizeEmail(input.email)}`;
-}
-
+function recoveryKey(input = {}) { return `${String(input.username || '').trim().toLowerCase()}|${normalizeEmail(input.email)}`; }
 function enforceRecoveryRateLimit(key) {
   const now = Date.now();
   const entry = recoveryAttempts.get(key);
-  if (!entry || now - entry.startedAt > RECOVERY_WINDOW_MS) {
-    recoveryAttempts.set(key, { count: 1, startedAt: now });
-    return;
-  }
+  if (!entry || now - entry.startedAt > RECOVERY_WINDOW_MS) { recoveryAttempts.set(key, { count: 1, startedAt: now }); return; }
   if (entry.count >= MAX_RECOVERY_ATTEMPTS) throw Object.assign(new Error('RECOVERY_RATE_LIMITED'), { status: 429 });
   entry.count += 1;
 }
@@ -208,30 +190,12 @@ function resetPassword(input = {}, context = {}) {
   if (!validPin(password)) throw Object.assign(new Error('PIN_MUST_BE_4_DIGITS'), { status: 400 });
   const users = readUsers();
   const index = users.findIndex((item) => item.username === username && item.active !== false);
-  if (index < 0) throw Object.assign(new Error('RECOVERY_IDENTITY_MISMATCH'), { status: 401 });
-  const storedEmail = normalizeEmail(users[index].email);
-  if (storedEmail && storedEmail !== email) throw Object.assign(new Error('RECOVERY_IDENTITY_MISMATCH'), { status: 401 });
-  users[index] = normalizeStoredUser({
-    ...users[index], email, passwordHash: hashPassword(password),
-    updatedAt: new Date().toISOString(), passwordResetAt: new Date().toISOString()
-  });
+  if (index < 0 || normalizeEmail(users[index].email) !== email) throw Object.assign(new Error('RECOVERY_IDENTITY_MISMATCH'), { status: 401 });
+  users[index] = normalizeStoredUser({ ...users[index], email, passwordHash: hashPassword(password), updatedAt: new Date().toISOString(), passwordResetAt: new Date().toISOString() });
   writeUsers(users);
   for (const [token, session] of sessions.entries()) if (session.userId === users[index].id) sessions.delete(token);
   recoveryAttempts.delete(key);
   return publicUser(users[index], context);
-}
-
-function registerTrustedDevice(user, context) {
-  const now = new Date().toISOString();
-  const devices = Array.isArray(user.trustedDevices) ? user.trustedDevices.filter((item) => item.id !== context.id) : [];
-  devices.unshift({
-    id: context.id,
-    type: context.type,
-    label: context.label || (context.type === 'iphone' ? 'iPhone' : 'PC'),
-    trustedAt: user.trustedDevices?.find((item) => item.id === context.id)?.trustedAt || now,
-    lastSeenAt: now
-  });
-  return { ...user, trustedDevices: devices.slice(0, 20), updatedAt: now };
 }
 
 function issueSession(user, context) {
@@ -294,12 +258,9 @@ function changeMyPin(actor, input = {}) {
   for (const [token, session] of sessions.entries()) if (session.userId === users[index].id) sessions.delete(token);
   return { ok: true, pinScope: 'all-devices' };
 }
+function setCurrentDevicePin(actor, input = {}) { return changeMyPin(actor, { currentPin: input.currentPin, newPin: input.newPin || input.password || input.pin }); }
 
-function setCurrentDevicePin(actor, input = {}) {
-  return changeMyPin(actor, { currentPin: input.currentPin, newPin: input.newPin || input.password || input.pin });
-}
-
-function revokeTrustedDevice(actor, deviceId) {
+function revokeTrustedDevice(actor, deviceId, context = null) {
   if (!actor) throw Object.assign(new Error('AUTH_REQUIRED'), { status: 401 });
   const id = sanitizeDeviceId(deviceId);
   if (!id) throw Object.assign(new Error('DEVICE_ID_REQUIRED'), { status: 400 });
@@ -309,38 +270,42 @@ function revokeTrustedDevice(actor, deviceId) {
   users[index] = { ...users[index], trustedDevices: (users[index].trustedDevices || []).filter((item) => item.id !== id), updatedAt: new Date().toISOString() };
   writeUsers(users);
   for (const [token, session] of sessions.entries()) if (session.userId === actor.id && session.deviceId === id) sessions.delete(token);
-  return publicUser(users[index]);
+  return publicUser(users[index], context);
 }
 
 function logout(token) { if (token) sessions.delete(token); }
-
+function cookieToken(req) {
+  const cookie = String(req?.headers?.cookie || '');
+  for (const part of cookie.split(';')) {
+    const [name, ...value] = part.trim().split('=');
+    if (name === 'gcos_session') return decodeURIComponent(value.join('=') || '');
+  }
+  return '';
+}
 function tokenFromRequest(req) {
   const authorization = String(req.headers.authorization || '');
   if (authorization.startsWith('Bearer ')) return authorization.slice(7).trim();
   const headerToken = String(req.headers['x-gcos-session'] || '').trim();
   if (headerToken) return headerToken;
+  const cookie = cookieToken(req);
+  if (cookie) return cookie;
   try {
     const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
     return String(url.searchParams.get('session') || '').trim();
-  } catch {
-    return '';
-  }
+  } catch { return ''; }
 }
 
 function authenticate(req) {
   const token = tokenFromRequest(req);
   const session = sessions.get(token);
-  if (!session || session.expiresAt < Date.now()) {
-    if (token) sessions.delete(token);
-    return null;
-  }
+  if (!session || session.expiresAt < Date.now()) { if (token) sessions.delete(token); return null; }
   const users = readUsers();
   const index = users.findIndex((item) => item.id === session.userId && item.active !== false);
   if (index < 0) return null;
   const context = deviceContextFromRequest(req);
   session.expiresAt = Date.now() + SESSION_TTL_MS;
-  if (session.deviceId !== context.id) session.deviceId = context.id;
-  if (session.deviceType !== context.type) session.deviceType = context.type;
+  session.deviceId = context.id;
+  session.deviceType = context.type;
   return publicUser(users[index], context);
 }
 
@@ -349,37 +314,17 @@ function can(user, permission) {
   const permissions = ROLE_PERMISSIONS[user.role] || [];
   return permissions.includes('*') || permissions.includes(permission) || (permission === 'users.manage' && user.role === 'admin');
 }
-
 function requirePermission(user, permission) {
   if (!user) throw Object.assign(new Error('AUTH_REQUIRED'), { status: 401 });
   if (!can(user, permission)) throw Object.assign(new Error('FORBIDDEN'), { status: 403 });
   return true;
 }
-
 function collectionPermission(collection, method) { return `${collection}.${method === 'GET' ? 'read' : 'write'}`; }
 
 module.exports = {
-  USERS_FILE,
-  ROLE_PERMISSIONS,
-  DEFAULT_PREFERENCES,
-  DESIGN_LOCK,
-  setupRequired,
-  createInitialAdmin,
-  createUser,
-  listUsers,
-  login,
-  resetPassword,
-  updateMyProfile,
-  changeMyPin,
-  setCurrentDevicePin,
-  revokeTrustedDevice,
-  logout,
-  tokenFromRequest,
-  authenticate,
-  deviceContextFromRequest,
-  deviceFromRequest,
-  normalizeDevice,
-  can,
-  requirePermission,
-  collectionPermission
+  USERS_FILE, ROLE_PERMISSIONS, DEFAULT_PREFERENCES, DESIGN_LOCK, SESSION_TTL_MS,
+  setupRequired, createInitialAdmin, createUser, listUsers, login, resetPassword,
+  updateMyProfile, changeMyPin, setCurrentDevicePin, revokeTrustedDevice, logout,
+  tokenFromRequest, authenticate, deviceContextFromRequest, deviceFromRequest,
+  normalizeDevice, can, requirePermission, collectionPermission
 };
