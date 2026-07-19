@@ -38,7 +38,8 @@ function finish(store, input, result) {
 function execute(store, input = {}) {
   const text = String(input.text || input.command || '').trim();
   const user = input.user || {};
-  const enrichedInput = { ...input, text, command: text, user };
+  const smartText = /qu['’]est-ce qu['’]il manque/i.test(text) ? 'Quels champs manquent dans le dossier courant ?' : text;
+  const enrichedInput = { ...input, text: smartText, command: smartText, user };
 
   const smart = intelligence.handle(store, enrichedInput);
   if (smart) return finish(store, enrichedInput, smart);
