@@ -36,3 +36,5 @@ jobs:
         run: node tests/command-dock-messaging-smoke.js
       - name: Intervention reference report smoke test
         run: node tests/intervention-report-smoke.js
+      - name: Quote studio and planning smoke test
+        run: node tests/quote-studio-planning-smoke.js
