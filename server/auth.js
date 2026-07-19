@@ -49,6 +49,11 @@ function readJson(file, fallback) {
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch { return fallback; }
 }
+function readRequiredJson(file, errorCode) {
+  ensureDataFiles();
+  try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch (error) { throw Object.assign(new Error(errorCode), { status: 500, cause: error }); }
+}
 function writeJson(file, value) {
   ensureDataFiles();
   const tmp = `${file}.tmp`;
@@ -141,8 +146,9 @@ function normalizeStoredUser(user = {}) {
   return { ...rest, passwordHash: canonicalHash, legacyPinHashes, preferences: normalizePreferences(user.preferences || {}), trustedDevices, designLock: DESIGN_LOCK };
 }
 function readUsers() {
-  const parsed = readJson(USERS_FILE, []);
-  const raw = Array.isArray(parsed) ? parsed : [];
+  const parsed = readRequiredJson(USERS_FILE, 'USER_STORE_UNREADABLE');
+  if (!Array.isArray(parsed)) throw Object.assign(new Error('USER_STORE_INVALID'), { status: 500 });
+  const raw = parsed;
   const normalized = raw.map(normalizeStoredUser);
   if (JSON.stringify(raw) !== JSON.stringify(normalized)) writeUsers(normalized);
   return normalized;
