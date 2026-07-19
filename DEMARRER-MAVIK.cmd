@@ -10,12 +10,14 @@ echo       MAVIK GCOS - GentleCarE
 echo =====================================================
 echo Demarrage et surveillance automatique...
 echo.
-echo Acces sur ce PC :
-echo   http://localhost:4782/alpha
-echo.
-echo Acces iPhone sur le meme Wi-Fi :
-for /f "usebackq delims=" %%I in (`powershell -NoProfile -Command "$ip=(Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object {$_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254*' -and $_.InterfaceAlias -notmatch 'Loopback|Bluetooth|vEthernet'} ^| Sort-Object InterfaceMetric ^| Select-Object -First 1 -ExpandProperty IPAddress); if($ip){'  http://'+$ip+':4782/alpha'}else{'  Adresse IP non detectee - verifiez le Wi-Fi'}"`) do echo %%I
-echo.
+
+node launcher-check.js
+set "LAUNCH_CODE=%ERRORLEVEL%"
+
+if "%LAUNCH_CODE%"=="10" goto ALREADY_RUNNING
+if "%LAUNCH_CODE%"=="11" goto PORT_CONFLICT
+if not "%LAUNCH_CODE%"=="0" goto LAUNCH_ERROR
+
 echo Laissez cette fenetre ouverte. MAVIK se repare et se met a jour automatiquement.
 echo.
 node server.js
@@ -28,6 +30,28 @@ echo Redemarrage automatique dans 3 secondes...
 timeout /t 3 /nobreak >nul
 goto START
 
+:ALREADY_RUNNING
+echo.
+echo MAVIK fonctionne deja. Aucun second serveur ne sera lance.
+echo Ouvrez http://localhost:4782/alpha
+start "" "http://localhost:4782/alpha"
+goto END
+
+:PORT_CONFLICT
+echo.
+echo ERREUR : le port 4782 est occupe par un autre programme.
+echo Le redemarrage automatique est bloque pour eviter une boucle.
+echo Lancez REPARER-MAVIK.cmd en tant qu'administrateur.
+goto PAUSE_END
+
+:LAUNCH_ERROR
+echo.
+echo ERREUR : le controle de demarrage MAVIK a echoue.
+echo Lancez REPARER-MAVIK.cmd.
+goto PAUSE_END
+
+:PAUSE_END
+pause
 :END
 echo MAVIK a ete arrete normalement.
 endlocal
