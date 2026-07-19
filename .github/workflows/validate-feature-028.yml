@@ -31,5 +31,11 @@ jobs:
           node-version: '20'
       - name: New module syntax
         run: node --check feature-runtime-028.js && node --check quote-photo-intake.js && node --check workshop-day-plan.js && node --check public/quote-photo-client.js && node --check public/workshop-day-client.js
-      - name: Photo industrial delivery and workshop day smoke test
-        run: node tests/photo-industrial-delivery-workshop-smoke.js
+      - name: Industrial photo intake
+        run: node tests/photo-industrial-delivery-workshop-smoke.js industrial
+      - name: Delivery resource blocks
+        run: node tests/photo-industrial-delivery-workshop-smoke.js delivery
+      - name: Dry ice stock gate
+        run: node tests/photo-industrial-delivery-workshop-smoke.js stock
+      - name: Dynamic workshop day
+        run: node tests/photo-industrial-delivery-workshop-smoke.js workshop
