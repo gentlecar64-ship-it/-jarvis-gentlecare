@@ -1,6 +1,8 @@
 'use strict';
 
 const base = require('./quote-studio');
+const originalPreview = base.preview.bind(base);
+const originalConfirm = base.confirm.bind(base);
 
 function useful(value) {
   if (value === undefined || value === null) return false;
@@ -38,16 +40,15 @@ function normalizedInput(input = {}) {
 }
 
 function preview(store, input = {}, user = {}) {
-  return base.preview(store, normalizedInput(input), user);
+  return originalPreview(store, normalizedInput(input), user);
 }
 
 function confirm(store, input = {}, user = {}) {
-  return base.confirm(store, normalizedInput(input), user);
+  return originalConfirm(store, normalizedInput(input), user);
 }
 
-module.exports = {
-  ...base,
-  preview,
-  confirm,
-  normalizedInput
-};
+base.preview = preview;
+base.confirm = confirm;
+base.normalizedInput = normalizedInput;
+
+module.exports = base;
