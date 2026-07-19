@@ -7,6 +7,8 @@ const { URL } = require('node:url');
 const localStore = require('./local-store');
 const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
+const quoteStudio = require('./quote-studio');
+const planning = require('./planning');
 const clientIntake = require('./client-intake');
 const reputation = require('./reputation');
 const internalMessaging = require('./internal-messaging');
@@ -40,7 +42,8 @@ const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'app6i45G4WG2nmQff';
 const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN || '';
 const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN || '*';
 const PUBLIC_DIR = path.join(__dirname, 'public');
-const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications', 'tasks', 'stockItems', 'quotes', 'documents', 'photos']);
+const LOGO_DIR = path.join(__dirname, 'assets', 'logo');
+const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications', 'tasks', 'stockItems', 'quotes', 'documents', 'photos', 'planningBlocks']);
 const diagnosticDependencies = { localStore, airtableSync, updater, backup };
 
 function commonHeaders(contentType) {
@@ -78,6 +81,12 @@ function servePublicAsset(res, relativePath) {
   const root = `${path.resolve(PUBLIC_DIR)}${path.sep}`;
   if (!target.startsWith(root) || !fs.existsSync(target) || !fs.statSync(target).isFile()) return json(res, 404, { error: 'ASSET_NOT_FOUND' });
   return binary(res, 200, fs.readFileSync(target), contentType(target));
+}
+function officialLogoBuffer() {
+  const parts = fs.readdirSync(LOGO_DIR).filter((name) => /^\d+\.txt$/.test(name)).sort();
+  if (!parts.length) throw Object.assign(new Error('OFFICIAL_LOGO_MISSING'), { status: 404 });
+  const base64 = parts.map((name) => fs.readFileSync(path.join(LOGO_DIR, name), 'utf8').trim()).join('');
+  return Buffer.from(base64, 'base64');
 }
 
 async function readBody(req) {
@@ -130,7 +139,7 @@ function servePage(res, fileName, missingMessage, protect = false) {
   let content = fs.readFileSync(filePath, 'utf8');
   if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
   if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
-  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/navigation-enhancer.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   return html(res, 200, content);
 }
 
@@ -148,7 +157,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
       service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
       airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(),
-      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, reputation: { enabled: true }, internalMessaging: { enabled: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
+      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, quoteStudio: { enabled: true, highValueThreshold: quoteStudio.HIGH_VALUE_THRESHOLD }, planning: { enabled: true, capacity: planning.WORKSHOP_CAPACITY }, reputation: { enabled: true }, internalMessaging: { enabled: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
     });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') {
@@ -166,21 +175,27 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() });
     }
 
-    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile'];
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) {
       return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
     }
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
 
+    if (req.method === 'GET' && url.pathname === '/assets/official-logo.png') return binary(res, 200, officialLogoBuffer(), 'image/png');
     if (req.method === 'GET' && url.pathname === '/assets/jarvis-quote.js') return servePublicAsset(res, 'jarvis-quote.js');
     if (req.method === 'GET' && url.pathname === '/assets/reputation-client.js') return servePublicAsset(res, 'reputation-client.js');
     if (req.method === 'GET' && url.pathname === '/assets/command-dock.js') return servePublicAsset(res, 'command-dock.js');
+    if (req.method === 'GET' && url.pathname === '/assets/navigation-enhancer.js') return servePublicAsset(res, 'navigation-enhancer.js');
+    if (req.method === 'GET' && url.pathname === '/assets/quote-studio-client.js') return servePublicAsset(res, 'quote-studio-client.js');
+    if (req.method === 'GET' && url.pathname === '/assets/planning-client.js') return servePublicAsset(res, 'planning-client.js');
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
     if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/quotes') { auth.requirePermission(user, 'quotes.write'); return servePage(res, 'quotes.html', 'Atelier devis introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/planning') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'planning.html', 'Planning introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/api/auth/me') return json(res, 200, { user, device: context.type, deviceContext: context });
 
     if (req.method === 'GET' && url.pathname === '/api/profile') return json(res, 200, { user, design: { locked: true, version: auth.DESIGN_LOCK } });
@@ -212,6 +227,27 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/users') return json(res, 200, { users: auth.listUsers(user), roles: auth.ROLE_PERMISSIONS });
     if (req.method === 'POST' && url.pathname === '/api/users') return json(res, 201, { user: auth.createUser(user, await readBody(req)) });
+
+    if (req.method === 'GET' && url.pathname === '/api/quote-studio/packages') { auth.requirePermission(user, 'quotes.read'); return json(res, 200, { records: quoteStudio.packages() }); }
+    if (req.method === 'GET' && url.pathname === '/api/quote-studio/lookup') { auth.requirePermission(user, 'clients.read'); return json(res, 200, quoteStudio.lookup(localStore, url.searchParams.get('q') || '')); }
+    if (req.method === 'GET' && url.pathname === '/api/quote-studio/quotes') { auth.requirePermission(user, 'quotes.read'); return json(res, 200, { records: quoteStudio.listQuotes(localStore) }); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/parse') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, { parsed: quoteStudio.parseSpeech(await readBody(req)) }); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/infer') { auth.requirePermission(user, 'quotes.write'); const body = await readBody(req); return json(res, 200, { inference: quoteStudio.inferPackage(body.targetPrice, body.context) }); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/preview') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.preview(localStore, await readBody(req), user)); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/confirm') { auth.requirePermission(user, 'quotes.write'); return json(res, 201, quoteStudio.confirm(localStore, await readBody(req), user)); }
+    const studioRepricePreviewRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/reprice-preview$/);
+    if (studioRepricePreviewRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.repricePreview(localStore, decodeURIComponent(studioRepricePreviewRoute[1]), await readBody(req))); }
+    const studioRepriceRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/reprice$/);
+    if (studioRepriceRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.applyReprice(localStore, decodeURIComponent(studioRepriceRoute[1]), await readBody(req), user)); }
+    const studioExpertRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/expert-contact$/);
+    if (studioExpertRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 201, quoteStudio.contactExpert(localStore, decodeURIComponent(studioExpertRoute[1]), await readBody(req), user)); }
+    const studioExpertApproveRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/expert-approve$/);
+    if (studioExpertApproveRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.approveExpert(localStore, decodeURIComponent(studioExpertApproveRoute[1]), await readBody(req), user)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/planning/overview') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, planning.overview(localStore, { from: url.searchParams.get('from'), days: url.searchParams.get('days') })); }
+    if (req.method === 'POST' && url.pathname === '/api/planning/propose') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { proposal: planning.propose(localStore, await readBody(req)) }); }
+    if (req.method === 'POST' && url.pathname === '/api/planning/schedule') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, planning.scheduleQuote(localStore, await readBody(req), user)); }
+    if (req.method === 'POST' && url.pathname === '/api/planning/blocks') { auth.requirePermission(user, 'interventions.write'); return json(res, 201, { block: planning.createBlock(localStore, await readBody(req), user) }); }
 
     if (req.method === 'POST' && url.pathname === '/api/quotes/intake') {
       auth.requirePermission(user, 'quotes.write');
@@ -322,7 +358,10 @@ const server = http.createServer(async (req, res) => {
   } catch (error) {
     diagnostics.recordCrash(error, 'REQUEST');
     console.error('[GCOS]', error);
-    return json(res, error.status || 500, { error: error.message || 'GCOS_INTERNAL_ERROR' });
+    const details = {};
+    if (Array.isArray(error.conflicts)) details.conflicts = error.conflicts;
+    if (Array.isArray(error.missingFields)) details.missingFields = error.missingFields;
+    return json(res, error.status || 500, { error: error.message || 'GCOS_INTERNAL_ERROR', ...details });
   }
 });
 
@@ -332,6 +371,8 @@ diagnostics.startAutomaticChecks(diagnosticDependencies);
 server.listen(PORT, HOST, () => {
   console.log(`MAVIK GCOS ${updater.currentVersion()} started on http://${HOST}:${PORT}`);
   console.log('Multi-user authentication: one PIN per user on all trusted devices');
+  console.log('Manual and voice quote studio: enabled with price confirmation, valuation and expert review');
+  console.log(`Workshop planning: enabled with capacity ${planning.WORKSHOP_CAPACITY}`);
   console.log('Voice quote workflow: enabled, visual draft and 50% deposit rule active');
   console.log('Continuous Jarvis conversation: enabled until the user says “Jarvis, c’est fini”');
   console.log('Internal directory and messaging: enabled');
