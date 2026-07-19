@@ -88,11 +88,12 @@ function resolve(store, id) { return safeList(store, 'quoteRequests').find((item
 function saveDraft(store, input = {}, user = {}) {
   const data = sanitize(input);
   if (!meaningful(data)) throw Object.assign(new Error('QUOTE_REQUEST_EMPTY'), { status:400 });
-  const dossier = syncDossier(store, data, user);
-  const patch = { ...data, clientId:dossier.client?.id || data.clientId, vehicleId:dossier.vehicle?.id || data.vehicleId, status:input.status || 'Brouillon enregistré', requestedByUserId:user.id || '', requestedByName:user.name || user.username || '', requestedByRole:user.role || '', lastSavedAt:new Date().toISOString(), deletedAt:'', deletedBy:'' };
   let request = input.requestId ? resolve(store, input.requestId) : null;
+  if (request && (request.deletedAt || /supprimée/i.test(request.status || ''))) throw Object.assign(new Error('QUOTE_REQUEST_DELETED'), { status:409 });
   if (request && request.requestedByUserId !== user.id && !['admin','associate'].includes(user.role)) throw Object.assign(new Error('QUOTE_REQUEST_FORBIDDEN'), { status:403 });
-  request = request ? store.update('quoteRequests', request.id, patch) : store.create('quoteRequests', { ...patch, requestToken:crypto.randomUUID() });
+  const dossier = syncDossier(store, data, user);
+  const patch = { ...data, clientId:dossier.client?.id || data.clientId, vehicleId:dossier.vehicle?.id || data.vehicleId, status:input.status || 'Brouillon enregistré', requestedByUserId:request?.requestedByUserId || user.id || '', requestedByName:request?.requestedByName || user.name || user.username || '', requestedByRole:request?.requestedByRole || user.role || '', lastSavedAt:new Date().toISOString() };
+  request = request ? store.update('quoteRequests', request.id, patch) : store.create('quoteRequests', { ...patch, requestToken:crypto.randomUUID(), deletedAt:'', deletedBy:'' });
   return { request, client:dossier.client, vehicle:dossier.vehicle };
 }
 function submit(store, input = {}, user = {}) {
