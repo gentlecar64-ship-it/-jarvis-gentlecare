@@ -14,6 +14,7 @@ const PACKAGE_FILE = path.join(__dirname, 'package.json');
 const DEFAULT_REPOSITORY = 'gentlecar64-ship-it/-jarvis-gentlecare';
 
 let automaticUpdateRunning = false;
+let checkingNow = false;
 
 function ensureDir() { fs.mkdirSync(UPDATE_DIR, { recursive: true }); }
 function readJson(file, fallback = {}) { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return fallback; } }
@@ -34,43 +35,70 @@ function compareVersions(a, b) {
   return 0;
 }
 function runGit(args, options = {}) {
-  return execFileSync('git', args, { cwd: ROOT_DIR, encoding: 'utf8', windowsHide: true, stdio: options.stdio || ['ignore', 'pipe', 'pipe'] }).trim();
+  return execFileSync('git', args, {
+    cwd: ROOT_DIR,
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: Number(options.timeout || 30000),
+    stdio: options.stdio || ['ignore', 'pipe', 'pipe']
+  }).trim();
 }
 function localCommit() { try { return runGit(['rev-parse', 'HEAD']); } catch { return ''; } }
 function updateBranch() {
   if (process.env.GCOS_UPDATE_BRANCH) return process.env.GCOS_UPDATE_BRANCH;
   try { return runGit(['rev-parse', '--abbrev-ref', 'HEAD']) || 'main'; } catch { return 'main'; }
 }
+function gitStatus() {
+  try {
+    return {
+      ok: true,
+      version: runGit(['--version']),
+      branch: updateBranch(),
+      commit: localCommit(),
+      remote: runGit(['remote', 'get-url', 'origin'])
+    };
+  } catch (error) {
+    return { ok: false, error: String(error.message || error), branch: updateBranch(), commit: localCommit() };
+  }
+}
 function state() {
   const saved = readJson(STATE_FILE, {});
   return {
+    ...saved,
     enabled: process.env.GCOS_AUTO_UPDATE !== 'false',
     automaticInstall: process.env.GCOS_AUTO_INSTALL !== 'false',
     channel: process.env.GCOS_UPDATE_CHANNEL || 'development',
     branch: updateBranch(),
     currentVersion: currentVersion(),
     currentCommit: localCommit(),
-    checking: false,
-    installing: false,
-    updateAvailable: false,
+    checking: checkingNow,
+    installing: automaticUpdateRunning,
+    updateAvailable: Boolean(saved.updateAvailable),
     pendingRestart: fs.existsSync(PENDING_FILE),
-    ...saved
+    git: gitStatus()
   };
 }
 function saveState(patch) {
-  const next = { ...state(), ...patch, updatedAt: new Date().toISOString() };
+  const current = readJson(STATE_FILE, {});
+  const next = { ...current, ...patch, updatedAt: new Date().toISOString() };
   writeJson(STATE_FILE, next);
-  return next;
+  return state();
 }
 function githubHeaders() {
   const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'GCOS-Updater', 'X-GitHub-Api-Version': '2022-11-28' };
   if (process.env.GCOS_GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GCOS_GITHUB_TOKEN}`;
   return headers;
 }
+async function fetchWithTimeout(url, options = {}, timeoutMs = 15000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try { return await fetch(url, { ...options, signal: controller.signal }); }
+  finally { clearTimeout(timer); }
+}
 async function branchMetadata() {
   const repository = process.env.GCOS_UPDATE_REPOSITORY || DEFAULT_REPOSITORY;
   const branch = updateBranch();
-  const response = await fetch(`https://api.github.com/repos/${repository}/commits/${encodeURIComponent(branch)}`, { headers: githubHeaders() });
+  const response = await fetchWithTimeout(`https://api.github.com/repos/${repository}/commits/${encodeURIComponent(branch)}`, { headers: githubHeaders() });
   if (!response.ok) throw new Error(`UPDATE_METADATA_${response.status}`);
   const commit = await response.json();
   return {
@@ -85,7 +113,7 @@ async function branchMetadata() {
 }
 async function releaseMetadata() {
   const repository = process.env.GCOS_UPDATE_REPOSITORY || DEFAULT_REPOSITORY;
-  const response = await fetch(`https://api.github.com/repos/${repository}/releases/latest`, { headers: githubHeaders() });
+  const response = await fetchWithTimeout(`https://api.github.com/repos/${repository}/releases/latest`, { headers: githubHeaders() });
   if (!response.ok) throw new Error(`UPDATE_METADATA_${response.status}`);
   const release = await response.json();
   const asset = (release.assets || []).find((item) => /gcos.*\.zip$/i.test(item.name)) || (release.assets || [])[0];
@@ -93,15 +121,19 @@ async function releaseMetadata() {
   return { version: String(release.tag_name || release.name || '').replace(/^v/i, ''), name: release.name || release.tag_name, notes: release.body || '', publishedAt: release.published_at, downloadUrl: asset.url, fileName: asset.name, size: asset.size, releaseUrl: release.html_url };
 }
 async function check() {
-  if (process.env.GCOS_AUTO_UPDATE === 'false') return saveState({ enabled: false, checking: false });
-  saveState({ enabled: true, checking: true, lastError: null });
+  if (process.env.GCOS_AUTO_UPDATE === 'false') return saveState({ enabled: false, lastError: null });
+  if (checkingNow) return state();
+  checkingNow = true;
+  saveState({ lastError: null });
   try {
     const channel = process.env.GCOS_UPDATE_CHANNEL || 'development';
     const latest = channel === 'stable' ? await releaseMetadata() : await branchMetadata();
     const available = channel === 'stable' ? compareVersions(latest.version, currentVersion()) > 0 : Boolean(latest.commit && latest.commit !== localCommit());
-    return saveState({ checking: false, updateAvailable: available, latest, lastCheckedAt: new Date().toISOString() });
+    return saveState({ updateAvailable: available, latest, lastCheckedAt: new Date().toISOString(), lastError: null });
   } catch (error) {
-    return saveState({ checking: false, lastError: error.message, lastCheckedAt: new Date().toISOString() });
+    return saveState({ lastError: String(error.message || error), lastCheckedAt: new Date().toISOString() });
+  } finally {
+    checkingNow = false;
   }
 }
 async function sha256(filePath) {
@@ -116,7 +148,7 @@ async function download() {
   if ((process.env.GCOS_UPDATE_CHANNEL || 'development') !== 'stable') return installGitUpdate(checked.latest);
   ensureDir();
   const destination = path.join(UPDATE_DIR, checked.latest.fileName || `gcos-${checked.latest.version}.zip`);
-  const response = await fetch(checked.latest.downloadUrl, { headers: { ...githubHeaders(), Accept: 'application/octet-stream' }, redirect: 'follow' });
+  const response = await fetchWithTimeout(checked.latest.downloadUrl, { headers: { ...githubHeaders(), Accept: 'application/octet-stream' }, redirect: 'follow' }, 120000);
   if (!response.ok) throw Object.assign(new Error(`UPDATE_DOWNLOAD_${response.status}`), { status: 502 });
   fs.writeFileSync(destination, Buffer.from(await response.arrayBuffer()));
   const digest = await sha256(destination);
@@ -126,31 +158,41 @@ async function download() {
 }
 function restartServer() {
   const entry = path.join(__dirname, 'server.js');
-  const child = spawn(process.execPath, [entry], { cwd: __dirname, detached: true, stdio: 'ignore', windowsHide: true, env: process.env });
+  const helper = path.join(__dirname, 'restart-helper.js');
+  const child = spawn(process.execPath, [helper, String(process.pid), entry, __dirname], {
+    cwd: __dirname,
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true,
+    env: process.env
+  });
   child.unref();
-  setTimeout(() => process.exit(0), 750).unref();
+  setTimeout(() => process.exit(0), 400).unref();
 }
 async function installGitUpdate(latest) {
   if (automaticUpdateRunning) return state();
   automaticUpdateRunning = true;
   const before = localCommit();
   const branch = latest?.branch || updateBranch();
-  saveState({ installing: true, lastError: null, previousCommit: before, targetCommit: latest?.commit || '' });
+  saveState({ lastError: null, previousCommit: before, targetCommit: latest?.commit || '', installStartedAt: new Date().toISOString() });
   try {
-    runGit(['fetch', '--prune', 'origin', branch]);
+    runGit(['fetch', '--prune', 'origin', branch], { timeout: 60000 });
     const target = runGit(['rev-parse', `origin/${branch}`]);
-    if (!target || target === before) return saveState({ installing: false, updateAvailable: false, currentCommit: before });
-    runGit(['reset', '--hard', target]);
-    execFileSync(process.execPath, ['--check', path.join(__dirname, 'server.js')], { cwd: __dirname, windowsHide: true, stdio: 'pipe' });
-    execFileSync(process.execPath, ['--check', path.join(__dirname, 'jarvis.js')], { cwd: __dirname, windowsHide: true, stdio: 'pipe' });
-    execFileSync(process.execPath, ['--check', path.join(__dirname, 'updater.js')], { cwd: __dirname, windowsHide: true, stdio: 'pipe' });
-    saveState({ installing: false, updateAvailable: false, pendingRestart: false, installedCommit: target, installedAt: new Date().toISOString(), lastError: null });
+    if (!target || target === before) {
+      automaticUpdateRunning = false;
+      return saveState({ updateAvailable: false, currentCommit: before, lastError: null });
+    }
+    runGit(['reset', '--hard', target], { timeout: 60000 });
+    for (const file of ['server.js', 'jarvis.js', 'updater.js', 'diagnostics.js', 'restart-helper.js']) {
+      execFileSync(process.execPath, ['--check', path.join(__dirname, file)], { cwd: __dirname, windowsHide: true, stdio: 'pipe', timeout: 15000 });
+    }
+    saveState({ updateAvailable: false, pendingRestart: false, installedCommit: target, installedAt: new Date().toISOString(), lastError: null });
     restartServer();
     return state();
   } catch (error) {
-    try { if (before) runGit(['reset', '--hard', before]); } catch {}
+    try { if (before) runGit(['reset', '--hard', before], { timeout: 60000 }); } catch {}
     automaticUpdateRunning = false;
-    return saveState({ installing: false, updateAvailable: true, lastError: `UPDATE_ROLLBACK: ${error.message}`, rolledBackAt: new Date().toISOString() });
+    return saveState({ updateAvailable: true, lastError: `UPDATE_ROLLBACK: ${String(error.message || error)}`, rolledBackAt: new Date().toISOString() });
   }
 }
 async function automaticCycle() {
@@ -159,12 +201,18 @@ async function automaticCycle() {
   if (checked.updateAvailable && process.env.GCOS_AUTO_INSTALL !== 'false') return download();
   return checked;
 }
-function clearPending() { if (fs.existsSync(PENDING_FILE)) fs.unlinkSync(PENDING_FILE); return saveState({ pendingRestart: false, downloaded: null }); }
+function clearPending() {
+  if (fs.existsSync(PENDING_FILE)) fs.unlinkSync(PENDING_FILE);
+  return saveState({ pendingRestart: false, downloaded: null });
+}
 function startAutomaticChecks() {
   if (process.env.GCOS_AUTO_UPDATE === 'false') return;
   const intervalMinutes = Math.max(5, Number(process.env.GCOS_UPDATE_INTERVAL_MINUTES || 15));
-  setTimeout(() => automaticCycle().catch((error) => saveState({ lastError: error.message })), 20_000).unref();
-  setInterval(() => automaticCycle().catch((error) => saveState({ lastError: error.message })), intervalMinutes * 60 * 1000).unref();
+  const execute = () => automaticCycle().then((result) => {
+    if (result.lastError) console.warn(`[MAVIK UPDATE] ${result.lastError}`);
+  }).catch((error) => saveState({ lastError: String(error.message || error) }));
+  setTimeout(execute, 20000).unref();
+  setInterval(execute, intervalMinutes * 60 * 1000).unref();
 }
 
-module.exports = { state, check, download, installGitUpdate, automaticCycle, clearPending, startAutomaticChecks, currentVersion };
+module.exports = { state, check, download, installGitUpdate, automaticCycle, clearPending, startAutomaticChecks, currentVersion, gitStatus };
