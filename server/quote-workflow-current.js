@@ -1,5 +1,7 @@
 'use strict';
 
+const { knowledge } = require('./jarvis-knowledge');
+knowledge.pricing.integralPublicTtc = knowledge.pricing.automobileParticulierIntegralTtc;
 const base = require('./quote-workflow');
 
 function removeObsoleteTariffLanguage(value) {
