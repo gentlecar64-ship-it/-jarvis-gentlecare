@@ -4,16 +4,16 @@ const fs = require('node:fs');
 const auth = require('./auth');
 
 function text(value) { return String(value || '').trim(); }
-function isoDate(value = new Date()) {
+function isoDate(value) {
   if (!value) return '';
   const raw = String(value).slice(0, 10);
   const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T12:00:00`) : new Date(value);
   return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 }
-function addDays(value, amount) { const date = new Date(`${isoDate(value)}T12:00:00`); date.setDate(date.getDate() + Number(amount || 0)); return isoDate(date); }
-function eachDate(start, end) { const out = []; for (let cursor = isoDate(start); cursor && cursor <= isoDate(end); cursor = addDays(cursor, 1)) out.push(cursor); return out; }
+function addDays(value, amount) { const normalized = isoDate(value); if (!normalized) return ''; const date = new Date(`${normalized}T12:00:00`); date.setDate(date.getDate() + Number(amount || 0)); return isoDate(date); }
+function eachDate(start, end) { const first = isoDate(start); const last = isoDate(end); if (!first || !last) return []; const out = []; for (let cursor = first; cursor && cursor <= last; cursor = addDays(cursor, 1)) out.push(cursor); return out; }
 function workdays(start, end) { return eachDate(start, end).filter((value) => ![0, 6].includes(new Date(`${value}T12:00:00`).getDay())); }
-function overlaps(aStart, aEnd, bStart, bEnd) { return isoDate(aStart) <= isoDate(bEnd) && isoDate(bStart) <= isoDate(aEnd); }
+function overlaps(aStart, aEnd, bStart, bEnd) { const a1 = isoDate(aStart); const a2 = isoDate(aEnd || aStart); const b1 = isoDate(bStart); const b2 = isoDate(bEnd || bStart); return Boolean(a1 && a2 && b1 && b2 && a1 <= b2 && b1 <= a2); }
 function safeList(store, collection) { try { return store.list(collection) || []; } catch { return []; } }
 function readUsers() {
   try {
@@ -67,6 +67,8 @@ function advice(store, input = {}, user = {}) {
 
 function submit(store, input = {}, user = {}) {
   const result = advice(store, input, user);
+  const duplicate = safeList(store, 'leaveRequests').find((request) => request.employeeId === user.id && !/refus|annul/i.test(request.status || '') && request.startDate === result.startDate && request.endDate === result.endDate);
+  if (duplicate) throw Object.assign(new Error('LEAVE_REQUEST_ALREADY_EXISTS'), { status: 409 });
   const request = store.create('leaveRequests', {
     employeeId: user.id || '', employeeName: user.name || user.username || '', employeeRole: user.role || '',
     startDate: result.startDate, endDate: result.endDate, workdays: result.workdays,
@@ -82,6 +84,7 @@ function decide(store, id, input = {}, user = {}) {
   if (!canValidate(user)) throw Object.assign(new Error('LEAVE_MANAGER_VALIDATION_REQUIRED'), { status: 403 });
   const request = safeList(store, 'leaveRequests').find((item) => item.id === id);
   if (!request) throw Object.assign(new Error('LEAVE_REQUEST_NOT_FOUND'), { status: 404 });
+  if (request.status !== 'En attente de validation') throw Object.assign(new Error('LEAVE_REQUEST_ALREADY_DECIDED'), { status: 409 });
   const approved = input.approved === true || /approve|approuv|valid/i.test(text(input.decision));
   const status = approved ? 'Approuvé' : 'Refusé';
   const updated = store.update('leaveRequests', request.id, { status, validatedBy: user.name || user.id || '', validatedByUserId: user.id || '', validatedAt: new Date().toISOString(), managerComment: text(input.comment) });
