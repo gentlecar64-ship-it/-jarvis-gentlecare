@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const reputation = require('./reputation');
 
 const STATE_FILE = path.join(__dirname, 'data', 'jarvis-morale-state.json');
 const COOLDOWN_MS = 2 * 60 * 60 * 1000;
@@ -37,12 +38,12 @@ function writeState(value) {
 }
 function firstName(user = {}) { return String(user.name || user.username || 'collègue').trim().split(/\s+/)[0] || 'collègue'; }
 function preferences(user = {}) {
-  const input = user.preferences || {};
+  const saved = reputation.getUserSettings(user);
   return {
-    enabled: input.humourEnabled !== false,
-    encouragementEnabled: input.encouragementEnabled !== false,
-    level: ['light', 'normal', 'high'].includes(input.humourLevel) ? input.humourLevel : 'normal',
-    style: ['professional', 'warm', 'workshop'].includes(input.humourStyle) ? input.humourStyle : 'workshop'
+    enabled: saved.humourEnabled !== false,
+    encouragementEnabled: saved.encouragementEnabled !== false,
+    level: ['light', 'normal', 'high'].includes(saved.humourLevel) ? saved.humourLevel : 'normal',
+    style: ['professional', 'warm', 'workshop'].includes(saved.humourStyle) ? saved.humourStyle : 'workshop'
   };
 }
 function pool(style) { return style === 'professional' ? PROFESSIONAL : style === 'warm' ? WARM : WORKSHOP; }
