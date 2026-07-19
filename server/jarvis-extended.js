@@ -7,6 +7,9 @@ const planning = require('./planning-service');
 const clientIntake = require('./client-intake');
 const intelligence = require('./jarvis-intelligence');
 const interventionReport = require('./intervention-report');
+const employeeFlow = require('./employee-flow');
+const leavePlanning = require('./leave-planning');
+const morale = require('./jarvis-morale');
 
 function normalize(value) { return String(value || '').trim().toLowerCase(); }
 function presentEntries(value = {}) { return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== '' && item !== 0 && item !== undefined && item !== null)); }
@@ -36,7 +39,8 @@ function transitionIntent(text) {
 }
 
 function finish(store, input, result) {
-  return intelligence.enrich(store, input, result);
+  const intelligent = intelligence.enrich(store, input, result);
+  return morale.decorate(input.user || {}, intelligent, input);
 }
 
 function reportIntent(text) {
@@ -80,7 +84,7 @@ function handlePlanning(store, text) {
   const value = normalize(text);
   if (!/planning|créneau|creneau|disponibilit/.test(value)) return null;
   if (/ouvre|affiche|montre|voir/.test(value) && /planning/.test(value)) {
-    return { type: 'planning-open', answer: 'J’ouvre le planning complet. Vous y trouverez les inspections, interventions, livraisons, tâches et indisponibilités.', links: [{ label: 'Ouvrir le planning', url: '/planning' }] };
+    return { type: 'planning-open', answer: 'J’ouvre le planning complet. Vous y trouverez les inspections, interventions, livraisons, tâches, congés et indisponibilités.', links: [{ label: 'Ouvrir le planning', url: '/planning' }] };
   }
   if (/prochain|premier|disponible|propose/.test(value)) {
     const duration = Number((value.match(/(\d+)\s*jour/) || [])[1] || 2);
@@ -97,10 +101,56 @@ function handlePlanning(store, text) {
   const overview = planning.overview(store, { days: 14 });
   return {
     type: 'planning-summary',
-    answer: `Sur les 14 prochains jours, le planning contient ${overview.events.length} événement(s) et ${overview.unscheduledQuotes.length} devis à planifier.`,
+    answer: `Sur les 14 prochains jours, le planning contient ${overview.events.length} événement(s) et ${overview.unscheduledQuotes.length} devis à planifier. Les employés peuvent avancer un travail, mais aucune date ne peut être repoussée sans validation responsable.`,
     data: overview,
     links: [{ label: 'Ouvrir le planning', url: '/planning' }]
   };
+}
+
+function handleLeave(store, text, user) {
+  const value = normalize(text);
+  if (!/congé|conge|vacance|absence/.test(value)) return null;
+  if (/ouvre|affiche|montre|voir/.test(value)) return { type: 'leave-open', answer: 'J’ouvre le planning des congés. Vous pouvez demander un avis, obtenir un accord de principe puis attendre la validation du responsable.', links: [{ label: 'Planning et congés', url: '/planning#leave' }] };
+  const period = leavePlanning.parsePeriod(text);
+  if (!period.startDate) return { type: 'leave-missing-dates', answer: 'Donnez-moi une date de début et une date de fin, par exemple : « Puis-je poser du 12/08/2026 au 16/08/2026 ? »', links: [{ label: 'Ouvrir la demande de congé', url: '/planning#leave' }] };
+  const result = leavePlanning.advice(store, period, user);
+  const warnings = result.warnings.length ? ` Points à vérifier : ${result.warnings.join(' ')}` : '';
+  return {
+    type: 'leave-principle-advice',
+    answer: `${result.principleStatus}, avec un score opérationnel de ${result.score}/100. Cet avis n’est pas une validation définitive.${warnings}`,
+    data: result,
+    links: [{ label: 'Soumettre la demande au responsable', url: `/planning#leave?start=${encodeURIComponent(result.startDate)}&end=${encodeURIComponent(result.endDate)}` }]
+  };
+}
+
+function findWorkTarget(store, text, user) {
+  const queue = employeeFlow.queue(store, user);
+  const gc = String(text || '').match(/GC-\d{4}-\d{4}/i)?.[0];
+  if (gc) return queue.interventions.find((item) => String(item.number || '').toUpperCase() === gc.toUpperCase()) || null;
+  const context = intelligence.linkedContext(store, user);
+  if (context.intervention && queue.interventions.some((item) => item.id === context.intervention.id)) return { ...context.intervention, targetType: 'intervention' };
+  const normalizedText = normalize(text);
+  return [...queue.tasks, ...queue.interventions].find((item) => normalizedText.includes(normalize(item.displayLabel || item.title || item.number || ''))) || null;
+}
+
+function handleEmployeeFlow(store, text, user) {
+  const value = normalize(text);
+  if (!/en attente|pause|reprend|reprendre|continue|commence|démarre|demarre|termine|finis|mon travail|ma checklist/.test(value)) return null;
+  if (/mon travail|ma checklist|quoi faire/.test(value)) {
+    const queue = employeeFlow.queue(store, user);
+    return { type: 'employee-work-queue', answer: `Vous avez ${queue.interventions.length} intervention(s) et ${queue.tasks.length} tâche(s) ouvertes. ${queue.activeInterventions.length || queue.activeTasks.length ? 'Un travail est actuellement en cours.' : 'Aucun travail n’est actuellement démarré.'}`, data: queue, links: [{ label: 'Ouvrir ma checklist dans le planning', url: '/planning#my-work' }] };
+  }
+  const target = findWorkTarget(store, text, user);
+  if (!target) return { type: 'employee-work-target-missing', answer: 'Je n’ai pas identifié le véhicule ou la tâche. Ouvrez « Mon travail » dans le planning et choisissez directement l’élément.', links: [{ label: 'Ouvrir ma checklist', url: '/planning#my-work' }] };
+  let action = '';
+  if (/en attente|pause/.test(value)) action = 'pause';
+  else if (/termine|finis/.test(value)) action = 'complete';
+  else if (/reprend|reprendre|continue/.test(value)) action = 'resume';
+  else if (/commence|démarre|demarre/.test(value)) action = 'start';
+  if (!action) return null;
+  const result = employeeFlow.act(store, { targetType: target.targetType, targetId: target.id, action, reason: 'Commande Jarvis' }, user);
+  const early = result.item.startedAheadOfSchedule ? ' Le démarrage en avance est enregistré sans repousser les dates promises.' : '';
+  return { type: `employee-work-${action}`, answer: `${target.displayLabel || target.title || target.number} : ${result.item.workStatus || result.item.status}.${result.paused.length ? ` ${result.paused.length} autre élément a été mis en attente automatiquement.` : ''}${early}`, data: result, links: [{ label: 'Voir mon planning', url: '/planning#my-work' }] };
 }
 
 function packageKeyFromSpeech(text) {
@@ -169,6 +219,12 @@ function execute(store, input = {}) {
   const reportResult = handleReport(store, enrichedInput, text, user);
   if (reportResult) return finish(store, enrichedInput, reportResult);
 
+  const leaveResult = handleLeave(store, text, user);
+  if (leaveResult) return finish(store, enrichedInput, leaveResult);
+
+  const employeeResult = handleEmployeeFlow(store, text, user);
+  if (employeeResult) return finish(store, enrichedInput, employeeResult);
+
   const planningResult = handlePlanning(store, text);
   if (planningResult) return finish(store, enrichedInput, planningResult);
 
@@ -189,6 +245,9 @@ function execute(store, input = {}) {
   }
 
   const intent = transitionIntent(text);
+  if (intent?.action === 'delay' && !['admin', 'associate'].includes(user.role)) {
+    return finish(store, enrichedInput, { type: 'employee-delay-blocked', answer: 'Je peux vous aider à avancer ou à mettre le travail en attente, mais un retard ou un report de date doit être validé par David ou Bénédicte. Les dates client ne sont pas modifiées.', links: [{ label: 'Ouvrir le planning', url: '/planning' }] });
+  }
   if (intent) return finish(store, enrichedInput, quoteWorkflow.transition(store, text, intent.action, { ...(intent.payload || {}), assignee: user.name || '', report: input.report || input.reportData || {} }, user));
 
   if (/finalise|finaliser|régénère|regenere|regénère|mets à jour.*devis|met a jour.*devis/i.test(text) && /devis/i.test(text)) {
@@ -210,4 +269,4 @@ function execute(store, input = {}) {
   return finish(store, enrichedInput, core.execute(store, enrichedInput));
 }
 
-module.exports = { ...core, execute, quoteWorkflow, quoteStudio, planning, clientIntake, intelligence, interventionReport };
+module.exports = { ...core, execute, quoteWorkflow, quoteStudio, planning, clientIntake, intelligence, interventionReport, employeeFlow, leavePlanning, morale };
