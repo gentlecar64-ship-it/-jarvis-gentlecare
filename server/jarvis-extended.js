@@ -2,6 +2,7 @@
 
 const core = require('./jarvis');
 const quoteWorkflow = require('./quote-workflow');
+const clientIntake = require('./client-intake');
 
 function normalize(value) { return String(value || '').trim().toLowerCase(); }
 
@@ -33,12 +34,20 @@ function execute(store, input = {}) {
   const text = String(input.text || input.command || '').trim();
   const user = input.user || {};
 
+  if (clientIntake.isLookupCommand(text) && !isQuoteCreation(text)) {
+    const result = clientIntake.lookup(store, text);
+    return {
+      type: 'client-dossier',
+      answer: result.answer,
+      data: result,
+      links: result.found ? [{ label: `Dossier de ${result.client.name || 'ce client'}`, url: `/jarvis?client=${encodeURIComponent(result.client.id)}` }] : []
+    };
+  }
+
   if (isQuoteCreation(text)) return quoteWorkflow.startIntake(store, { ...input, text, user });
 
   const intent = transitionIntent(text);
-  if (intent) {
-    return quoteWorkflow.transition(store, text, intent.action, { ...(intent.payload || {}), assignee: user.name || '' }, user);
-  }
+  if (intent) return quoteWorkflow.transition(store, text, intent.action, { ...(intent.payload || {}), assignee: user.name || '' }, user);
 
   if (/finalise|finaliser|régénère|regenere|regénère|mets à jour.*devis|met a jour.*devis/i.test(text) && /devis/i.test(text)) {
     const result = quoteWorkflow.regenerate(store, text, {
@@ -59,4 +68,4 @@ function execute(store, input = {}) {
   return core.execute(store, input);
 }
 
-module.exports = { ...core, execute, quoteWorkflow };
+module.exports = { ...core, execute, quoteWorkflow, clientIntake };
