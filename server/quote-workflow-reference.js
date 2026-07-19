@@ -10,7 +10,17 @@ function transition(store, quoteReference, action, payload = {}, user = {}) {
 
   const intervention = result?.data?.intervention;
   if (!intervention?.id) return result;
+  const legacyReportId = result.data.quote?.reportId || '';
   const generated = interventionReport.generate(store, intervention.id, payload.report || payload.reportData || {}, user);
+  if (legacyReportId && legacyReportId !== generated.document.id) {
+    try {
+      store.update('documents', legacyReportId, {
+        status: 'Remplacé par le rapport de référence versionné',
+        supersededBy: generated.document.id,
+        supersededAt: new Date().toISOString()
+      });
+    } catch {}
+  }
   const quote = result.data.quote?.id
     ? store.update('quotes', result.data.quote.id, {
       reportId: generated.document.id,
