@@ -51,9 +51,7 @@ function normalizeDevice(value) {
   const input = String(value || '').toLowerCase();
   return /(iphone|ipad|ipod|ios|mobile-safari)/.test(input) ? 'iphone' : 'pc';
 }
-function sanitizeDeviceId(value) {
-  return String(value || '').trim().replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 96);
-}
+function sanitizeDeviceId(value) { return String(value || '').trim().replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 96); }
 function deviceContextFromRequest(req) {
   const type = normalizeDevice(req?.headers?.['x-gcos-client'] || req?.headers?.['user-agent'] || 'pc');
   const supplied = sanitizeDeviceId(req?.headers?.['x-gcos-device-id']);
@@ -91,10 +89,20 @@ function normalizePreferences(input = {}) {
 
 function normalizeStoredUser(user = {}) {
   const deviceHashes = user && typeof user.devicePinHashes === 'object' && user.devicePinHashes ? user.devicePinHashes : {};
-  const canonicalHash = user.passwordHash || deviceHashes.pc || deviceHashes.iphone || '';
+  const existingLegacy = Array.isArray(user.legacyPinHashes) ? user.legacyPinHashes : [];
+  const candidateHashes = [user.passwordHash, deviceHashes.pc, deviceHashes.iphone, ...existingLegacy].filter(Boolean);
+  const canonicalHash = candidateHashes[0] || '';
+  const legacyPinHashes = [...new Set(candidateHashes.slice(1))].filter((hash) => hash !== canonicalHash).slice(0, 4);
   const trustedDevices = Array.isArray(user.trustedDevices) ? user.trustedDevices.slice(0, 20) : [];
-  const { devicePinHashes, ...rest } = user;
-  return { ...rest, passwordHash: canonicalHash, preferences: normalizePreferences(user.preferences || {}), trustedDevices, designLock: DESIGN_LOCK };
+  const { devicePinHashes, legacyPinHashes: ignoredLegacy, ...rest } = user;
+  return {
+    ...rest,
+    passwordHash: canonicalHash,
+    legacyPinHashes,
+    preferences: normalizePreferences(user.preferences || {}),
+    trustedDevices,
+    designLock: DESIGN_LOCK
+  };
 }
 
 function readUsers() {
@@ -108,7 +116,7 @@ function readUsers() {
 
 function publicUser(user, context = null) {
   if (!user) return null;
-  const { passwordHash, ...safe } = normalizeStoredUser(user);
+  const { passwordHash, legacyPinHashes, ...safe } = normalizeStoredUser(user);
   return {
     ...safe,
     currentDevice: context ? { id: context.id, type: context.type, label: context.label } : undefined,
@@ -116,6 +124,14 @@ function publicUser(user, context = null) {
     designLocked: true,
     designVersion: DESIGN_LOCK
   };
+}
+
+function verifyUserPin(user, pin) {
+  if (verifyPassword(pin, user.passwordHash)) return { valid: true, source: 'primary' };
+  for (const legacyHash of user.legacyPinHashes || []) {
+    if (verifyPassword(pin, legacyHash)) return { valid: true, source: 'legacy' };
+  }
+  return { valid: false, source: '' };
 }
 
 function setupRequired() { return readUsers().length === 0; }
@@ -139,7 +155,7 @@ function createInitialAdmin(input = {}, context = {}) {
   if (!validPin(password)) throw Object.assign(new Error('PIN_MUST_BE_4_DIGITS'), { status: 400 });
   const now = new Date().toISOString();
   const ctx = context.id ? context : { id: 'setup-pc', type: normalizeDevice(context.device), label: normalizeDevice(context.device) === 'iphone' ? 'iPhone' : 'PC' };
-  const user = registerTrustedDevice(normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role: 'admin', active: true, passwordHash: hashPassword(password), preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now }), ctx);
+  const user = registerTrustedDevice(normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role: 'admin', active: true, passwordHash: hashPassword(password), legacyPinHashes: [], preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now }), ctx);
   writeUsers([user]);
   return publicUser(user, ctx);
 }
@@ -159,7 +175,7 @@ function createUser(actor, input = {}) {
   if (users.some((user) => user.username === username)) throw Object.assign(new Error('USERNAME_ALREADY_EXISTS'), { status: 409 });
   if (users.some((user) => normalizeEmail(user.email) === email)) throw Object.assign(new Error('EMAIL_ALREADY_EXISTS'), { status: 409 });
   const now = new Date().toISOString();
-  const user = normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role, active: true, passwordHash: hashPassword(password), preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now });
+  const user = normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role, active: true, passwordHash: hashPassword(password), legacyPinHashes: [], preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now });
   users.push(user);
   writeUsers(users);
   return publicUser(user);
@@ -182,7 +198,7 @@ function enforceRecoveryRateLimit(key) {
 function resetPassword(input = {}, context = {}) {
   const username = String(input.username || '').trim().toLowerCase();
   const email = normalizeEmail(input.email);
-  const password = String(input.password || '');
+  const password = String(input.password || input.pin || '');
   const key = recoveryKey(input);
   enforceRecoveryRateLimit(key);
   if (!username) throw Object.assign(new Error('USERNAME_REQUIRED'), { status: 400 });
@@ -191,17 +207,46 @@ function resetPassword(input = {}, context = {}) {
   const users = readUsers();
   const index = users.findIndex((item) => item.username === username && item.active !== false);
   if (index < 0 || normalizeEmail(users[index].email) !== email) throw Object.assign(new Error('RECOVERY_IDENTITY_MISMATCH'), { status: 401 });
-  users[index] = normalizeStoredUser({ ...users[index], email, passwordHash: hashPassword(password), updatedAt: new Date().toISOString(), passwordResetAt: new Date().toISOString() });
+
+  const changedAt = new Date().toISOString();
+  users[index] = normalizeStoredUser({
+    ...users[index],
+    email,
+    passwordHash: hashPassword(password),
+    legacyPinHashes: [],
+    updatedAt: changedAt,
+    passwordResetAt: changedAt,
+    pinUpdatedAt: changedAt
+  });
   writeUsers(users);
-  for (const [token, session] of sessions.entries()) if (session.userId === users[index].id) sessions.delete(token);
+
+  const persisted = readUsers().find((item) => item.id === users[index].id);
+  if (!persisted || !verifyPassword(password, persisted.passwordHash) || (persisted.legacyPinHashes || []).length) {
+    throw Object.assign(new Error('PIN_UPDATE_NOT_PERSISTED'), { status: 500 });
+  }
+
+  for (const [token, session] of sessions.entries()) if (session.userId === persisted.id) sessions.delete(token);
   recoveryAttempts.delete(key);
-  return publicUser(users[index], context);
+  return publicUser(persisted, context);
 }
 
 function issueSession(user, context) {
   const token = crypto.randomBytes(32).toString('hex');
   sessions.set(token, { userId: user.id, deviceId: context.id, deviceType: context.type, expiresAt: Date.now() + SESSION_TTL_MS });
   return { token, user: publicUser(user, context), device: context.type, expiresInSeconds: SESSION_TTL_MS / 1000 };
+}
+
+function recoverAndLogin(input = {}, context = {}) {
+  const ctx = context.id ? context : { id: `legacy-${normalizeDevice(context.device)}`, type: normalizeDevice(context.device), label: normalizeDevice(context.device) === 'iphone' ? 'iPhone' : 'PC' };
+  resetPassword(input, ctx);
+  const username = String(input.username || '').trim().toLowerCase();
+  const pin = String(input.password || input.pin || '');
+  const users = readUsers();
+  const index = users.findIndex((item) => item.username === username && item.active !== false);
+  if (index < 0 || !verifyPassword(pin, users[index].passwordHash)) throw Object.assign(new Error('PIN_UPDATE_NOT_PERSISTED'), { status: 500 });
+  users[index] = registerTrustedDevice(users[index], ctx);
+  writeUsers(users);
+  return issueSession(users[index], ctx);
 }
 
 function login(username, password, context = {}) {
@@ -211,17 +256,23 @@ function login(username, password, context = {}) {
     let payload;
     try { payload = JSON.parse(String(password || '')); }
     catch { throw Object.assign(new Error('RECOVERY_INVALID_REQUEST'), { status: 400 }); }
-    resetPassword(payload, ctx);
-    const users = readUsers();
-    const index = users.findIndex((item) => item.username === String(payload.username || '').trim().toLowerCase() && item.active !== false);
-    if (index < 0) throw Object.assign(new Error('RECOVERY_IDENTITY_MISMATCH'), { status: 401 });
-    users[index] = registerTrustedDevice(users[index], ctx);
-    writeUsers(users);
-    return issueSession(users[index], ctx);
+    return recoverAndLogin(payload, ctx);
   }
+
   const users = readUsers();
   const index = users.findIndex((item) => item.username === normalizedUsername && item.active !== false);
-  if (index < 0 || !verifyPassword(password, users[index].passwordHash)) throw Object.assign(new Error('INVALID_CREDENTIALS'), { status: 401 });
+  if (index < 0) throw Object.assign(new Error('INVALID_CREDENTIALS'), { status: 401 });
+  const verification = verifyUserPin(users[index], password);
+  if (!verification.valid) throw Object.assign(new Error('INVALID_CREDENTIALS'), { status: 401 });
+
+  if (verification.source === 'legacy' || (users[index].legacyPinHashes || []).length) {
+    users[index] = normalizeStoredUser({
+      ...users[index],
+      passwordHash: hashPassword(password),
+      legacyPinHashes: [],
+      pinMigratedAt: new Date().toISOString()
+    });
+  }
   users[index] = registerTrustedDevice(users[index], ctx);
   writeUsers(users);
   return issueSession(users[index], ctx);
@@ -252,11 +303,15 @@ function changeMyPin(actor, input = {}) {
   const users = readUsers();
   const index = users.findIndex((item) => item.id === actor.id && item.active !== false);
   if (index < 0) throw Object.assign(new Error('AUTH_REQUIRED'), { status: 401 });
-  if (!verifyPassword(currentPin, users[index].passwordHash)) throw Object.assign(new Error('CURRENT_PIN_INVALID'), { status: 401 });
-  users[index] = normalizeStoredUser({ ...users[index], passwordHash: hashPassword(newPin), updatedAt: new Date().toISOString(), pinUpdatedAt: new Date().toISOString() });
+  if (!verifyUserPin(users[index], currentPin).valid) throw Object.assign(new Error('CURRENT_PIN_INVALID'), { status: 401 });
+
+  const changedAt = new Date().toISOString();
+  users[index] = normalizeStoredUser({ ...users[index], passwordHash: hashPassword(newPin), legacyPinHashes: [], updatedAt: changedAt, pinUpdatedAt: changedAt });
   writeUsers(users);
-  for (const [token, session] of sessions.entries()) if (session.userId === users[index].id) sessions.delete(token);
-  return { ok: true, pinScope: 'all-devices' };
+  const persisted = readUsers().find((item) => item.id === users[index].id);
+  if (!persisted || !verifyPassword(newPin, persisted.passwordHash)) throw Object.assign(new Error('PIN_UPDATE_NOT_PERSISTED'), { status: 500 });
+  for (const [token, session] of sessions.entries()) if (session.userId === persisted.id) sessions.delete(token);
+  return { ok: true, pinScope: 'all-devices', verified: true, changedAt };
 }
 function setCurrentDevicePin(actor, input = {}) { return changeMyPin(actor, { currentPin: input.currentPin, newPin: input.newPin || input.password || input.pin }); }
 
@@ -323,7 +378,7 @@ function collectionPermission(collection, method) { return `${collection}.${meth
 
 module.exports = {
   USERS_FILE, ROLE_PERMISSIONS, DEFAULT_PREFERENCES, DESIGN_LOCK, SESSION_TTL_MS,
-  setupRequired, createInitialAdmin, createUser, listUsers, login, resetPassword,
+  setupRequired, createInitialAdmin, createUser, listUsers, login, resetPassword, recoverAndLogin,
   updateMyProfile, changeMyPin, setCurrentDevicePin, revokeTrustedDevice, logout,
   tokenFromRequest, authenticate, deviceContextFromRequest, deviceFromRequest,
   normalizeDevice, can, requirePermission, collectionPermission
