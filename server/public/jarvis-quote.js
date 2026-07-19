@@ -24,11 +24,11 @@
 
   const status = document.createElement('div');
   status.style.cssText = 'margin-top:8px;color:#9ab0ba;font-size:12px;line-height:1.45';
-  status.textContent = 'Pour un devis vocal : donnez le nom, l’e-mail ou le portable, le véhicule, la prestation et joignez une photo lorsque vous l’avez.';
+  status.textContent = 'Jarvis conserve maintenant le client, le véhicule et le devis courants. Parlez naturellement : « son kilométrage est… », « qu’est-ce qu’il manque ? », « fais le devis ».';
   box.insertAdjacentElement('afterend', status);
 
   const links = document.createElement('div');
-  links.style.cssText = 'display:grid;gap:8px;margin-top:10px';
+  links.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;margin-top:10px';
   status.insertAdjacentElement('afterend', links);
 
   const fileInput = document.getElementById('quoteVehiclePhoto');
@@ -38,17 +38,32 @@
     answer.textContent = text || 'MAVIK a terminé.';
   }
 
-  function showLinks(items) {
+  function showActions(response) {
     links.innerHTML = '';
-    for (const item of items || []) {
-      if (!item?.url) continue;
-      const link = document.createElement('a');
-      link.href = item.url;
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.className = 'button primary';
-      link.textContent = item.label || 'Ouvrir le document';
-      links.appendChild(link);
+    const items = [
+      ...(response.links || []),
+      ...(response.data?.visualUrl && !(response.links || []).some(item => item.url === response.data.visualUrl) ? [{ label: 'Ouvrir le devis visuel', url: response.data.visualUrl }] : []),
+      ...(response.actions || [])
+    ];
+    for (const item of items) {
+      if (item?.url) {
+        const link = document.createElement('a');
+        link.href = item.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.className = 'button primary';
+        link.textContent = item.label || 'Ouvrir';
+        links.appendChild(link);
+        continue;
+      }
+      if (item?.command) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button';
+        button.textContent = item.label || item.command;
+        button.onclick = () => send(item.command);
+        links.appendChild(button);
+      }
     }
   }
 
@@ -75,25 +90,28 @@
       photoDataUrl = String(reader.result || '');
       photoName = file.name;
       clearButton.style.display = 'block';
-      status.textContent = `Photo prête : ${file.name}. Elle sera rattachée à la fiche véhicule lors de la création du devis.`;
+      status.textContent = `Photo prête : ${file.name}. Elle sera rattachée au véhicule courant lors de la création du devis.`;
     };
     reader.onerror = () => setAnswer('La photo n’a pas pu être lue. Réessayez avec une autre image.');
     reader.readAsDataURL(file);
   };
 
   async function send(text) {
-    setAnswer(`${assistantName} analyse les informations et vérifie les doublons…`);
-    showLinks([]);
+    setAnswer(`${assistantName} réfléchit avec le dossier courant…`);
+    links.innerHTML = '';
     try {
       const response = await window.api('/api/jarvis/command', {
         method: 'POST',
         body: JSON.stringify({ text, command: text, photoDataUrl, photoName })
       });
       setAnswer(response.answer || response.message || JSON.stringify(response));
-      showLinks(response.links || (response.data?.visualUrl ? [{ label: 'Ouvrir le devis visuel', url: response.data.visualUrl }] : []));
+      showActions(response);
       if (response.type === 'quote-workflow-created' || response.type === 'quote-regenerated') clearPhoto();
-      if (response.data?.missingFields?.length) status.textContent = `Devis provisoire. À compléter : ${response.data.missingFields.join(', ')}.`;
-      else if (/quote/.test(String(response.type || ''))) status.textContent = 'Le document est préparé. Validation de David ou Bénédicte obligatoire avant tout envoi.';
+      if (response.intelligence?.pendingConfirmation) status.textContent = 'Jarvis attend votre confirmation avant d’écrire dans le dossier.';
+      else if (response.intelligence?.alerts?.length) status.textContent = response.intelligence.alerts.map(item => item.message).join(' ');
+      else if (response.data?.missingFields?.length) status.textContent = `Devis provisoire. À compléter : ${response.data.missingFields.join(', ')}.`;
+      else if (/quote|devis/i.test(String(response.type || ''))) status.textContent = 'Le document est préparé. Validation humaine obligatoire avant tout envoi.';
+      else if (response.intelligence?.enabled) status.textContent = 'Contexte mémorisé : vous pouvez continuer sans répéter le nom du client ni du véhicule.';
       return response;
     } catch (error) {
       setAnswer(`${assistantName} : ${error.message || error}`);
