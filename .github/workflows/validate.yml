@@ -30,3 +30,5 @@ jobs:
         run: node tests/quote-workflow-smoke.js
       - name: Reputation and client intake smoke test
         run: node tests/reputation-client-intake-smoke.js
+      - name: Jarvis contextual intelligence smoke test
+        run: node tests/jarvis-intelligence-smoke.js
