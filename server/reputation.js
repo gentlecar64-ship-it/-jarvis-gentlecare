@@ -20,7 +20,11 @@ const DEFAULTS = Object.freeze({
   snoozedUntil: '',
   submittedAt: '',
   rating: 0,
-  feedback: ''
+  feedback: '',
+  humourEnabled: true,
+  encouragementEnabled: true,
+  humourLevel: 'normal',
+  humourStyle: 'workshop'
 });
 
 const VARIANTS = {
@@ -59,7 +63,11 @@ function normalizeSettings(input = {}) {
     nickname: String(input.nickname || '').trim().slice(0, 40),
     neverAskAgain: input.neverAskAgain === true,
     promptCount: Math.max(0, Number(input.promptCount || 0)),
-    rating: Math.min(5, Math.max(0, Number(input.rating || 0)))
+    rating: Math.min(5, Math.max(0, Number(input.rating || 0))),
+    humourEnabled: input.humourEnabled !== false,
+    encouragementEnabled: input.encouragementEnabled !== false,
+    humourLevel: ['light', 'normal', 'high'].includes(input.humourLevel) ? input.humourLevel : DEFAULTS.humourLevel,
+    humourStyle: ['professional', 'warm', 'workshop'].includes(input.humourStyle) ? input.humourStyle : DEFAULTS.humourStyle
   };
 }
 function getUserSettings(user) {
