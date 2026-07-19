@@ -10,6 +10,7 @@ const backup = require('./backup');
 const auth = require('./auth');
 const updater = require('./updater');
 const airtableSync = require('./airtable-sync');
+const insightsStore = require('./insights-store');
 
 function loadEnv(filePath) {
   if (!fs.existsSync(filePath)) return;
@@ -111,7 +112,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
   try {
     if (req.method === 'GET' && url.pathname === '/login') return servePage(res, 'login.html', 'Connexion introuvable');
-    if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { service: 'Jarvis OS', version: updater.currentVersion(), multiUser: true, setupRequired: auth.setupRequired(), airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), updater: updater.state(), host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString() });
+    if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, { service: 'Jarvis OS', version: updater.currentVersion(), multiUser: true, setupRequired: auth.setupRequired(), airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(), host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString() });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') return json(res, 201, { user: auth.createInitialAdmin(await readBody(req)) });
     if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); return json(res, 200, auth.login(body.username, body.password)); }
@@ -130,6 +131,14 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/system/update/check') { auth.requirePermission(user, 'users.manage'); return json(res, 200, await updater.check()); }
     if (req.method === 'POST' && url.pathname === '/api/system/update/download') { auth.requirePermission(user, 'users.manage'); backup.createBackup(); return json(res, 200, await updater.download()); }
     if (req.method === 'POST' && url.pathname === '/api/system/update/cancel') { auth.requirePermission(user, 'users.manage'); return json(res, 200, updater.clearPending()); }
+
+    if (req.method === 'GET' && url.pathname === '/api/insights/status') { auth.requirePermission(user, 'users.manage'); return json(res, 200, insightsStore.status()); }
+    if (req.method === 'POST' && url.pathname === '/api/insights/events') {
+      auth.requirePermission(user, 'jarvis.use');
+      const body = await readBody(req);
+      const result = insightsStore.appendBatch(body.events, user);
+      return json(res, 202, { ...result, stored: insightsStore.status().storedEvents });
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/sync/status') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, airtableSync.status()); }
     if (req.method === 'POST' && url.pathname === '/api/sync/push-all') {
@@ -202,6 +211,7 @@ server.listen(PORT, HOST, () => {
   console.log(`Jarvis OS ${updater.currentVersion()} started on http://${HOST}:${PORT}`);
   console.log('Multi-user authentication: enabled');
   console.log(`Airtable synchronization: ${airtableSync.configured() ? 'enabled' : 'disabled'}`);
+  console.log(`Mavik Insights: enabled (${insightsStore.status().storedEvents} local events)`);
   console.log(`Automatic updates: ${updater.state().enabled ? 'enabled' : 'disabled'}`);
   console.log(`Initial setup required: ${auth.setupRequired() ? 'yes' : 'no'}`);
 });
