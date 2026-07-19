@@ -7,6 +7,8 @@ const { URL } = require('node:url');
 const localStore = require('./local-store');
 const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
+const clientIntake = require('./client-intake');
+const reputation = require('./reputation');
 const backup = require('./backup');
 const auth = require('./auth');
 const updater = require('./updater');
@@ -59,7 +61,7 @@ function commonHeaders(contentType) {
 function json(res, status, body, extraHeaders = {}) { res.writeHead(status, { ...commonHeaders('application/json; charset=utf-8'), ...extraHeaders }); res.end(JSON.stringify(body)); }
 function html(res, status, body) { res.writeHead(status, commonHeaders('text/html; charset=utf-8')); res.end(body); }
 function redirect(res, location) { res.writeHead(302, { Location: location, ...commonHeaders('text/plain; charset=utf-8') }); res.end(); }
-function binary(res, status, content, contentType) { res.writeHead(status, commonHeaders(contentType)); res.end(content); }
+function binary(res, status, content, type) { res.writeHead(status, commonHeaders(type)); res.end(content); }
 function sessionCookie(token) { return `gcos_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(auth.SESSION_TTL_MS / 1000)}`; }
 function clearSessionCookie() { return 'gcos_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'; }
 
@@ -67,7 +69,6 @@ function contentType(filePath) {
   const ext = path.extname(filePath).toLowerCase();
   return ({ '.svg': 'image/svg+xml; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8' })[ext] || 'application/octet-stream';
 }
-
 function servePublicAsset(res, relativePath) {
   let clean;
   try { clean = decodeURIComponent(String(relativePath || '')).replace(/^\/+/, ''); }
@@ -117,9 +118,7 @@ async function airtableRequest(table, options = {}) {
       throw error;
     }
     return payload;
-  } finally {
-    clearTimeout(timer);
-  }
+  } finally { clearTimeout(timer); }
 }
 
 const AUTH_BOOTSTRAP = `<script>(function(){const device=/iPhone|iPad|iPod/i.test(navigator.userAgent)?'iphone':'pc';let deviceId=localStorage.getItem('gcos_device_id');if(!deviceId){deviceId=(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():'dev-'+Date.now()+'-'+Math.random().toString(16).slice(2));localStorage.setItem('gcos_device_id',deviceId);}const token=localStorage.getItem('gcos_session');const login=()=>location.replace('/login?next='+encodeURIComponent(location.pathname));const original=window.fetch;window.fetch=function(input,init){init=init||{};const headers=new Headers(init.headers||{});if(token)headers.set('Authorization','Bearer '+token);headers.set('X-GCOS-Client',device);headers.set('X-GCOS-Device-ID',deviceId);return original(input,{...init,cache:'no-store',headers,credentials:'same-origin'}).then(function(r){if(r.status===401){localStorage.removeItem('gcos_session');login();}return r;});};})();</script>`;
@@ -130,6 +129,7 @@ function servePage(res, fileName, missingMessage, protect = false) {
   let content = fs.readFileSync(filePath, 'utf8');
   if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
   if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   return html(res, 200, content);
 }
 
@@ -147,7 +147,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
       service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
       airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(),
-      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
+      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, reputation: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
     });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') {
@@ -173,6 +173,7 @@ const server = http.createServer(async (req, res) => {
     const context = auth.deviceContextFromRequest(req);
 
     if (req.method === 'GET' && url.pathname === '/assets/jarvis-quote.js') return servePublicAsset(res, 'jarvis-quote.js');
+    if (req.method === 'GET' && url.pathname === '/assets/reputation-client.js') return servePublicAsset(res, 'reputation-client.js');
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
@@ -189,6 +190,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/profile/devices/revoke') {
       const body = await readBody(req);
       return json(res, 200, { user: auth.revokeTrustedDevice(user, body.deviceId, context) });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/reputation/preferences') return json(res, 200, { settings: reputation.getUserSettings(user) });
+    if (req.method === 'PATCH' && url.pathname === '/api/reputation/preferences') return json(res, 200, { settings: reputation.saveUserSettings(user, await readBody(req)) });
+    if (req.method === 'GET' && url.pathname === '/api/reputation/prompt') return json(res, 200, reputation.buildPrompt(user, { force: url.searchParams.get('force') === '1' }));
+    if (req.method === 'POST' && url.pathname === '/api/reputation/respond') return json(res, 200, reputation.respond(user, await readBody(req)));
+
+    if (req.method === 'GET' && url.pathname === '/api/clients/lookup') {
+      auth.requirePermission(user, 'clients.read');
+      return json(res, 200, clientIntake.lookup(localStore, url.searchParams.get('q') || ''));
     }
 
     if (req.method === 'GET' && url.pathname === '/api/users') return json(res, 200, { users: auth.listUsers(user), roles: auth.ROLE_PERMISSIONS });
@@ -214,7 +225,9 @@ const server = http.createServer(async (req, res) => {
     if (quoteTransitionRoute && req.method === 'POST') {
       auth.requirePermission(user, 'quotes.write');
       const body = await readBody(req);
-      return json(res, 200, quoteWorkflow.transition(localStore, decodeURIComponent(quoteTransitionRoute[1]), body.action, body, user));
+      const result = quoteWorkflow.transition(localStore, decodeURIComponent(quoteTransitionRoute[1]), body.action, body, user);
+      if (body.action === 'close') result.data.reputation = reputation.scheduleClientReview(localStore, result.data.quote, user);
+      return json(res, 200, result);
     }
 
     if (req.method === 'GET' && url.pathname === '/api/system/diagnostics') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, diagnostics.readLastReport() || await diagnostics.run(diagnosticDependencies)); }
@@ -312,6 +325,7 @@ server.listen(PORT, HOST, () => {
   console.log(`MAVIK GCOS ${updater.currentVersion()} started on http://${HOST}:${PORT}`);
   console.log('Multi-user authentication: one PIN per user on all trusted devices');
   console.log('Voice quote workflow: enabled, visual draft and 50% deposit rule active');
+  console.log('Reputation workflow: profile prompts and client review drafts enabled');
   console.log(`Airtable synchronization: ${airtableSync.configured() ? 'enabled' : 'disabled'}`);
   console.log(`Mavik Insights: enabled (${insightsStore.status().storedEvents} local events)`);
   console.log(`Automatic updates: ${updater.state().enabled ? 'enabled' : 'disabled'}`);
