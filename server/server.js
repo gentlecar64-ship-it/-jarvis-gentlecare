@@ -9,6 +9,7 @@ const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
 const clientIntake = require('./client-intake');
 const reputation = require('./reputation');
+const internalMessaging = require('./internal-messaging');
 const backup = require('./backup');
 const auth = require('./auth');
 const updater = require('./updater');
@@ -129,7 +130,7 @@ function servePage(res, fileName, missingMessage, protect = false) {
   let content = fs.readFileSync(filePath, 'utf8');
   if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
   if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
-  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   return html(res, 200, content);
 }
 
@@ -147,7 +148,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
       service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
       airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(),
-      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, reputation: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
+      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, reputation: { enabled: true }, internalMessaging: { enabled: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
     });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') {
@@ -174,6 +175,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/assets/jarvis-quote.js') return servePublicAsset(res, 'jarvis-quote.js');
     if (req.method === 'GET' && url.pathname === '/assets/reputation-client.js') return servePublicAsset(res, 'reputation-client.js');
+    if (req.method === 'GET' && url.pathname === '/assets/command-dock.js') return servePublicAsset(res, 'command-dock.js');
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
@@ -196,6 +198,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'PATCH' && url.pathname === '/api/reputation/preferences') return json(res, 200, { settings: reputation.saveUserSettings(user, await readBody(req)) });
     if (req.method === 'GET' && url.pathname === '/api/reputation/prompt') return json(res, 200, reputation.buildPrompt(user, { force: url.searchParams.get('force') === '1' }));
     if (req.method === 'POST' && url.pathname === '/api/reputation/respond') return json(res, 200, reputation.respond(user, await readBody(req)));
+
+    if (req.method === 'GET' && url.pathname === '/api/internal/directory') return json(res, 200, { records: internalMessaging.directory(user) });
+    if (req.method === 'GET' && url.pathname === '/api/internal/messages') return json(res, 200, internalMessaging.list(user, { limit: url.searchParams.get('limit') }));
+    if (req.method === 'POST' && url.pathname === '/api/internal/messages') return json(res, 201, { message: internalMessaging.send(user, await readBody(req)) });
+    const internalReadRoute = url.pathname.match(/^\/api\/internal\/messages\/([^/]+)\/read$/);
+    if (internalReadRoute && req.method === 'PATCH') return json(res, 200, { message: internalMessaging.markRead(user, decodeURIComponent(internalReadRoute[1])) });
 
     if (req.method === 'GET' && url.pathname === '/api/clients/lookup') {
       auth.requirePermission(user, 'clients.read');
@@ -325,6 +333,8 @@ server.listen(PORT, HOST, () => {
   console.log(`MAVIK GCOS ${updater.currentVersion()} started on http://${HOST}:${PORT}`);
   console.log('Multi-user authentication: one PIN per user on all trusted devices');
   console.log('Voice quote workflow: enabled, visual draft and 50% deposit rule active');
+  console.log('Continuous Jarvis conversation: enabled until the user says “Jarvis, c’est fini”');
+  console.log('Internal directory and messaging: enabled');
   console.log('Reputation workflow: profile prompts and client review drafts enabled');
   console.log(`Airtable synchronization: ${airtableSync.configured() ? 'enabled' : 'disabled'}`);
   console.log(`Mavik Insights: enabled (${insightsStore.status().storedEvents} local events)`);
