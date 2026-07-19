@@ -14,6 +14,7 @@ const JARVIS_TEMPLATE = path.join(__dirname, 'public', 'jarvis.template.html');
 const JARVIS_TARGET = path.join(__dirname, 'public', 'jarvis.html');
 const PARTS = path.join(__dirname, 'assets', 'logo');
 const DESIGN_VERSION = 'gentlecare-pc-validated-v1';
+const HOME_UPDATE_TEST_BUTTON = '<button onclick="testUpdate()">Tester la mise à jour automatique</button>';
 let announced = false;
 
 function iphoneUrls(port = Number(process.env.GCOS_PORT || 4782)) {
@@ -62,7 +63,8 @@ function install() {
   const urls = iphoneUrls();
   const iphoneLink = urls[0] || 'Adresse réseau non détectée : vérifiez le Wi-Fi du PC puis relancez MAVIK.';
   const alphaSize = writeGenerated(ALPHA_TEMPLATE, ALPHA_TARGET, logo, [
-    ['Le lien exact s’affiche dans la fenêtre DEMARRER-MAVIK.cmd.', iphoneLink]
+    ['Le lien exact s’affiche dans la fenêtre DEMARRER-MAVIK.cmd.', iphoneLink],
+    [HOME_UPDATE_TEST_BUTTON, '']
   ]);
   const loginSize = writeGenerated(LOGIN_TEMPLATE, LOGIN_TARGET, logo);
   const profileSize = writeGenerated(PROFILE_TEMPLATE, PROFILE_TARGET, logo);
@@ -86,6 +88,7 @@ module.exports = {
   iphoneUrls,
   announce,
   DESIGN_VERSION,
+  HOME_UPDATE_TEST_BUTTON,
   ALPHA_TEMPLATE,
   ALPHA_TARGET,
   LOGIN_TEMPLATE,
