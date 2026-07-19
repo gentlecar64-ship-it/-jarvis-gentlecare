@@ -1,6 +1,9 @@
 'use strict';
 
 const base = require('./planning');
+const originalPropose = base.propose.bind(base);
+const originalScheduleQuote = base.scheduleQuote.bind(base);
+const originalOverview = base.overview.bind(base);
 
 function safeList(store, collection) {
   try { return store.list(collection) || []; }
@@ -19,7 +22,7 @@ function planningStore(store) {
 }
 
 function propose(store, input = {}) {
-  return base.propose(planningStore(store), input);
+  return originalPropose(planningStore(store), input);
 }
 
 function scheduleQuote(store, input = {}, user = {}) {
@@ -33,11 +36,11 @@ function scheduleQuote(store, input = {}, user = {}) {
     update: store.update.bind(store),
     create: store.create.bind(store)
   };
-  return base.scheduleQuote(proxy, input, user);
+  return originalScheduleQuote(proxy, input, user);
 }
 
 function overview(store, input = {}) {
-  const result = base.overview(store, input);
+  const result = originalOverview(store, input);
   const clients = safeList(store, 'clients');
   const vehicles = safeList(store, 'vehicles');
   const clientName = (id) => clients.find((item) => item.id === id)?.name || '';
@@ -66,9 +69,8 @@ function overview(store, input = {}) {
   return result;
 }
 
-module.exports = {
-  ...base,
-  propose,
-  scheduleQuote,
-  overview
-};
+base.propose = propose;
+base.scheduleQuote = scheduleQuote;
+base.overview = overview;
+
+module.exports = base;
