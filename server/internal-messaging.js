@@ -61,12 +61,11 @@ function visibleTo(actor, message) {
 
 function list(actor, options = {}) {
   const limit = Math.max(1, Math.min(200, Number(options.limit || 100)));
-  const records = readMessages()
+  const visible = readMessages()
     .filter((message) => visibleTo(actor, message))
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-    .slice(0, limit);
-  const unread = records.filter((message) => message.fromUserId !== actor.id && !message.readBy?.includes(actor.id)).length;
-  return { records, unread };
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const unread = visible.filter((message) => message.fromUserId !== actor.id && !message.readBy?.includes(actor.id)).length;
+  return { records: visible.slice(0, limit), unread };
 }
 
 function send(actor, input = {}) {
