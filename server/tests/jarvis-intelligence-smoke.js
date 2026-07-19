@@ -11,7 +11,7 @@ try { fs.unlinkSync(intelligence.MEMORY_FILE); } catch {}
 const db = {
   clients: [{ id: 'c1', name: 'Jean Dupont', email: 'jean@example.com', mobile: '0612345678', preferredChannel: 'SMS', smsAllowed: true, emailAllowed: true }],
   vehicles: [{ id: 'v1', clientId: 'c1', brand: 'Ford', model: 'Mustang GT', label: 'Ford Mustang GT', registration: 'AB-123-CD', year: '2020', mileage: 120000, color: 'Rouge', engine: 'V8', gearbox: 'Manuelle' }],
-  quotes: [], interventions: [], tasks: [], communications: [], documents: [], photos: [], observations: [], stockItems: []
+  quotes: [], interventions: [], tasks: [], communications: [], documents: [], photos: [], observations: [], stockItems: [], planningBlocks: []
 };
 let quoteSequence = 0;
 let interventionSequence = 0;
@@ -62,12 +62,10 @@ assert.ok(Array.isArray(missing.data.questions));
 assert.ok(missing.actions.some((item) => /devis/i.test(item.label)));
 
 const quote = jarvis.execute(store, { text: 'Prépare le devis avec le dossier courant, Pack Intégral Cryo plus Dinitrol', user });
-assert.equal(quote.type, 'quote-workflow-created');
-assert.equal(db.quotes.length, 1);
-assert.equal(db.quotes[0].clientId, 'c1');
-assert.equal(db.quotes[0].vehicleId, 'v1');
-assert.equal(db.quotes[0].depositRate, 50);
-assert.equal(quote.intelligence.context.quoteId, db.quotes[0].id);
+assert.equal(quote.type, 'quote-studio-voice-preview');
+assert.equal(db.quotes.length, 0);
+assert.ok(quote.links.some((item) => item.url === '/quotes'));
+assert.match(quote.answer, /sans créer|avant validation/i);
 
 try { fs.unlinkSync(intelligence.MEMORY_FILE); } catch {}
 console.log('Jarvis contextual intelligence smoke test passed.');
