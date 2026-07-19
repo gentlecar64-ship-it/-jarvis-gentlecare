@@ -9,6 +9,9 @@ const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
 const quoteStudio = require('./quote-studio');
 const planning = require('./planning');
+const employeeFlow = require('./employee-flow');
+const leavePlanning = require('./leave-planning');
+const morale = require('./jarvis-morale');
 const clientIntake = require('./client-intake');
 const reputation = require('./reputation');
 const internalMessaging = require('./internal-messaging');
@@ -43,7 +46,7 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN || '';
 const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN || '*';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const LOGO_DIR = path.join(__dirname, 'assets', 'logo');
-const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications', 'tasks', 'stockItems', 'quotes', 'documents', 'photos', 'planningBlocks']);
+const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications', 'tasks', 'stockItems', 'quotes', 'documents', 'photos', 'planningBlocks', 'workSessions', 'leaveRequests']);
 const diagnosticDependencies = { localStore, airtableSync, updater, backup };
 
 function commonHeaders(contentType) {
@@ -139,7 +142,7 @@ function servePage(res, fileName, missingMessage, protect = false) {
   let content = fs.readFileSync(filePath, 'utf8');
   if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
   if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
-  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/navigation-enhancer.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/navigation-enhancer.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/morale-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   return html(res, 200, content);
 }
 
@@ -147,6 +150,9 @@ function requireUser(req) {
   const user = auth.authenticate(req);
   if (!user) throw Object.assign(new Error('AUTH_REQUIRED'), { status: 401 });
   return user;
+}
+function requireAnyPermission(user, permissions) {
+  if (!permissions.some((permission) => auth.can(user, permission))) throw Object.assign(new Error('FORBIDDEN'), { status: 403 });
 }
 
 const server = http.createServer(async (req, res) => {
@@ -157,7 +163,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
       service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
       airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(),
-      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, quoteStudio: { enabled: true, highValueThreshold: quoteStudio.HIGH_VALUE_THRESHOLD }, planning: { enabled: true, capacity: planning.WORKSHOP_CAPACITY }, reputation: { enabled: true }, internalMessaging: { enabled: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
+      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, quoteStudio: { enabled: true, highValueThreshold: quoteStudio.HIGH_VALUE_THRESHOLD }, planning: { enabled: true, capacity: planning.WORKSHOP_CAPACITY, employeeEarlyStart: true, employeeDelay: false }, employeeFlow: { enabled: true }, leavePlanning: { enabled: true, principleThenValidation: true }, morale: { enabled: true }, reputation: { enabled: true }, internalMessaging: { enabled: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
     });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') {
@@ -189,6 +195,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/assets/navigation-enhancer.js') return servePublicAsset(res, 'navigation-enhancer.js');
     if (req.method === 'GET' && url.pathname === '/assets/quote-studio-client.js') return servePublicAsset(res, 'quote-studio-client.js');
     if (req.method === 'GET' && url.pathname === '/assets/planning-client.js') return servePublicAsset(res, 'planning-client.js');
+    if (req.method === 'GET' && url.pathname === '/assets/morale-client.js') return servePublicAsset(res, 'morale-client.js');
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
@@ -248,6 +255,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/planning/propose') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { proposal: planning.propose(localStore, await readBody(req)) }); }
     if (req.method === 'POST' && url.pathname === '/api/planning/schedule') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, planning.scheduleQuote(localStore, await readBody(req), user)); }
     if (req.method === 'POST' && url.pathname === '/api/planning/blocks') { auth.requirePermission(user, 'interventions.write'); return json(res, 201, { block: planning.createBlock(localStore, await readBody(req), user) }); }
+
+    if (req.method === 'GET' && url.pathname === '/api/employee-flow/queue') { requireAnyPermission(user, ['interventions.read', 'tasks.read']); return json(res, 200, employeeFlow.queue(localStore, user)); }
+    if (req.method === 'POST' && url.pathname === '/api/employee-flow/action') { requireAnyPermission(user, ['interventions.write', 'tasks.write']); return json(res, 200, employeeFlow.act(localStore, await readBody(req), user)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/leave/overview') return json(res, 200, leavePlanning.overview(localStore, user));
+    if (req.method === 'POST' && url.pathname === '/api/leave/advice') return json(res, 200, { advice: leavePlanning.advice(localStore, await readBody(req), user) });
+    if (req.method === 'POST' && url.pathname === '/api/leave/requests') return json(res, 201, leavePlanning.submit(localStore, await readBody(req), user));
+    const leaveDecisionRoute = url.pathname.match(/^\/api\/leave\/requests\/([^/]+)\/decision$/);
+    if (leaveDecisionRoute && req.method === 'POST') return json(res, 200, leavePlanning.decide(localStore, decodeURIComponent(leaveDecisionRoute[1]), await readBody(req), user));
+
+    if (req.method === 'GET' && url.pathname === '/api/jarvis/morale') return json(res, 200, { morale: morale.pick(user, { force: url.searchParams.get('force') === '1' && user.role === 'admin' }) });
 
     if (req.method === 'POST' && url.pathname === '/api/quotes/intake') {
       auth.requirePermission(user, 'quotes.write');
@@ -373,6 +391,9 @@ server.listen(PORT, HOST, () => {
   console.log('Multi-user authentication: one PIN per user on all trusted devices');
   console.log('Manual and voice quote studio: enabled with price confirmation, valuation and expert review');
   console.log(`Workshop planning: enabled with capacity ${planning.WORKSHOP_CAPACITY}`);
+  console.log('Employee workflow: pause, switch, resume and early start enabled; employee delays blocked');
+  console.log('Leave planning: principle advice followed by manager validation enabled');
+  console.log('Jarvis morale: original workplace-safe humour and encouragement enabled');
   console.log('Voice quote workflow: enabled, visual draft and 50% deposit rule active');
   console.log('Continuous Jarvis conversation: enabled until the user says “Jarvis, c’est fini”');
   console.log('Internal directory and messaging: enabled');
