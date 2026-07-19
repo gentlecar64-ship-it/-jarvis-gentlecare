@@ -170,14 +170,27 @@ function restartServer() {
   setTimeout(() => process.exit(0), 400).unref();
 }
 function validateInstalledFiles() {
-  const scripts = ['server.js', 'auth.js', 'jarvis.js', 'jarvis-extended.js', 'quote-workflow.js', 'public/jarvis-quote.js', 'airtable-sync.js', 'updater.js', 'diagnostics.js', 'design-installer.js', 'launcher-check.js', 'restart-helper.js'];
+  const scripts = [
+    'server.js', 'auth.js', 'jarvis.js', 'jarvis-extended.js', 'jarvis-intelligence.js',
+    'quote-workflow.js', 'quote-workflow-reference.js', 'quote-studio.js', 'quote-studio-service.js',
+    'planning.js', 'planning-service.js', 'intervention-report.js', 'client-intake.js', 'reputation.js',
+    'internal-messaging.js', 'public/jarvis-quote.js', 'public/reputation-client.js',
+    'public/command-dock.js', 'public/navigation-enhancer.js', 'public/quote-studio-client.js',
+    'public/planning-client.js', 'airtable-sync.js', 'updater.js', 'diagnostics.js',
+    'design-installer.js', 'launcher-check.js', 'restart-helper.js'
+  ];
   for (const file of scripts) execFileSync(process.execPath, ['--check', path.join(__dirname, file)], { cwd: __dirname, windowsHide: true, stdio: 'pipe', timeout: 15000 });
   const required = [
     path.join(__dirname, 'public', 'alpha.template.html'),
     path.join(__dirname, 'public', 'login.template.html'),
     path.join(__dirname, 'public', 'profile.template.html'),
     path.join(__dirname, 'public', 'jarvis.template.html'),
+    path.join(__dirname, 'public', 'quotes.html'),
+    path.join(__dirname, 'public', 'planning.html'),
     path.join(__dirname, 'public', 'jarvis-quote.js'),
+    path.join(__dirname, 'public', 'quote-studio-client.js'),
+    path.join(__dirname, 'public', 'planning-client.js'),
+    path.join(__dirname, 'public', 'navigation-enhancer.js'),
     path.join(__dirname, 'assets', 'logo', '01.txt')
   ];
   for (const file of required) if (!fs.existsSync(file)) throw new Error(`UPDATE_FILE_MISSING: ${path.relative(ROOT_DIR, file)}`);
