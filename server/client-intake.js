@@ -10,8 +10,18 @@ function extractReference(text) {
   const email = (value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [''])[0].toLowerCase();
   const phone = (value.match(/(?:(?:\+33|0033)[ .-]?[1-9]|0[1-9])(?:[ .-]?\d{2}){4}/) || [''])[0];
   const registration = ((value.toUpperCase().match(/\b[A-Z]{2}[ -]?\d{3}[ -]?[A-Z]{2}\b/) || [''])[0]).replace(/\s/g, '-');
-  const nameMatch = value.match(/(?:ouvre|affiche|cherche|recherche|fiche|dossier)(?:\s+client)?\s+(?:de\s+|du\s+|pour\s+)?([A-Za-zÀ-ÖØ-öø-ÿ' -]{3,80})/i);
-  const name = nameMatch?.[1]?.replace(/\b(?:client|dossier|fiche|voiture|véhicule|vehicule)\b.*$/i, '').trim() || '';
+  const patterns = [
+    /(?:ouvre|affiche|cherche|recherche)\s+(?:moi\s+)?(?:la\s+|le\s+)?(?:fiche|dossier)(?:\s+client)?\s+(?:de|du|pour)\s+([A-Za-zÀ-ÖØ-öø-ÿ' -]{3,80})/i,
+    /(?:fiche|dossier)(?:\s+client)?\s+(?:de|du|pour)\s+([A-Za-zÀ-ÖØ-öø-ÿ' -]{3,80})/i,
+    /(?:appel\s+de|client\s+|pour\s+monsieur\s+|pour\s+madame\s+)([A-Za-zÀ-ÖØ-öø-ÿ' -]{3,80})/i
+  ];
+  let name = '';
+  for (const pattern of patterns) {
+    const match = value.match(pattern);
+    if (!match?.[1]) continue;
+    name = match[1].replace(/\b(?:avec|mail|email|e-mail|téléphone|telephone|portable|voiture|véhicule|vehicule|immatriculation)\b.*$/i, '').trim();
+    if (name) break;
+  }
   return { email, phone, registration, name };
 }
 
