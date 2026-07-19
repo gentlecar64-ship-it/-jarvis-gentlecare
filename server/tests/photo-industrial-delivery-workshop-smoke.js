@@ -14,27 +14,34 @@ const runtime = require('../feature-runtime-028');
 const photoIntake = require('../quote-photo-intake');
 const workshopDay = require('../workshop-day-plan');
 const mode = process.argv[2] || 'all';
-const run = (name) => mode === 'all' || mode === name;
+const run = (...names) => mode === 'all' || names.includes(mode);
 function addWorkdays(days) { const date=new Date(); let left=days; while(left>0){date.setDate(date.getDate()+1);if(![0,6].includes(date.getDay()))left-=1}return date.toISOString().slice(0,10); }
 const onePixelPng='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Zl1sAAAAASUVORK5CYII=';
 const admin = { id:'admin-1', name:'David Test', role:'admin' };
+function industrialAnalysis(){const store=new MemoryStore();return photoIntake.analyze(store,{requestCategory:'industriel',clientName:'Usine Test',photos:[{name:'machine-presse-zone-generale.png',dataUrl:onePixelPng,role:'Vue générale',detectedText:'PRESSE INDUSTRIELLE REF 4587'},{name:'graisse-zone-moteur.png',dataUrl:onePixelPng,role:'Zone sale'}]},admin)}
 
-if (run('industrial')) {
-  const store=new MemoryStore();
-  const industrial=photoIntake.analyze(store,{requestCategory:'industriel',clientName:'Usine Test',photos:[{name:'machine-presse-zone-generale.png',dataUrl:onePixelPng,role:'Vue générale',detectedText:'PRESSE INDUSTRIELLE REF 4587'},{name:'graisse-zone-moteur.png',dataUrl:onePixelPng,role:'Zone sale'}]},admin);
+if (run('industrial','industrial-analyze')) {
+  const industrial=industrialAnalysis();
   assert.equal(industrial.analysis.category,'industriel');
   assert.equal(industrial.photos.length,2);
+  console.log('Industrial photo saving and category passed.');
+}
+if (run('industrial','industrial-questions')) {
+  const industrial=industrialAnalysis();
   assert.ok(industrial.questions.some((item)=>item.key==='industrialConsignation'));
   assert.ok(industrial.questions.some((item)=>item.key==='industrialProductionConstraints'));
   assert.ok(!industrial.questions.some((item)=>/immatriculation/i.test(item.label)));
   assert.match(industrial.analysis.limitations,/ne prétend pas reconnaître/i);
-  const prepared=runtime.preparedQuoteInput({requestCategory:'industriel',industrialMachineFunction:'Presse hydraulique',finalPrice:1000,deliveryRequired:true,deliveryTrips:2,photoUrls:industrial.photos.map((item)=>item.url),photoAnalysisConfirmed:true});
+  console.log('Industrial questions passed.');
+}
+if (run('industrial','industrial-price')) {
+  const prepared=runtime.preparedQuoteInput({requestCategory:'industriel',industrialMachineFunction:'Presse hydraulique',finalPrice:1000,deliveryRequired:true,deliveryTrips:2,photoUrls:['/generated/quote-intake/a.png','/generated/quote-intake/b.png'],photoAnalysisConfirmed:true});
   assert.equal(prepared.model,'Presse hydraulique');
   assert.equal(prepared.deliveryRateHt,85);
   assert.equal(prepared.deliveryAmountHt,170);
   assert.equal(prepared.deliveryAmountTtc,204);
   assert.equal(prepared.finalPrice,1204);
-  console.log('Industrial photo intake passed.');
+  console.log('Industrial pricing and delivery calculation passed.');
 }
 
 if (run('delivery')) {
