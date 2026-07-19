@@ -16,11 +16,7 @@
   function show(message) {
     if (!message) return;
     let toast = document.querySelector('.mavik-morale-toast');
-    if (!toast) {
-      toast = document.createElement('div');
-      toast.className = 'mavik-morale-toast';
-      document.body.appendChild(toast);
-    }
+    if (!toast) { toast = document.createElement('div'); toast.className = 'mavik-morale-toast'; document.body.appendChild(toast); }
     toast.innerHTML = `<strong>Jarvis</strong><span></span>`;
     toast.querySelector('span').textContent = message;
     requestAnimationFrame(() => toast.classList.add('show'));
@@ -28,14 +24,16 @@
     show.timer = setTimeout(() => toast.classList.remove('show'), 8500);
   }
   async function poll() {
-    try {
-      const result = await api('/api/jarvis/morale');
-      if (result?.morale?.message) show(result.morale.message);
-    } catch {}
+    try { const result = await api('/api/jarvis/morale'); if (result?.morale?.message) show(result.morale.message); }
+    catch {}
   }
-
+  function removeMisplacedProfileSections() {
+    if (location.pathname !== '/profile') return;
+    document.querySelectorAll('.mavik-review-settings,.mavik-speech-settings').forEach((element) => element.remove());
+  }
   async function installProfileSettings() {
     if (location.pathname !== '/profile' || document.getElementById('mavikMoraleForm')) return;
+    removeMisplacedProfileSections();
     const grid = document.querySelector('.grid');
     if (!grid) return;
     const panel = document.createElement('section');
@@ -43,31 +41,26 @@
     panel.innerHTML = `<div class="panel-head"><div><h2>Esprit de Jarvis</h2><div class="muted">Humour français populaire, absurde, pince-sans-rire et théâtral, avec des encouragements originaux adaptés au travail. Aucune imitation exacte ni phrase attribuée à une personnalité.</div></div></div><form id="mavikMoraleForm" class="fields"><label class="switch"><span><strong>Humour et mots sympathiques</strong><div class="muted">Jarvis peut intervenir de temps en temps, jamais pendant une urgence ou un sujet sensible.</div></span><input id="humourEnabled" type="checkbox"></label><label class="switch"><span><strong>Encouragements</strong><div class="muted">Petites phrases positives pour soutenir l’équipe.</div></span><input id="encouragementEnabled" type="checkbox"></label><div><label>Intensité</label><select id="humourLevel"><option value="light">Discrète</option><option value="normal">Normale</option><option value="high">Soutenue</option></select></div><div><label>Style</label><select id="humourStyle"><option value="professional">Professionnel avec une pointe d’humour</option><option value="warm">Chaleureux</option><option value="workshop">Atelier français, franc et absurde</option></select></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="primary" type="submit">Enregistrer l’esprit de Jarvis</button><button id="testMoraleButton" type="button">Tester un encouragement</button></div><div class="message" id="moraleSettingsMessage"></div></form>`;
     grid.appendChild(panel);
     try {
-      const data = await api('/api/reputation/preferences');
-      const settings = data.settings || {};
+      const data = await api('/api/reputation/preferences'); const settings = data.settings || {};
       document.getElementById('humourEnabled').checked = settings.humourEnabled !== false;
       document.getElementById('encouragementEnabled').checked = settings.encouragementEnabled !== false;
       document.getElementById('humourLevel').value = settings.humourLevel || 'normal';
       document.getElementById('humourStyle').value = settings.humourStyle || 'workshop';
     } catch {}
     panel.querySelector('form').onsubmit = async (event) => {
-      event.preventDefault();
-      const message = document.getElementById('moraleSettingsMessage');
-      try {
-        await api('/api/reputation/preferences', { method: 'PATCH', body: JSON.stringify({ humourEnabled: document.getElementById('humourEnabled').checked, encouragementEnabled: document.getElementById('encouragementEnabled').checked, humourLevel: document.getElementById('humourLevel').value, humourStyle: document.getElementById('humourStyle').value }) });
-        message.textContent = 'Esprit de Jarvis enregistré.';
-        message.className = 'message ok';
-      } catch (error) { message.textContent = error.message; message.className = 'message bad'; }
+      event.preventDefault(); const message = document.getElementById('moraleSettingsMessage');
+      try { await api('/api/reputation/preferences', { method:'PATCH', body:JSON.stringify({ humourEnabled:document.getElementById('humourEnabled').checked, encouragementEnabled:document.getElementById('encouragementEnabled').checked, humourLevel:document.getElementById('humourLevel').value, humourStyle:document.getElementById('humourStyle').value }) }); message.textContent='Esprit de Jarvis enregistré.'; message.className='message ok'; }
+      catch (error) { message.textContent=error.message; message.className='message bad'; }
     };
     document.getElementById('testMoraleButton').onclick = async () => {
-      try {
-        const result = await api('/api/jarvis/command', { method: 'POST', body: JSON.stringify({ text: 'Encourage-moi pour la suite du travail.', forceMorale: true }) });
-        show(result.morale?.message || result.answer || 'Jarvis est prêt.');
-      } catch (error) { show(error.message); }
+      try { const result = await api('/api/jarvis/command', { method:'POST', body:JSON.stringify({ text:'Encourage-moi pour la suite du travail.', forceMorale:true }) }); show(result.morale?.message || result.answer || 'Jarvis est prêt.'); }
+      catch (error) { show(error.message); }
     };
   }
 
+  removeMisplacedProfileSections();
   installProfileSettings();
+  setTimeout(removeMisplacedProfileSections, 100);
   setTimeout(poll, 90000);
   setInterval(poll, 30 * 60 * 1000);
   window.MAVIKMorale = { poll, show };
