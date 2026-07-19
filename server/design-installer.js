@@ -10,6 +10,8 @@ const LOGIN_TEMPLATE = path.join(__dirname, 'public', 'login.template.html');
 const LOGIN_TARGET = path.join(__dirname, 'public', 'login.html');
 const PROFILE_TEMPLATE = path.join(__dirname, 'public', 'profile.template.html');
 const PROFILE_TARGET = path.join(__dirname, 'public', 'profile.html');
+const JARVIS_TEMPLATE = path.join(__dirname, 'public', 'jarvis.template.html');
+const JARVIS_TARGET = path.join(__dirname, 'public', 'jarvis.html');
 const PARTS = path.join(__dirname, 'assets', 'logo');
 const DESIGN_VERSION = 'gentlecare-pc-validated-v1';
 let announced = false;
@@ -64,15 +66,17 @@ function install() {
   ]);
   const loginSize = writeGenerated(LOGIN_TEMPLATE, LOGIN_TARGET, logo);
   const profileSize = writeGenerated(PROFILE_TEMPLATE, PROFILE_TARGET, logo);
+  const jarvisSize = writeGenerated(JARVIS_TEMPLATE, JARVIS_TARGET, logo);
   announce();
   return {
     ok: true,
     designVersion: DESIGN_VERSION,
     parts: files.length,
-    size: alphaSize + loginSize + profileSize,
+    size: alphaSize + loginSize + profileSize + jarvisSize,
     target: ALPHA_TARGET,
     loginTarget: LOGIN_TARGET,
     profileTarget: PROFILE_TARGET,
+    jarvisTarget: JARVIS_TARGET,
     iphoneUrls: urls
   };
 }
@@ -88,5 +92,7 @@ module.exports = {
   LOGIN_TARGET,
   PROFILE_TEMPLATE,
   PROFILE_TARGET,
+  JARVIS_TEMPLATE,
+  JARVIS_TARGET,
   PARTS
 };
