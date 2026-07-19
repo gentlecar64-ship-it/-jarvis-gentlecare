@@ -175,6 +175,8 @@ function validateInstalledFiles() {
   const required = [
     path.join(__dirname, 'public', 'alpha.template.html'),
     path.join(__dirname, 'public', 'login.template.html'),
+    path.join(__dirname, 'public', 'profile.template.html'),
+    path.join(__dirname, 'public', 'jarvis.template.html'),
     path.join(__dirname, 'assets', 'logo', '01.txt')
   ];
   for (const file of required) if (!fs.existsSync(file)) throw new Error(`UPDATE_FILE_MISSING: ${path.relative(ROOT_DIR, file)}`);
