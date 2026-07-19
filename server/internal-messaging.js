@@ -13,7 +13,6 @@ function ensureFile() {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   if (!fs.existsSync(MESSAGE_FILE)) fs.writeFileSync(MESSAGE_FILE, '[]', 'utf8');
 }
-
 function readMessages() {
   ensureFile();
   try {
@@ -26,63 +25,63 @@ function readMessages() {
     throw Object.assign(new Error('INTERNAL_MESSAGES_CORRUPT'), { status: 500, cause: error });
   }
 }
-
 function writeMessages(messages) {
   ensureFile();
   const temp = `${MESSAGE_FILE}.tmp`;
   fs.writeFileSync(temp, JSON.stringify(messages.slice(0, MAX_MESSAGES), null, 2), 'utf8');
   fs.renameSync(temp, MESSAGE_FILE);
 }
-
 function readDirectory() {
   try {
     const users = JSON.parse(fs.readFileSync(auth.USERS_FILE, 'utf8'));
     return (Array.isArray(users) ? users : [])
       .filter((user) => user && user.active !== false)
-      .map((user) => ({
-        id: String(user.id || ''),
-        name: String(user.name || user.username || 'Utilisateur MAVIK'),
-        username: String(user.username || ''),
-        role: String(user.role || 'utilisateur'),
-        email: String(user.email || '').toLowerCase()
-      }))
+      .map((user) => ({ id: String(user.id || ''), name: String(user.name || user.username || 'Utilisateur MAVIK'), username: String(user.username || ''), role: String(user.role || 'utilisateur'), email: String(user.email || '').toLowerCase() }))
       .filter((user) => user.id);
   } catch { return []; }
 }
-
-function directory(actor) {
-  const users = readDirectory();
-  return users.map((user) => ({ ...user, isSelf: user.id === actor.id }));
+function directory(actor) { return readDirectory().map((user) => ({ ...user, isSelf: user.id === actor.id })); }
+function recipientIds(message) {
+  if (Array.isArray(message.toUserIds)) return message.toUserIds.map(String);
+  if (message.toUserId === '*') return ['*'];
+  return message.toUserId ? [String(message.toUserId)] : [];
 }
-
 function visibleTo(actor, message) {
-  return message.fromUserId === actor.id || message.toUserId === actor.id || message.toUserId === '*';
+  const recipients = recipientIds(message);
+  return message.fromUserId === actor.id || recipients.includes(actor.id) || recipients.includes('*');
 }
-
 function list(actor, options = {}) {
   const limit = Math.max(1, Math.min(200, Number(options.limit || 100)));
-  const visible = readMessages()
-    .filter((message) => visibleTo(actor, message))
-    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const visible = readMessages().filter((message) => visibleTo(actor, message)).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const unread = visible.filter((message) => message.fromUserId !== actor.id && !message.readBy?.includes(actor.id)).length;
   return { records: visible.slice(0, limit), unread };
 }
-
+function normalizeRecipients(input = {}, users = [], actor = {}) {
+  const requested = Array.isArray(input.toUserIds) ? input.toUserIds.map(String) : (input.toUserId ? [String(input.toUserId)] : []);
+  if (requested.includes('*')) return users.filter((user) => user.id !== actor.id).map((user) => user.id);
+  const unique = [...new Set(requested.filter(Boolean))];
+  if (!unique.length) throw Object.assign(new Error('MESSAGE_RECIPIENT_REQUIRED'), { status: 400 });
+  const unknown = unique.filter((id) => !users.some((user) => user.id === id));
+  if (unknown.length) throw Object.assign(new Error('MESSAGE_RECIPIENT_NOT_FOUND'), { status: 404 });
+  return unique;
+}
 function send(actor, input = {}) {
   const body = String(input.body || input.message || '').trim();
   const subject = String(input.subject || '').trim().slice(0, 120);
-  const toUserId = String(input.toUserId || '').trim();
   if (!body) throw Object.assign(new Error('MESSAGE_BODY_REQUIRED'), { status: 400 });
   const users = readDirectory();
-  if (toUserId !== '*' && !users.some((user) => user.id === toUserId)) throw Object.assign(new Error('MESSAGE_RECIPIENT_NOT_FOUND'), { status: 404 });
-  const recipient = toUserId === '*' ? { name: 'Toute l’équipe' } : users.find((user) => user.id === toUserId);
+  const toUserIds = normalizeRecipients(input, users, actor);
+  const recipients = users.filter((user) => toUserIds.includes(user.id));
+  if (!recipients.length) throw Object.assign(new Error('MESSAGE_RECIPIENT_REQUIRED'), { status: 400 });
   const now = new Date().toISOString();
   const message = {
     id: crypto.randomUUID(),
     fromUserId: actor.id,
     fromName: actor.name || actor.username || 'Utilisateur MAVIK',
-    toUserId,
-    toName: recipient?.name || 'Utilisateur MAVIK',
+    toUserId: toUserIds.length === users.filter((user) => user.id !== actor.id).length ? '*' : (toUserIds[0] || ''),
+    toUserIds,
+    toName: recipients.length === 1 ? recipients[0].name : recipients.map((user) => user.name).join(', '),
+    toNames: recipients.map((user) => user.name),
     subject,
     body: body.slice(0, 5000),
     priority: input.priority === 'urgent' ? 'urgent' : 'normal',
@@ -95,7 +94,6 @@ function send(actor, input = {}) {
   writeMessages(messages);
   return message;
 }
-
 function markRead(actor, id) {
   const messages = readMessages();
   const index = messages.findIndex((message) => message.id === id && visibleTo(actor, message));
@@ -107,4 +105,4 @@ function markRead(actor, id) {
   return messages[index];
 }
 
-module.exports = { MESSAGE_FILE, directory, list, send, markRead };
+module.exports = { MESSAGE_FILE, directory, list, send, markRead, visibleTo };
