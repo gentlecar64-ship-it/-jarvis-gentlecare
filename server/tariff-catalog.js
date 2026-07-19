@@ -5,6 +5,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const procedures = require('./workshop-procedures');
 require('./legal-document-hooks');
+require('./feature-runtime-028');
 
 const FILE = path.join(__dirname, 'data', 'tariffs.json');
 const DEFAULTS = [
