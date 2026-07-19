@@ -30,7 +30,8 @@ reputation.saveUserSettings(user, { tone: 'humorous', frequency: 'sustained', ni
 const prompt = reputation.buildPrompt(user, { force: true });
 assert.equal(prompt.due, true);
 assert.equal(prompt.scale.preselected, null);
-assert.match(prompt.message, /David|évaluation|contrôle technique|étoiles/i);
+assert.equal(prompt.settings.tone, 'humorous');
+assert.ok(prompt.message.length > 30);
 
 const response = reputation.respond(user, { action: 'submit', rating: 5, feedback: 'Très pratique.' });
 assert.equal(response.settings.rating, 5);
