@@ -4,8 +4,8 @@ const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const quoteStudio = require('../quote-studio');
-const planning = require('../planning');
+const quoteStudio = require('../quote-studio-service');
+const planning = require('../planning-service');
 
 const db = {
   clients: [], vehicles: [], quotes: [], interventions: [], tasks: [], communications: [], documents: [], photos: [], observations: [], stockItems: [], planningBlocks: [], events: []
@@ -46,8 +46,8 @@ const custom = quoteStudio.inferPackage(3800, 'prestation spéciale');
 assert.equal(custom.status, 'custom');
 
 const existingClient = store.create('clients', { name: 'Jean Dupont', email: 'jean@example.com', mobile: '0612345678' });
-const vehicleOne = store.create('vehicles', { clientId: existingClient.id, brand: 'Ford', model: 'Mustang', registration: 'AA-111-AA', year: 2020, color: 'Bleu' });
-const vehicleTwo = store.create('vehicles', { clientId: existingClient.id, brand: 'Mazda', model: 'MX-5', registration: 'BB-222-BB', year: 2018, color: 'Rouge' });
+store.create('vehicles', { clientId: existingClient.id, brand: 'Ford', model: 'Mustang', registration: 'AA-111-AA', year: 2020, color: 'Bleu' });
+store.create('vehicles', { clientId: existingClient.id, brand: 'Mazda', model: 'MX-5', registration: 'BB-222-BB', year: 2018, color: 'Rouge' });
 assert.equal(quoteStudio.lookup(store, 'Jean Dupont').records[0].vehicles.length, 2);
 
 const otherClient = store.create('clients', { name: 'Marie Martin', email: 'marie@example.com' });
@@ -118,6 +118,9 @@ const approved = quoteStudio.approveExpert(store, created.quote.id, { expertName
 assert.equal(approved.quote.expertReviewStatus, 'Approuvée');
 assert.ok(approved.quote.estimatedStartDate);
 
+const proposalOverview = planning.overview(store, { from: approved.quote.inspectionDate, days: 30 });
+assert.ok(proposalOverview.unscheduledQuotes.some((quote) => quote.id === created.quote.id));
+
 const scheduled = planning.scheduleQuote(store, {
   quoteId: created.quote.id,
   inspectionDate: approved.quote.inspectionDate,
@@ -140,5 +143,21 @@ assert.equal(reprice.quote.totalTtc, 1200);
 assert.equal(reprice.quote.depositTtc, 600);
 assert.equal(reprice.quote.packageKey, 'integral-club');
 assert.ok(Array.isArray(reprice.quote.auditTrail));
+
+const adjusted = quoteStudio.confirm(store, {
+  clientName: 'Claire Test',
+  email: 'claire@example.com',
+  brand: 'Ford',
+  model: 'Mustang',
+  registration: 'EE-555-EE',
+  packageKey: 'integral-public',
+  finalPrice: 1400,
+  tariffReason: 'Geste commercial validé',
+  humanConfirmed: true,
+  priceConfirmed: true
+}, user);
+assert.equal(adjusted.quote.totalTtc, 1400);
+assert.equal(adjusted.quote.depositTtc, 700);
+assert.equal(adjusted.quote.tariffSource, 'Geste commercial validé');
 
 console.log('Quote studio and planning smoke test passed.');
