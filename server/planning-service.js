@@ -5,39 +5,42 @@ const originalPropose = base.propose.bind(base);
 const originalScheduleQuote = base.scheduleQuote.bind(base);
 const originalOverview = base.overview.bind(base);
 
-function safeList(store, collection) {
-  try { return store.list(collection) || []; }
-  catch { return []; }
-}
+function safeList(store, collection) { try { return store.list(collection) || []; } catch { return []; } }
+function direction(user = {}) { return ['admin','associate'].includes(user.role); }
 function calendarBlocks(store) {
   return safeList(store, 'externalCalendarEvents')
     .filter((event) => event.blocksWorkshop === true && !/supprim|annul|cancel/i.test(String(event.status || '')))
-    .map((event) => ({
-      id: `calendar-${event.id}`,
-      title: event.title || 'Agenda externe',
-      type: 'Agenda Google',
-      startDate: event.startDate,
-      endDate: event.endDate || event.startDate,
-      startTime: '08:30',
-      endTime: '17:00',
-      status: 'Active',
-      blocksWorkshop: true,
-      notes: event.description || ''
-    }));
+    .map((event) => ({ id:`calendar-${event.id}`, title:event.title || 'Agenda externe', type:'Agenda Google', startDate:event.startDate, endDate:event.endDate || event.startDate, startTime:'08:30', endTime:'17:00', status:'Active', blocksWorkshop:true, notes:event.description || '' }));
 }
 function planningStore(store) {
-  return {
-    ...store,
-    list(collection) {
-      const records = safeList(store, collection);
-      if (collection === 'quotes') return records.filter((quote) => !quote.interventionId);
-      if (collection === 'planningBlocks') return [...records, ...calendarBlocks(store)];
-      return records;
-    }
-  };
+  return { ...store, list(collection) { const records = safeList(store, collection); if (collection === 'quotes') return records.filter((quote) => !quote.interventionId); if (collection === 'planningBlocks') return [...records, ...calendarBlocks(store)]; return records; } };
 }
 function propose(store, input = {}) { return originalPropose(planningStore(store), input); }
+function resolveQuote(store, reference) { return safeList(store, 'quotes').find((quote) => quote.id === reference || quote.number === reference) || null; }
+function cancelReservation(store, input = {}, user = {}) {
+  if (!direction(user)) throw Object.assign(new Error('RESERVATION_CANCELLATION_DIRECTION_REQUIRED'), { status:403 });
+  const quote = resolveQuote(store, input.quoteId);
+  if (!quote) throw Object.assign(new Error('QUOTE_NOT_FOUND'), { status:404 });
+  if (!input.confirmed && input.cancelConfirmed !== true) throw Object.assign(new Error('RESERVATION_CANCELLATION_CONFIRMATION_REQUIRED'), { status:409 });
+  const reason = String(input.reason || 'Réservation annulée par la direction').trim();
+  const now = new Date().toISOString();
+  let intervention = quote.interventionId ? safeList(store, 'interventions').find((item) => item.id === quote.interventionId) : safeList(store, 'interventions').find((item) => item.quoteId === quote.id);
+  const updatedQuote = store.update('quotes', quote.id, {
+    status:'Annulé', workflowStatus:'Réservation annulée', planningStatus:'Annulée par la direction', reservationCancelledAt:now,
+    reservationCancelledBy:user.name || user.id || '', reservationCancellationReason:reason,
+    previousSchedule:{ inspectionDate:quote.inspectionDate || '', inspectionTime:quote.inspectionTime || '', dropoffDate:quote.proposedDropoffDate || '', startDate:quote.estimatedStartDate || '', endDate:quote.estimatedEndDate || '', deliveryDate:quote.estimatedDeliveryDate || '' },
+    inspectionDate:'', inspectionTime:'', proposedDropoffDate:'', proposedDropoffTime:'', estimatedStartDate:'', estimatedStartTime:'', estimatedEndDate:'', estimatedDeliveryDate:'', estimatedDeliveryTime:'',
+    auditTrail:[...(Array.isArray(quote.auditTrail)?quote.auditTrail:[]),{ action:'reservation-cancelled', changedAt:now, changedBy:user.name || user.id || '', reason }]
+  });
+  if (intervention) intervention = store.update('interventions', intervention.id, { status:'Annulée', workStatus:'Annulée', workflowStatus:'Réservation annulée', workstationReleased:true, reservationCancelledAt:now, reservationCancelledBy:user.name || user.id || '', reservationCancellationReason:reason });
+  const client = safeList(store, 'clients').find((item) => item.id === quote.clientId) || {};
+  const vehicle = safeList(store, 'vehicles').find((item) => item.id === quote.vehicleId) || {};
+  const vehicleLabel = [vehicle.brand,vehicle.model,vehicle.registration].filter(Boolean).join(' ') || 'votre dossier';
+  if (client.id) store.create('communications', { clientId:client.id, vehicleId:quote.vehicleId, quoteId:quote.id, interventionId:intervention?.id || '', channel:client.preferredChannel || (client.mobile ? 'SMS' : 'E-mail'), status:'Brouillon — validation requise', subject:`Mise à jour de votre réservation — ${vehicleLabel}`, message:`Bonjour ${client.name || ''},\n\nNous vous informons que la réservation liée au dossier ${quote.number} doit être annulée. Motif communiqué par la direction : ${reason}.\n\nNous vous contacterons afin d’examiner la suite à donner.\n\nBien cordialement,\nGentleCarE`, createdBy:user.id || '', createdByName:user.name || '' });
+  return { cancelled:true, quote:updatedQuote, intervention, reason };
+}
 function scheduleQuote(store, input = {}, user = {}) {
+  if (input.cancelReservation === true) return cancelReservation(store, input, user);
   const quoteRecords = safeList(store, 'quotes');
   const proxy = {
     ...planningStore(store),
@@ -46,66 +49,42 @@ function scheduleQuote(store, input = {}, user = {}) {
       if (collection === 'planningBlocks') return [...safeList(store, 'planningBlocks'), ...calendarBlocks(store)];
       return safeList(store, collection);
     },
-    update: store.update.bind(store),
-    create: store.create.bind(store)
+    update:store.update.bind(store), create:store.create.bind(store)
   };
   return originalScheduleQuote(proxy, input, user);
 }
 function dateInRange(date, start, end) { return date && date >= start && date <= end; }
-function eventTouchesDates(event, dates) {
-  const start = event.date;
-  const end = event.endDate || start;
-  return dates.some((date) => date >= start && date <= end);
-}
+function eventTouchesDates(event, dates) { const start = event.date; const end = event.endDate || start; return dates.some((date) => date >= start && date <= end); }
 function overview(store, input = {}) {
   const requestedDays = Math.max(5, Math.min(120, Number(input.days || 30)));
   const startInput = base.isoDate(input.from || new Date());
   const first = new Date(`${startInput}T12:00:00`);
-  if ([0, 6].includes(first.getDay())) {
-    do { first.setDate(first.getDate() + 1); } while ([0, 6].includes(first.getDay()));
-  }
+  if ([0,6].includes(first.getDay())) do { first.setDate(first.getDate()+1); } while ([0,6].includes(first.getDay()));
   const workshopDates = base.workdayRange(first, requestedDays);
-  const from = workshopDates[0];
-  const until = workshopDates[workshopDates.length - 1];
-  const calendarSpan = Math.ceil(requestedDays * 7 / 5) + 4;
-  const result = originalOverview(store, { ...input, from, days: calendarSpan });
-  const clients = safeList(store, 'clients');
-  const vehicles = safeList(store, 'vehicles');
-  const clientName = (id) => clients.find((item) => item.id === id)?.name || '';
-  const vehicleLabel = (id) => {
-    const vehicle = vehicles.find((item) => item.id === id) || {};
-    return [vehicle.brand, vehicle.model, vehicle.registration].filter(Boolean).join(' · ');
-  };
+  const from = workshopDates[0]; const until = workshopDates[workshopDates.length-1]; const calendarSpan = Math.ceil(requestedDays*7/5)+4;
+  const result = originalOverview(store, { ...input, from, days:calendarSpan });
+  const clients = safeList(store,'clients'); const vehicles = safeList(store,'vehicles');
+  const clientName = (id) => clients.find((item)=>item.id===id)?.name || '';
+  const vehicleLabel = (id) => { const vehicle=vehicles.find((item)=>item.id===id)||{}; return [vehicle.brand,vehicle.model,vehicle.registration].filter(Boolean).join(' · '); };
   const active = (status) => !/annul|archiv|refus/i.test(String(status || ''));
-  result.unscheduledQuotes = safeList(store, 'quotes')
-    .filter((quote) => active(quote.status) && (!quote.estimatedStartDate || !/confirm/i.test(String(quote.planningStatus || ''))))
-    .map((quote) => ({ id: quote.id, number: quote.number, service: quote.service, client: clientName(quote.clientId), vehicle: vehicleLabel(quote.vehicleId), durationDays: Number(quote.estimatedDurationDays || 2), expertRequired: Boolean(quote.expertReviewRequired), expertReviewStatus: quote.expertReviewStatus || '', proposedStartDate: quote.estimatedStartDate || '', proposedEndDate: quote.estimatedEndDate || '', planningStatus: quote.planningStatus || '' }));
-  const linkedQuoteIds = new Set(safeList(store, 'quotes').filter((quote) => quote.interventionId).map((quote) => quote.id));
-  const leaveBlockRequestIds = new Set(safeList(store, 'planningBlocks').filter((block) => block.leaveRequestId).map((block) => block.leaveRequestId));
-  result.events = result.events.filter((event) => {
-    if (event.id?.startsWith('quote-') && linkedQuoteIds.has(event.quoteId)) return false;
-    if (event.id?.startsWith('leave-') && leaveBlockRequestIds.has(event.leaveRequestId)) return false;
-    return eventTouchesDates(event, workshopDates);
-  });
-  for (const event of safeList(store, 'externalCalendarEvents')) {
+  result.unscheduledQuotes = safeList(store,'quotes').filter((quote)=>active(quote.status) && (!quote.estimatedStartDate || !/confirm/i.test(String(quote.planningStatus || '')))).map((quote)=>({ id:quote.id,number:quote.number,service:quote.service,client:clientName(quote.clientId),vehicle:vehicleLabel(quote.vehicleId),durationDays:Number(quote.estimatedDurationDays || 2),expertRequired:Boolean(quote.expertReviewRequired),expertReviewStatus:quote.expertReviewStatus || '',proposedStartDate:quote.estimatedStartDate || '',proposedEndDate:quote.estimatedEndDate || '',planningStatus:quote.planningStatus || '' }));
+  const linkedQuoteIds = new Set(safeList(store,'quotes').filter((quote)=>quote.interventionId).map((quote)=>quote.id));
+  const leaveBlockRequestIds = new Set(safeList(store,'planningBlocks').filter((block)=>block.leaveRequestId).map((block)=>block.leaveRequestId));
+  result.events = result.events.filter((event) => { if (event.id?.startsWith('quote-') && linkedQuoteIds.has(event.quoteId)) return false; if (event.id?.startsWith('leave-') && leaveBlockRequestIds.has(event.leaveRequestId)) return false; return eventTouchesDates(event,workshopDates); });
+  for (const event of safeList(store,'externalCalendarEvents')) {
     if (/supprim|annul|cancel/i.test(String(event.status || ''))) continue;
-    const date = String(event.startDate || '').slice(0, 10);
-    const endDate = String(event.endDate || date).slice(0, 10);
-    if (!workshopDates.some((day) => day >= date && day <= endDate)) continue;
-    result.events.push({ id: `google-${event.id}`, date, endDate, time: '', endTime: '', type: 'Agenda Google', status: event.blocksWorkshop ? 'Bloque l’atelier' : 'Information', title: event.title || 'Événement agenda', notes: event.description || '', location: event.location || '', externalCalendarEventId: event.id });
+    const date=String(event.startDate || '').slice(0,10); const endDate=String(event.endDate || date).slice(0,10);
+    if (!workshopDates.some((day)=>day>=date && day<=endDate)) continue;
+    result.events.push({ id:`google-${event.id}`,date,endDate,time:'',endTime:'',type:'Agenda Google',status:event.blocksWorkshop?'Bloque l’atelier':'Information',title:event.title || 'Événement agenda',notes:event.description || '',location:event.location || '',externalCalendarEventId:event.id });
   }
-  result.events.sort((a, b) => `${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
-  result.from = from;
-  result.until = until;
-  result.days = requestedDays;
-  result.workshopDates = workshopDates;
-  result.weekendsHidden = true;
-  result.policy = { ...(result.policy || {}), saturdayClosed: true, sundayClosed: true, employeeEarlyStartAllowed: true, employeeDelayAllowed: false };
+  result.events.sort((a,b)=>`${a.date} ${a.time || ''}`.localeCompare(`${b.date} ${b.time || ''}`));
+  result.from=from; result.until=until; result.days=requestedDays; result.workshopDates=workshopDates; result.weekendsHidden=true;
+  result.policy={...(result.policy || {}),saturdayClosed:true,sundayClosed:true,employeeEarlyStartAllowed:true,employeeDelayAllowed:false,reservationCancellationDirectionOnly:true};
   return result;
 }
 
-base.propose = propose;
-base.scheduleQuote = scheduleQuote;
-base.overview = overview;
-
-module.exports = base;
+base.propose=propose;
+base.scheduleQuote=scheduleQuote;
+base.cancelReservation=cancelReservation;
+base.overview=overview;
+module.exports=base;
