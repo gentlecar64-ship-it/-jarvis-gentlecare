@@ -170,13 +170,14 @@ function restartServer() {
   setTimeout(() => process.exit(0), 400).unref();
 }
 function validateInstalledFiles() {
-  const scripts = ['server.js', 'auth.js', 'jarvis.js', 'airtable-sync.js', 'updater.js', 'diagnostics.js', 'design-installer.js', 'restart-helper.js'];
+  const scripts = ['server.js', 'auth.js', 'jarvis.js', 'jarvis-extended.js', 'quote-workflow.js', 'public/jarvis-quote.js', 'airtable-sync.js', 'updater.js', 'diagnostics.js', 'design-installer.js', 'launcher-check.js', 'restart-helper.js'];
   for (const file of scripts) execFileSync(process.execPath, ['--check', path.join(__dirname, file)], { cwd: __dirname, windowsHide: true, stdio: 'pipe', timeout: 15000 });
   const required = [
     path.join(__dirname, 'public', 'alpha.template.html'),
     path.join(__dirname, 'public', 'login.template.html'),
     path.join(__dirname, 'public', 'profile.template.html'),
     path.join(__dirname, 'public', 'jarvis.template.html'),
+    path.join(__dirname, 'public', 'jarvis-quote.js'),
     path.join(__dirname, 'assets', 'logo', '01.txt')
   ];
   for (const file of required) if (!fs.existsSync(file)) throw new Error(`UPDATE_FILE_MISSING: ${path.relative(ROOT_DIR, file)}`);
