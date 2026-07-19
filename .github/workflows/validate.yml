@@ -40,3 +40,5 @@ jobs:
         run: node tests/quote-studio-planning-smoke.js
       - name: Employee flow leave planning and Jarvis morale smoke test
         run: node tests/employee-flow-leave-morale-smoke.js
+      - name: Emergency quote request calendar and motorcycle smoke test
+        run: node tests/emergency-quote-request-calendar-smoke.js
