@@ -5,7 +5,8 @@ const path = require('node:path');
 const http = require('node:http');
 const { URL } = require('node:url');
 const localStore = require('./local-store');
-const jarvis = require('./jarvis');
+const jarvis = require('./jarvis-extended');
+const quoteWorkflow = require('./quote-workflow');
 const backup = require('./backup');
 const auth = require('./auth');
 const updater = require('./updater');
@@ -58,8 +59,24 @@ function commonHeaders(contentType) {
 function json(res, status, body, extraHeaders = {}) { res.writeHead(status, { ...commonHeaders('application/json; charset=utf-8'), ...extraHeaders }); res.end(JSON.stringify(body)); }
 function html(res, status, body) { res.writeHead(status, commonHeaders('text/html; charset=utf-8')); res.end(body); }
 function redirect(res, location) { res.writeHead(302, { Location: location, ...commonHeaders('text/plain; charset=utf-8') }); res.end(); }
+function binary(res, status, content, contentType) { res.writeHead(status, commonHeaders(contentType)); res.end(content); }
 function sessionCookie(token) { return `gcos_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(auth.SESSION_TTL_MS / 1000)}`; }
 function clearSessionCookie() { return 'gcos_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'; }
+
+function contentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ({ '.svg': 'image/svg+xml; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8' })[ext] || 'application/octet-stream';
+}
+
+function servePublicAsset(res, relativePath) {
+  let clean;
+  try { clean = decodeURIComponent(String(relativePath || '')).replace(/^\/+/, ''); }
+  catch { return json(res, 400, { error: 'ASSET_PATH_INVALID' }); }
+  const target = path.resolve(PUBLIC_DIR, clean);
+  const root = `${path.resolve(PUBLIC_DIR)}${path.sep}`;
+  if (!target.startsWith(root) || !fs.existsSync(target) || !fs.statSync(target).isFile()) return json(res, 404, { error: 'ASSET_NOT_FOUND' });
+  return binary(res, 200, fs.readFileSync(target), contentType(target));
+}
 
 async function readBody(req) {
   const chunks = [];
@@ -112,6 +129,7 @@ function servePage(res, fileName, missingMessage, protect = false) {
   if (!fs.existsSync(filePath)) return html(res, 404, `<h1>${missingMessage}</h1>`);
   let content = fs.readFileSync(filePath, 'utf8');
   if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
+  if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   return html(res, 200, content);
 }
 
@@ -129,7 +147,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
       service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
       airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(),
-      diagnostics: diagnostics.readLastReport(), host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
+      diagnostics: diagnostics.readLastReport(), quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
     });
     if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
     if (req.method === 'POST' && url.pathname === '/api/auth/setup') {
@@ -154,6 +172,9 @@ const server = http.createServer(async (req, res) => {
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
 
+    if (req.method === 'GET' && url.pathname === '/assets/jarvis-quote.js') return servePublicAsset(res, 'jarvis-quote.js');
+    if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
+
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
     if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
@@ -172,6 +193,29 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && url.pathname === '/api/users') return json(res, 200, { users: auth.listUsers(user), roles: auth.ROLE_PERMISSIONS });
     if (req.method === 'POST' && url.pathname === '/api/users') return json(res, 201, { user: auth.createUser(user, await readBody(req)) });
+
+    if (req.method === 'POST' && url.pathname === '/api/quotes/intake') {
+      auth.requirePermission(user, 'quotes.write');
+      return json(res, 201, quoteWorkflow.startIntake(localStore, { ...(await readBody(req)), user }));
+    }
+    const quoteRoute = url.pathname.match(/^\/api\/quotes\/([^/]+)$/);
+    if (quoteRoute && req.method === 'GET') {
+      auth.requirePermission(user, 'quotes.read');
+      const quote = quoteWorkflow.resolveQuote(localStore, decodeURIComponent(quoteRoute[1]));
+      if (!quote) return json(res, 404, { error: 'QUOTE_NOT_FOUND' });
+      return json(res, 200, { quote });
+    }
+    const quoteRegenerateRoute = url.pathname.match(/^\/api\/quotes\/([^/]+)\/regenerate$/);
+    if (quoteRegenerateRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'quotes.write');
+      return json(res, 200, quoteWorkflow.regenerate(localStore, decodeURIComponent(quoteRegenerateRoute[1]), await readBody(req), user));
+    }
+    const quoteTransitionRoute = url.pathname.match(/^\/api\/quotes\/([^/]+)\/transition$/);
+    if (quoteTransitionRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'quotes.write');
+      const body = await readBody(req);
+      return json(res, 200, quoteWorkflow.transition(localStore, decodeURIComponent(quoteTransitionRoute[1]), body.action, body, user));
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/system/diagnostics') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, diagnostics.readLastReport() || await diagnostics.run(diagnosticDependencies)); }
     if (req.method === 'POST' && url.pathname === '/api/system/diagnostics/repair') {
@@ -267,11 +311,21 @@ diagnostics.startAutomaticChecks(diagnosticDependencies);
 server.listen(PORT, HOST, () => {
   console.log(`MAVIK GCOS ${updater.currentVersion()} started on http://${HOST}:${PORT}`);
   console.log('Multi-user authentication: one PIN per user on all trusted devices');
+  console.log('Voice quote workflow: enabled, visual draft and 50% deposit rule active');
   console.log(`Airtable synchronization: ${airtableSync.configured() ? 'enabled' : 'disabled'}`);
   console.log(`Mavik Insights: enabled (${insightsStore.status().storedEvents} local events)`);
   console.log(`Automatic updates: ${updater.state().enabled ? 'enabled' : 'disabled'}`);
   console.log('Automatic diagnostics: enabled');
   console.log(`Initial setup required: ${auth.setupRequired() ? 'yes' : 'no'}`);
+});
+
+server.on('error', (error) => {
+  if (error?.code === 'EADDRINUSE') {
+    console.log(`MAVIK fonctionne déjà sur le port ${PORT}. Aucun second serveur ne sera lancé.`);
+    process.exit(0);
+  }
+  diagnostics.recordCrash(error, 'SERVER_LISTEN');
+  throw error;
 });
 
 let stopping = false;
