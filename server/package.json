@@ -1,12 +1,12 @@
 {
   "name": "gcos-server",
-  "version": "0.14.0-alpha.1",
+  "version": "0.15.0-alpha.1",
   "private": true,
-  "description": "Serveur local GCOS pour GentleCarE",
+  "description": "Serveur local MAVIK GCOS pour GentleCarE",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check local-store.js && node --check auth.js && node --check jarvis.js && node --check backup.js && node --check updater.js && node --check airtable-sync.js && node --check insights-store.js"
+    "check": "node --check server.js && node --check local-store.js && node --check auth.js && node --check jarvis.js && node --check backup.js && node --check updater.js && node --check airtable-sync.js && node --check insights-store.js && node --check diagnostics.js && node --check design-installer.js && node --check restart-helper.js"
   },
   "engines": {
     "node": ">=20"
