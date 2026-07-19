@@ -135,6 +135,11 @@ function buildIcs(store) {
   const events = collectPlanningEvents(store).map((event) => `BEGIN:VEVENT\r\nUID:${esc(event.uid)}\r\nDTSTAMP:${now}\r\nDTSTART;VALUE=DATE:${icsDate(event.start)}\r\nDTEND;VALUE=DATE:${icsDate(event.end)}\r\nSUMMARY:${esc(event.title)}\r\nDESCRIPTION:${esc(event.description)}\r\nEND:VEVENT`).join('\r\n');
   return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Avenor//MAVIK GCOS//FR\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:MAVIK GentleCarE\r\n${events}\r\nEND:VCALENDAR\r\n`;
 }
-function tokenValid(token) { return Boolean(token) && crypto.timingSafeEqual(Buffer.from(String(token)), Buffer.from(read().feedToken)); }
+function tokenValid(token) {
+  if (!token) return false;
+  const supplied = Buffer.from(String(token));
+  const expected = Buffer.from(String(read().feedToken || ''));
+  return supplied.length === expected.length && supplied.length > 0 && crypto.timingSafeEqual(supplied, expected);
+}
 
 module.exports = { CONFIG_FILE, settings, configure, sync, buildIcs, tokenValid, parseIcs };
