@@ -3,6 +3,7 @@
 const core = require('./jarvis');
 const quoteWorkflow = require('./quote-workflow');
 const clientIntake = require('./client-intake');
+const intelligence = require('./jarvis-intelligence');
 
 function normalize(value) { return String(value || '').trim().toLowerCase(); }
 
@@ -30,24 +31,32 @@ function transitionIntent(text) {
   return null;
 }
 
+function finish(store, input, result) {
+  return intelligence.enrich(store, input, result);
+}
+
 function execute(store, input = {}) {
   const text = String(input.text || input.command || '').trim();
   const user = input.user || {};
+  const enrichedInput = { ...input, text, command: text, user };
+
+  const smart = intelligence.handle(store, enrichedInput);
+  if (smart) return finish(store, enrichedInput, smart);
 
   if (clientIntake.isLookupCommand(text) && !isQuoteCreation(text)) {
     const result = clientIntake.lookup(store, text);
-    return {
+    return finish(store, enrichedInput, {
       type: 'client-dossier',
       answer: result.answer,
       data: result,
       links: result.found ? [{ label: `Dossier de ${result.client.name || 'ce client'}`, url: `/jarvis?client=${encodeURIComponent(result.client.id)}` }] : []
-    };
+    });
   }
 
-  if (isQuoteCreation(text)) return quoteWorkflow.startIntake(store, { ...input, text, user });
+  if (isQuoteCreation(text)) return finish(store, enrichedInput, quoteWorkflow.startIntake(store, enrichedInput));
 
   const intent = transitionIntent(text);
-  if (intent) return quoteWorkflow.transition(store, text, intent.action, { ...(intent.payload || {}), assignee: user.name || '' }, user);
+  if (intent) return finish(store, enrichedInput, quoteWorkflow.transition(store, text, intent.action, { ...(intent.payload || {}), assignee: user.name || '' }, user));
 
   if (/finalise|finaliser|régénère|regenere|regénère|mets à jour.*devis|met a jour.*devis/i.test(text) && /devis/i.test(text)) {
     const result = quoteWorkflow.regenerate(store, text, {
@@ -55,17 +64,17 @@ function execute(store, input = {}) {
       photoName: input.photoName || '',
       vehiclePhotoUrl: input.photoUrl || ''
     }, user);
-    return {
+    return finish(store, enrichedInput, {
       type: 'quote-regenerated',
       answer: result.missingFields.length
         ? `Le devis ${result.quote.number} est régénéré, mais reste à finaliser. Il manque : ${result.missingFields.join(', ')}. Visuel : ${result.visualUrl}`
         : `Le devis ${result.quote.number} est régénéré et prêt à valider : ${result.visualUrl}`,
       data: result,
       links: [{ label: `Ouvrir le devis ${result.quote.number}`, url: result.visualUrl }]
-    };
+    });
   }
 
-  return core.execute(store, input);
+  return finish(store, enrichedInput, core.execute(store, enrichedInput));
 }
 
-module.exports = { ...core, execute, quoteWorkflow, clientIntake };
+module.exports = { ...core, execute, quoteWorkflow, clientIntake, intelligence };
