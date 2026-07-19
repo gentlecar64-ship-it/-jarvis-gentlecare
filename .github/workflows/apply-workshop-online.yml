@@ -1,0 +1,37 @@
+name: Apply workshop online integration
+
+on:
+  push:
+    branches: [feature/workshop-online-procedure]
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: ${{ !contains(github.event.head_commit.message, '[workshop-patched]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: feature/workshop-online-procedure
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Apply integration patch
+        run: node tools/apply-workshop-online.js
+      - name: Validate syntax and workshop flow
+        run: |
+          cd server
+          npm run check
+          node tests/workshop-online-smoke.js
+      - name: Commit generated integration
+        run: |
+          git config user.name "MAVIK Build"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Bring workshop procedure online [workshop-patched]"
+          git push origin HEAD:feature/workshop-online-procedure
