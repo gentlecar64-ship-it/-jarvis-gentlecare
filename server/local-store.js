@@ -8,7 +8,7 @@ const DATA_DIR = path.join(__dirname, 'data');
 const DATA_FILE = path.join(DATA_DIR, 'gcos-local.json');
 const EMPTY_DB = {
   clients: [], vehicles: [], interventions: [], observations: [], communications: [],
-  tasks: [], stockItems: [], quotes: [], documents: [], photos: [], events: []
+  tasks: [], stockItems: [], quotes: [], documents: [], photos: [], planningBlocks: [], events: []
 };
 const DEFAULT_CHECKLIST = {
   receptionPhotos: false, mileageRecorded: false, clientApproval: false,
@@ -63,8 +63,8 @@ function normalize(collection, input = {}, current = {}) {
     clean.email = String(input.email ?? current.email ?? '').trim().toLowerCase();
     clean.address = String(input.address ?? current.address ?? '').trim();
     clean.preferredChannel = input.preferredChannel ?? current.preferredChannel ?? 'SMS';
-    clean.smsAllowed = input.smsAllowed === true || input.smsAllowed === 'on';
-    clean.emailAllowed = input.emailAllowed === true || input.emailAllowed === 'on';
+    clean.smsAllowed = input.smsAllowed === undefined ? Boolean(current.smsAllowed) : input.smsAllowed === true || input.smsAllowed === 'on';
+    clean.emailAllowed = input.emailAllowed === undefined ? Boolean(current.emailAllowed) : input.emailAllowed === true || input.emailAllowed === 'on';
   }
   if (collection === 'vehicles') {
     if (!(input.clientId ?? current.clientId)) throw Object.assign(new Error('CLIENT_REQUIRED'), { status: 400 });
@@ -119,6 +119,15 @@ function normalize(collection, input = {}, current = {}) {
     clean.title = String(input.title ?? current.title ?? '').trim();
     clean.url = String(input.url ?? current.url ?? '').trim();
     clean.category = String(input.category ?? current.category ?? '').trim();
+  }
+  if (collection === 'planningBlocks') {
+    clean.title = String(input.title ?? current.title ?? '').trim();
+    clean.type = String(input.type ?? current.type ?? 'Indisponibilité').trim();
+    clean.startDate = String(input.startDate ?? current.startDate ?? '').trim();
+    clean.endDate = String(input.endDate ?? current.endDate ?? clean.startDate).trim();
+    clean.startTime = String(input.startTime ?? current.startTime ?? '08:30').trim();
+    clean.endTime = String(input.endTime ?? current.endTime ?? '17:00').trim();
+    clean.status = String(input.status ?? current.status ?? 'Active').trim();
   }
   return clean;
 }
@@ -175,10 +184,11 @@ function summary() {
     clients: db.clients.length, vehicles: db.vehicles.length, interventions: db.interventions.length,
     observations: db.observations.length, communications: db.communications.length,
     tasks: db.tasks.length, quotes: db.quotes.length, documents: db.documents.length,
+    planningBlocks: db.planningBlocks.length,
     openInterventions: db.interventions.filter((item) => !['Terminée', 'Livrée', 'Annulée'].includes(item.status)).length,
     todayInterventions: db.interventions.filter((item) => item.scheduledDate === today).length,
     pendingTasks: db.tasks.filter((item) => item.status !== 'Terminée').length,
-    pendingQuotes: db.quotes.filter((item) => ['Brouillon', 'Envoyé', 'À relancer'].includes(item.status)).length,
+    pendingQuotes: db.quotes.filter((item) => ['Brouillon', 'Envoyé', 'À relancer', 'À valider', 'Expertise à décider'].includes(item.status)).length,
     lowStock: db.stockItems.filter((item) => item.alertThreshold > 0 && item.quantity <= item.alertThreshold),
     pendingObservations: db.observations.filter((item) => item.decision === 'En attente').length,
     recentEvents: db.events.slice(0, 30)
