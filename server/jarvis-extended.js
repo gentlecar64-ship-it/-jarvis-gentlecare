@@ -2,6 +2,8 @@
 
 const core = require('./jarvis');
 const quoteWorkflow = require('./quote-workflow-reference');
+const quoteStudio = require('./quote-studio');
+const planning = require('./planning');
 const clientIntake = require('./client-intake');
 const intelligence = require('./jarvis-intelligence');
 const interventionReport = require('./intervention-report');
@@ -73,6 +75,53 @@ function handleReport(store, input, text, user) {
   };
 }
 
+function handlePlanning(store, text) {
+  const value = normalize(text);
+  if (!/planning|créneau|creneau|disponibilit/.test(value)) return null;
+  if (/ouvre|affiche|montre|voir/.test(value) && /planning/.test(value)) {
+    return { type: 'planning-open', answer: 'J’ouvre le planning complet. Vous y trouverez les inspections, interventions, livraisons, tâches et indisponibilités.', links: [{ label: 'Ouvrir le planning', url: '/planning' }] };
+  }
+  if (/prochain|premier|disponible|propose/.test(value)) {
+    const duration = Number((value.match(/(\d+)\s*jour/) || [])[1] || 2);
+    const proposal = planning.propose(store, { durationDays: duration });
+    return {
+      type: 'planning-proposal',
+      answer: proposal.blocked
+        ? proposal.status
+        : `Le prochain créneau proposé prévoit une inspection le ${proposal.inspection.date} à ${proposal.inspection.time}, puis une intervention du ${proposal.intervention.startDate} au ${proposal.intervention.endDate}, avec une livraison estimée le ${proposal.intervention.deliveryDate}. La proposition doit être validée dans le planning.`,
+      data: proposal,
+      links: [{ label: 'Vérifier dans le planning', url: '/planning' }]
+    };
+  }
+  const overview = planning.overview(store, { days: 14 });
+  return {
+    type: 'planning-summary',
+    answer: `Sur les 14 prochains jours, le planning contient ${overview.events.length} événement(s) et ${overview.unscheduledQuotes.length} devis à planifier.`,
+    data: overview,
+    links: [{ label: 'Ouvrir le planning', url: '/planning' }]
+  };
+}
+
+function handleQuoteStudio(store, input, text, user) {
+  if (!isQuoteCreation(text)) return null;
+  const parsed = quoteStudio.parseSpeech({ text });
+  const hasDossierInformation = Boolean(parsed.name || parsed.email || parsed.mobile || parsed.brand || parsed.model || parsed.registration);
+  if (!hasDossierInformation) {
+    return {
+      type: 'quote-studio-open',
+      answer: 'J’ouvre l’atelier Devis. Le formulaire manuel et la dictée y remplissent les mêmes informations. Rien ne sera créé avant votre validation finale.',
+      links: [{ label: 'Ouvrir l’atelier Devis', url: '/quotes' }]
+    };
+  }
+  const result = quoteStudio.preview(store, { ...input, ...parsed, text }, user);
+  return {
+    type: 'quote-studio-voice-preview',
+    answer: `J’ai analysé la demande sans créer de fiche ni de devis. ${result.data.missingFields.length ? `Il manque : ${result.data.missingFields.join(', ')}.` : 'Les informations principales sont présentes.'} Ouvrez l’atelier Devis pour vérifier le prix, les valeurs du véhicule, l’expertise éventuelle et le planning avant validation.`,
+    data: result,
+    links: [{ label: 'Continuer dans l’atelier Devis', url: '/quotes' }]
+  };
+}
+
 function execute(store, input = {}) {
   const text = String(input.text || input.command || '').trim();
   const user = input.user || {};
@@ -81,6 +130,12 @@ function execute(store, input = {}) {
 
   const reportResult = handleReport(store, enrichedInput, text, user);
   if (reportResult) return finish(store, enrichedInput, reportResult);
+
+  const planningResult = handlePlanning(store, text);
+  if (planningResult) return finish(store, enrichedInput, planningResult);
+
+  const quoteStudioResult = handleQuoteStudio(store, enrichedInput, text, user);
+  if (quoteStudioResult) return finish(store, enrichedInput, quoteStudioResult);
 
   const smart = intelligence.handle(store, enrichedInput);
   if (smart) return finish(store, enrichedInput, smart);
@@ -94,8 +149,6 @@ function execute(store, input = {}) {
       links: result.found ? [{ label: `Dossier de ${result.client.name || 'ce client'}`, url: `/jarvis?client=${encodeURIComponent(result.client.id)}` }] : []
     });
   }
-
-  if (isQuoteCreation(text)) return finish(store, enrichedInput, quoteWorkflow.startIntake(store, enrichedInput));
 
   const intent = transitionIntent(text);
   if (intent) return finish(store, enrichedInput, quoteWorkflow.transition(store, text, intent.action, { ...(intent.payload || {}), assignee: user.name || '', report: input.report || input.reportData || {} }, user));
@@ -119,4 +172,4 @@ function execute(store, input = {}) {
   return finish(store, enrichedInput, core.execute(store, enrichedInput));
 }
 
-module.exports = { ...core, execute, quoteWorkflow, clientIntake, intelligence, interventionReport };
+module.exports = { ...core, execute, quoteWorkflow, quoteStudio, planning, clientIntake, intelligence, interventionReport };
