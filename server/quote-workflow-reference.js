@@ -1,6 +1,6 @@
 'use strict';
 
-const base = require('./quote-workflow');
+const base = require('./quote-workflow-current');
 const interventionReport = require('./intervention-report');
 const originalTransition = base.transition.bind(base);
 
@@ -40,8 +40,6 @@ function transition(store, quoteReference, action, payload = {}, user = {}) {
   return result;
 }
 
-// Jarvis est chargé avant le routeur HTTP. En remplaçant la méthode sur l’objet partagé
-// du cache Node, les transitions vocales et les transitions API suivent la même règle.
 base.transition = transition;
 base.interventionReport = interventionReport;
 
