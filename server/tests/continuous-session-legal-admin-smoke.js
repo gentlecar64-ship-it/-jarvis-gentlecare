@@ -31,6 +31,13 @@ try {
   reloadedAuth.logout(login.token); delete require.cache[authPath]; const loggedOutAuth=require('../auth');
   assert.equal(loggedOutAuth.authenticate(request(login.token)),null,'explicit end-of-day logout must invalidate the session');
 
+  const validUsers=fs.readFileSync(loggedOutAuth.USERS_FILE);
+  fs.writeFileSync(loggedOutAuth.USERS_FILE,'{invalid-json');
+  delete require.cache[authPath]; const guardedAuth=require('../auth');
+  assert.throws(()=>guardedAuth.setupRequired(),/USER_STORE_UNREADABLE/,'an unreadable user store must fail closed');
+  assert.equal(fs.readFileSync(guardedAuth.USERS_FILE,'utf8'),'{invalid-json','the corrupted user store must not be overwritten');
+  fs.writeFileSync(guardedAuth.USERS_FILE,validUsers);
+
   const quoteRequests=require('../quote-requests');
   const quoteStudio=require('../quote-studio-service');
   const planning=require('../planning-service');
@@ -49,6 +56,8 @@ try {
 
   const removed=quoteRequests.markDecision(store,saved.request.id,{decision:'Supprimée',comment:'Doublon de test'},admin);
   assert.equal(removed.status,'Supprimée par la direction');
+  assert.equal(quoteRequests.list(store,admin).length,0);
+  assert.throws(()=>quoteRequests.saveDraft(store,{...saved.request,requestId:saved.request.id,clientName:'Client ressuscité'},admin),/QUOTE_REQUEST_DELETED/,'autosave must not resurrect a deleted request');
   assert.equal(quoteRequests.list(store,admin).length,0);
 
   const client=saved.client; const vehicle=saved.vehicle;
