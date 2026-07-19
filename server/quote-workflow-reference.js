@@ -2,9 +2,10 @@
 
 const base = require('./quote-workflow');
 const interventionReport = require('./intervention-report');
+const originalTransition = base.transition.bind(base);
 
 function transition(store, quoteReference, action, payload = {}, user = {}) {
-  const result = base.transition(store, quoteReference, action, payload, user);
+  const result = originalTransition(store, quoteReference, action, payload, user);
   if (action !== 'complete') return result;
 
   const intervention = result?.data?.intervention;
@@ -28,5 +29,10 @@ function transition(store, quoteReference, action, payload = {}, user = {}) {
   result.answer = `${result.answer} Le rapport technique de référence ${generated.report.reportNumber}, version ${generated.report.version}.0, a été généré en brouillon bloqué avec ses 12 sections. ${generated.report.completeness.missing.length ? `Il reste ${generated.report.completeness.missing.length} élément(s) à compléter avant validation.` : 'Les champs structurants sont renseignés ; la validation humaine reste obligatoire.'}`;
   return result;
 }
+
+// Jarvis est chargé avant le routeur HTTP. En remplaçant la méthode sur l’objet partagé
+// du cache Node, les transitions vocales et les transitions API suivent la même règle.
+base.transition = transition;
+base.interventionReport = interventionReport;
 
 module.exports = { ...base, transition, interventionReport };
