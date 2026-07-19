@@ -1,10 +1,18 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
 const base = require('./quote-studio');
 const tariffs = require('./tariff-catalog');
 const procedures = require('./workshop-procedures');
 const originalPreview = base.preview.bind(base);
 const originalConfirm = base.confirm.bind(base);
+
+const TERMS_URL = 'https://www.gentlecare.fr/conditionsgenerales';
+const PRIVACY_URL = 'https://www.gentlecare.fr/politiquedeconfidentialit%C3%A9';
+const LEGAL_URL = 'https://www.gentlecare.fr/about-1';
+const TERMS_VERSION = 'Site GentleCarE — consultation dynamique';
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
 function useful(value) {
   if (value === undefined || value === null) return false;
@@ -18,13 +26,12 @@ function number(value) { const parsed = Number(String(value ?? '').replace(/\s/g
 function euro(value) { return Number(value || 0).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }); }
 function safeList(store, collection) { try { return store.list(collection) || []; } catch { return []; } }
 function direction(user = {}) { return ['admin', 'associate'].includes(user.role); }
+function bool(value) { return value === true || value === 'true' || value === 'on' || value === 1; }
 function categoryLabel(key) { return procedures.categories().find((item) => item.key === key)?.label || 'À définir'; }
 function categoryFromSpeech(value) {
   const text = normalizeText(value);
   if (!text) return '';
-  for (const category of procedures.categories()) {
-    if (category.aliases.some((alias) => text.includes(normalizeText(alias)))) return category.key;
-  }
+  for (const category of procedures.categories()) if (category.aliases.some((alias) => text.includes(normalizeText(alias)))) return category.key;
   return '';
 }
 function enrichSpeech(input = {}) {
@@ -83,6 +90,7 @@ function normalizedInput(input = {}) {
   const service = String(enriched.service || selected?.label || '').trim();
   const tariffCategoryMismatch = Boolean(selected && requestCategory && selected.vehicleType !== requestCategory);
   const tariffCustomerMismatch = Boolean(selected && selected.customerType !== 'tous' && selected.customerType !== customerType);
+  const termsAccepted = bool(enriched.termsAccepted);
   return {
     ...enriched,
     requestCategory, vehicleType: requestCategory || 'autre', customerType,
@@ -92,9 +100,20 @@ function normalizedInput(input = {}) {
     durationDays: Math.max(1, number(enriched.durationDays || selected?.durationDays || procedure?.defaultDurationDays || 1)), tariffReason,
     standardPriceTtc: standardPrice, specialOfferMargin: margin,
     workshopProcedureKey: procedure?.key || '', workshopProcedure: procedure, selectedTariff: selected || null,
-    tariffCategoryMismatch, tariffCustomerMismatch
+    tariffCategoryMismatch, tariffCustomerMismatch,
+    termsAccepted,
+    termsAcceptedAt: termsAccepted ? String(enriched.termsAcceptedAt || new Date().toISOString()) : '',
+    termsAcceptedBy: termsAccepted ? String(enriched.termsAcceptedBy || enriched.clientName || 'Client — identité à confirmer') : '',
+    termsUrl: TERMS_URL, termsVersion: TERMS_VERSION, privacyUrl: PRIVACY_URL, legalNoticeUrl: LEGAL_URL,
+    technicalMediaAuthorized: bool(enriched.technicalMediaAuthorized),
+    expertTransmissionAuthorized: bool(enriched.expertTransmissionAuthorized),
+    commercialMediaAuthorized: bool(enriched.commercialMediaAuthorized),
+    identifiableMediaAuthorized: bool(enriched.identifiableMediaAuthorized),
+    emailAllowed: bool(enriched.emailAllowed), smsAllowed: bool(enriched.smsAllowed),
+    consentNotes: String(enriched.consentNotes || '').trim()
   };
 }
+function yesNo(value) { return value ? 'OUI' : 'NON'; }
 function appendOperationalText(text, input) {
   const lines = [String(text || '').trim(), '', `Nature de la demande : ${categoryLabel(input.requestCategory)}`, `Procédure : ${input.workshopProcedure?.label || 'À définir'}${input.workshopProcedure?.version ? ` — version ${input.workshopProcedure.version}` : ''}`];
   if (input.specialOfferEnabled === true) {
@@ -102,6 +121,8 @@ function appendOperationalText(text, input) {
     lines.push('', 'OFFRE SPÉCIALE VALIDÉE PAR LA DIRECTION', `Bénéficiaire / opération : ${input.specialOfferName || 'À préciser'}`, `Tarif de référence : ${euro(margin.standardPriceTtc)}`, `Remise commerciale : ${margin.discountPercent.toFixed(1)} % — ${euro(margin.discountAmountTtc)}`, `Prix final TTC : ${euro(margin.finalPriceTtc)}`, `Marge brute estimée : ${input.directCostTtc ? `${euro(margin.grossMarginTtc)} — ${margin.grossMarginPercent.toFixed(1)} %` : 'À compléter — coût direct non renseigné'}`);
     if (margin.warnings.length) lines.push(`Alerte marge : ${margin.warnings.join(' ')}`);
   }
+  lines.push('', 'CONDITIONS ET AUTORISATIONS', `CGV : ${input.termsAccepted ? `acceptées le ${new Date(input.termsAcceptedAt).toLocaleString('fr-FR')} par ${input.termsAcceptedBy}` : 'NON ACCEPTÉES — acceptation à recueillir avant engagement définitif'}`, `Lien CGV : ${TERMS_URL}`, `Version CGV : ${TERMS_VERSION}`, `Photos techniques pour le dossier et le rapport : ${yesNo(input.technicalMediaAuthorized)}`, `Transmission du dossier à un expert ou professionnel indépendant : ${yesNo(input.expertTransmissionAuthorized)}`, `Utilisation commerciale des images : ${yesNo(input.commercialMediaAuthorized)}`, `Images identifiables (personne, plaque ou identité visible) : ${yesNo(input.identifiableMediaAuthorized)}`, `Contact par e-mail : ${yesNo(input.emailAllowed)} · contact par SMS : ${yesNo(input.smsAllowed)}`, `Confidentialité : ${PRIVACY_URL}`, `Mentions légales : ${LEGAL_URL}`);
+  if (input.consentNotes) lines.push(`Précisions sur les autorisations : ${input.consentNotes}`);
   return lines.join('\n');
 }
 function preview(store, input = {}, user = {}) {
@@ -117,6 +138,13 @@ function preview(store, input = {}, user = {}) {
   result.data.package.inference = inferPackage(normalized.targetPrice, `${normalized.service} ${normalized.requestCategory} ${normalized.customerType}`);
   result.data.workshopProcedure = normalized.workshopProcedure;
   result.data.requestCategory = normalized.requestCategory;
+  result.data.legal = {
+    termsAccepted: normalized.termsAccepted, termsAcceptedAt: normalized.termsAcceptedAt, termsAcceptedBy: normalized.termsAcceptedBy,
+    termsUrl: TERMS_URL, termsVersion: TERMS_VERSION, privacyUrl: PRIVACY_URL, legalNoticeUrl: LEGAL_URL,
+    technicalMediaAuthorized: normalized.technicalMediaAuthorized, expertTransmissionAuthorized: normalized.expertTransmissionAuthorized,
+    commercialMediaAuthorized: normalized.commercialMediaAuthorized, identifiableMediaAuthorized: normalized.identifiableMediaAuthorized,
+    emailAllowed: normalized.emailAllowed, smsAllowed: normalized.smsAllowed
+  };
   result.data.specialOffer = normalized.specialOfferEnabled ? { enabled: true, name: normalized.specialOfferName, margin: normalized.specialOfferMargin } : { enabled: false };
   result.quoteText = appendOperationalText(result.quoteText, normalized);
   if (!normalized.requestCategory) {
@@ -133,9 +161,22 @@ function preview(store, input = {}, user = {}) {
     result.canCreate = false;
     if (!result.data.missingFields.includes('prix validé par la direction')) result.data.missingFields.push('prix validé par la direction');
   }
+  if (!normalized.termsAccepted) result.data.warnings.push('Les CGV ne sont pas encore acceptées. Le devis peut être préparé, mais l’acceptation doit être recueillie et tracée avant engagement définitif.');
   result.margin = normalized.specialOfferMargin;
   result.requiresDirectionApproval = normalized.specialOfferEnabled === true || selected?.requiresDirectionPrice === true || !['voiture', 'moto'].includes(normalized.requestCategory);
   return result;
+}
+function appendVisualLegalNotice(visualUrl, quote) {
+  if (!visualUrl || !visualUrl.startsWith('/generated/quotes/')) return;
+  const relative = decodeURIComponent(visualUrl.replace(/^\/+/, ''));
+  const target = path.resolve(PUBLIC_DIR, relative);
+  if (!target.startsWith(path.resolve(PUBLIC_DIR)) || !fs.existsSync(target)) return;
+  let svg = fs.readFileSync(target, 'utf8');
+  if (svg.includes('CGV GENTLECARE')) return;
+  const status = quote.termsAccepted ? 'CGV ACCEPTÉES — PREUVE CONSERVÉE DANS LE DOSSIER' : 'CGV À LIRE ET À ACCEPTER AVANT ENGAGEMENT DÉFINITIF';
+  const insert = `<a href="${TERMS_URL}" target="_blank"><text x="72" y="1948" font-size="14" fill="#a9d47b" font-weight="800">CGV GENTLECARE — ${status}</text></a><text x="1328" y="1948" text-anchor="end" font-size="13" fill="#78909a">Mentions légales et confidentialité accessibles depuis MAVIK</text>`;
+  svg = svg.replace('</svg>', `${insert}</svg>`);
+  fs.writeFileSync(target, svg, 'utf8');
 }
 function confirm(store, input = {}, user = {}) {
   const normalized = normalizedInput(input);
@@ -158,11 +199,17 @@ function confirm(store, input = {}, user = {}) {
     directCostTtc: margin?.directCostTtc || 0, grossMarginTtc: margin?.grossMarginTtc || 0, grossMarginPercent: margin?.grossMarginPercent || 0,
     specialOfferApprovedByDirection: normalized.specialOfferEnabled === true,
     specialOfferApprovedBy: normalized.specialOfferEnabled ? (user.name || user.id || '') : '', specialOfferApprovedAt: normalized.specialOfferEnabled ? new Date().toISOString() : '',
+    termsAccepted: normalized.termsAccepted, termsAcceptedAt: normalized.termsAcceptedAt, termsAcceptedBy: normalized.termsAcceptedBy,
+    termsUrl: TERMS_URL, termsVersion: TERMS_VERSION, privacyUrl: PRIVACY_URL, legalNoticeUrl: LEGAL_URL,
+    technicalMediaAuthorized: normalized.technicalMediaAuthorized, expertTransmissionAuthorized: normalized.expertTransmissionAuthorized,
+    commercialMediaAuthorized: normalized.commercialMediaAuthorized, identifiableMediaAuthorized: normalized.identifiableMediaAuthorized,
+    emailAllowed: normalized.emailAllowed, smsAllowed: normalized.smsAllowed, consentNotes: normalized.consentNotes,
     quoteText: exactText, mailDraftText: exactText,
-    auditTrail: [...(result.quote.auditTrail || []), { changedAt: new Date().toISOString(), changedBy: user.name || user.id || '', tariffKey: normalized.tariffKey, requestCategory: normalized.requestCategory, customerType: normalized.customerType, specialOffer: normalized.specialOfferEnabled === true, margin }]
+    auditTrail: [...(result.quote.auditTrail || []), { changedAt: new Date().toISOString(), changedBy: user.name || user.id || '', action: 'quote-confirmed-with-legal-record', tariffKey: normalized.tariffKey, requestCategory: normalized.requestCategory, customerType: normalized.customerType, specialOffer: normalized.specialOfferEnabled === true, margin, termsAccepted: normalized.termsAccepted, permissions: { technicalMediaAuthorized: normalized.technicalMediaAuthorized, expertTransmissionAuthorized: normalized.expertTransmissionAuthorized, commercialMediaAuthorized: normalized.commercialMediaAuthorized, identifiableMediaAuthorized: normalized.identifiableMediaAuthorized, emailAllowed: normalized.emailAllowed, smsAllowed: normalized.smsAllowed } }]
   });
-  for (const document of result.documents || []) if (document.category === 'Devis texte') store.update('documents', document.id, { content: exactText });
+  for (const document of result.documents || []) if (document.category === 'Devis texte') store.update('documents', document.id, { content: exactText, termsUrl: TERMS_URL, termsAccepted: normalized.termsAccepted });
   if (result.communication?.id) store.update('communications', result.communication.id, { message: exactText });
+  appendVisualLegalNotice(result.visualUrl, quote);
   return { ...result, quote, vehicle, quoteText: exactText, margin, workshopProcedure: normalized.workshopProcedure };
 }
 function resolveQuote(store, id) { return safeList(store, 'quotes').find((item) => item.id === id || item.number === id) || null; }
@@ -182,21 +229,12 @@ function applyReprice(store, id, input = {}, user = {}) {
   const depositTtc = Math.round(previewResult.finalPrice * Number(base.DEPOSIT_RATE || 50)) / 100;
   const updated = store.update('quotes', quote.id, {
     totalTtc: previewResult.finalPrice, depositTtc,
-    tariffKey: previewResult.tariff?.key || input.tariffKey || 'custom',
-    packageKey: previewResult.tariff?.key || input.tariffKey || 'custom',
-    packageLabel: previewResult.tariff?.label || input.service || quote.service || 'Prestation personnalisée',
-    tariffSource: previewResult.tariffReason,
-    specialOfferEnabled: previewResult.specialOffer === true,
-    specialOfferName: String(input.specialOfferName || quote.specialOfferName || ''),
-    standardPriceTtc: previewResult.margin.standardPriceTtc,
-    discountPercent: previewResult.margin.discountPercent,
-    discountAmountTtc: previewResult.margin.discountAmountTtc,
-    directCostTtc: previewResult.margin.directCostTtc,
-    grossMarginTtc: previewResult.margin.grossMarginTtc,
-    grossMarginPercent: previewResult.margin.grossMarginPercent,
-    specialOfferApprovedByDirection: previewResult.specialOffer === true,
-    specialOfferApprovedBy: previewResult.specialOffer ? (user.name || user.id || '') : '',
-    specialOfferApprovedAt: previewResult.specialOffer ? new Date().toISOString() : '',
+    tariffKey: previewResult.tariff?.key || input.tariffKey || 'custom', packageKey: previewResult.tariff?.key || input.tariffKey || 'custom',
+    packageLabel: previewResult.tariff?.label || input.service || quote.service || 'Prestation personnalisée', tariffSource: previewResult.tariffReason,
+    specialOfferEnabled: previewResult.specialOffer === true, specialOfferName: String(input.specialOfferName || quote.specialOfferName || ''),
+    standardPriceTtc: previewResult.margin.standardPriceTtc, discountPercent: previewResult.margin.discountPercent, discountAmountTtc: previewResult.margin.discountAmountTtc,
+    directCostTtc: previewResult.margin.directCostTtc, grossMarginTtc: previewResult.margin.grossMarginTtc, grossMarginPercent: previewResult.margin.grossMarginPercent,
+    specialOfferApprovedByDirection: previewResult.specialOffer === true, specialOfferApprovedBy: previewResult.specialOffer ? (user.name || user.id || '') : '', specialOfferApprovedAt: previewResult.specialOffer ? new Date().toISOString() : '',
     priceConfirmedBy: user.name || user.id || '', priceConfirmedAt: new Date().toISOString(),
     auditTrail: [...(quote.auditTrail || []), { changedAt: new Date().toISOString(), changedBy: user.name || user.id || '', action: 'direction-reprice', previousPrice: quote.totalTtc, finalPrice: previewResult.finalPrice, tariffKey: previewResult.tariff?.key || input.tariffKey || 'custom', reason: previewResult.tariffReason, margin: previewResult.margin }]
   });
@@ -213,5 +251,6 @@ base.applyReprice = applyReprice;
 base.normalizedInput = normalizedInput;
 base.tariffs = tariffs;
 base.procedures = procedures;
+base.legal = { TERMS_URL, PRIVACY_URL, LEGAL_URL, TERMS_VERSION };
 
 module.exports = base;
