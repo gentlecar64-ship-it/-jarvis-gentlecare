@@ -65,7 +65,12 @@ function overview(store, input = {}) {
       planningStatus: quote.planningStatus || ''
     }));
   const linkedQuoteIds = new Set(safeList(store, 'quotes').filter((quote) => quote.interventionId).map((quote) => quote.id));
-  result.events = result.events.filter((event) => !(event.id?.startsWith('quote-') && linkedQuoteIds.has(event.quoteId)));
+  const leaveBlockRequestIds = new Set(safeList(store, 'planningBlocks').filter((block) => block.leaveRequestId).map((block) => block.leaveRequestId));
+  result.events = result.events.filter((event) => {
+    if (event.id?.startsWith('quote-') && linkedQuoteIds.has(event.quoteId)) return false;
+    if (event.id?.startsWith('leave-') && leaveBlockRequestIds.has(event.leaveRequestId)) return false;
+    return true;
+  });
   return result;
 }
 
