@@ -41,6 +41,8 @@ jobs:
         run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-rate
       - name: Delivery total calculation
         run: node tests/photo-industrial-delivery-workshop-smoke.js industrial-total
+      - name: Preserve existing vehicle media
+        run: node tests/photo-industrial-delivery-workshop-smoke.js vehicle-photo-preserve
       - name: Delivery resource blocks
         run: node tests/photo-industrial-delivery-workshop-smoke.js delivery
       - name: Dry ice stock gate
