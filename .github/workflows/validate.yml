@@ -28,3 +28,5 @@ jobs:
         run: npm run check
       - name: Quote workflow smoke test
         run: node tests/quote-workflow-smoke.js
+      - name: Reputation and client intake smoke test
+        run: node tests/reputation-client-intake-smoke.js
