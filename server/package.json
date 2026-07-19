@@ -1,6 +1,6 @@
 {
   "name": "gcos-server",
-  "version": "0.17.0-alpha.1",
+  "version": "0.18.0-alpha.1",
   "private": true,
   "description": "Serveur local MAVIK GCOS pour GentleCarE",
   "main": "server.js",
