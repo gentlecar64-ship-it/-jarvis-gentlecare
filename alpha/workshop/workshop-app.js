@@ -73,8 +73,8 @@ function render() {
     $('workflowTitle').textContent = intervention.vehicle.name;
     $('workflowContext').textContent = `${intervention.client.name} · ${intervention.vehicle.registration || 'Sans immatriculation'} · ${intervention.tasks.length} tâches · opérateur actif : ${dashboard.operator.name}`;
     $('taskBoard').innerHTML = intervention.tasks.map((task, index) => {
-      const dependencies = task.dependencies.length ? `Après : ${task.dependencies.join(', ')}` : 'Point de départ';
-      const resources = task.resources.length ? `Ressources : ${task.resources.join(', ')}` : '';
+      const dependencies = task.dependencies?.length ? `Après : ${task.dependencies.join(', ')}` : 'Point de départ';
+      const resources = task.resources?.length ? `Ressources : ${task.resources.join(', ')}` : '';
       const blocks = task.blockReasons?.map((reason) => reason.message).join(' · ') || '';
       return `<article class="task ${task.status}"><div class="task-top"><h3>${index + 1}. ${escapeHtml(task.name)}</h3><span class="task-status">${labels[task.status] || task.status}</span></div><div class="task-details">${escapeHtml(dependencies)}${resources ? `<br>${escapeHtml(resources)}` : ''}${task.assignees?.length ? `<br>Opérateur : ${escapeHtml(task.assignees.join(', '))}` : ''}${blocks ? `<br><span class="block-reason">${escapeHtml(blocks)}</span>` : ''}</div><div class="task-actions">${taskButtons(intervention, task)}</div></article>`;
     }).join('');
