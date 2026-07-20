@@ -1,5 +1,5 @@
 const CACHE='jarvis-gentlecare-v30';
-const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./gcos-comms.js','./jarvis-core.js','./mavik-insights.js','./mavik-updater.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css'];
+const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./gcos-comms.js','./jarvis-core.js','./mavik-insights.js','./mavik-updater.js','./mavik-update-settings.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css'];
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
@@ -12,9 +12,7 @@ self.addEventListener('fetch',event=>{
       const contentType=response.headers.get('content-type')||'';
       if(!contentType.includes('text/html'))return response;
       let html=await response.text();
-      if(url.pathname.endsWith('/employe.html')&&!html.includes('atelier-responsive.css')){
-        html=html.replace('</head>','<link rel="stylesheet" href="atelier-responsive.css?v=30"></head>');
-      }
+      if(url.pathname.endsWith('/employe.html')&&!html.includes('atelier-responsive.css'))html=html.replace('</head>','<link rel="stylesheet" href="atelier-responsive.css?v=30"></head>');
       if(url.pathname.endsWith('/admin.html')){
         html=html.replace("['▤','Devis','Offres et validations','']","['▤','Devis','Offres et validations','devis.html']")
           .replace("['◫','Commandes','Achats et livraisons','']","['◫','Ordres de travail','Suivi atelier','ordres.html']")
@@ -29,18 +27,14 @@ self.addEventListener('fetch',event=>{
       if(!html.includes('gcos-comms.js'))html=html.replace('</body>','<script src="gcos-comms.js?v=30"></script></body>');
       if(!html.includes('jarvis-core.js'))html=html.replace('</body>','<script src="jarvis-core.js?v=30"></script></body>');
       if(!html.includes('mavik-updater.js'))html=html.replace('</body>','<script src="mavik-updater.js?v=30"></script></body>');
-      if(!html.includes('jarvisGlobalButton')){
-        html=html.replace('</body>',`<style>#jarvisGlobalButton{position:fixed;right:18px;bottom:18px;z-index:41000;width:62px;height:62px;border-radius:50%;border:1px solid #80e8ff;background:radial-gradient(circle at 35% 30%,#eaffff,#46d9ff 25%,#087fa8 50%,#03131c 76%);color:#fff;font-size:1.55rem;box-shadow:0 0 24px #00cfff88;cursor:pointer}#jarvisGlobalButton:active{transform:scale(.94)}@media(max-width:720px){#jarvisGlobalButton{right:14px;bottom:78px;width:56px;height:56px}}</style><button id="jarvisGlobalButton" aria-label="Ouvrir Jarvis" title="Parler à Jarvis">🎙</button></body>`);
-      }
+      if(!html.includes('mavik-update-settings.js'))html=html.replace('</body>','<script src="mavik-update-settings.js?v=30"></script></body>');
+      if(!html.includes('jarvisGlobalButton'))html=html.replace('</body>',`<style>#jarvisGlobalButton{position:fixed;right:18px;bottom:18px;z-index:41000;width:62px;height:62px;border-radius:50%;border:1px solid #80e8ff;background:radial-gradient(circle at 35% 30%,#eaffff,#46d9ff 25%,#087fa8 50%,#03131c 76%);color:#fff;font-size:1.55rem;box-shadow:0 0 24px #00cfff88;cursor:pointer}#jarvisGlobalButton:active{transform:scale(.94)}@media(max-width:720px){#jarvisGlobalButton{right:14px;bottom:78px;width:56px;height:56px}}</style><button id="jarvisGlobalButton" aria-label="Ouvrir Jarvis" title="Parler à Jarvis">🎙</button></body>`);
       const finalResponse=new Response(html,{status:response.status,statusText:response.statusText,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
       const copy=finalResponse.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));
       return finalResponse;
     }).catch(()=>caches.match(event.request).then(cached=>cached||caches.match('./index.html'))));
     return;
   }
-  if(url.pathname.endsWith('/version.json')){
-    event.respondWith(fetch(event.request,{cache:'no-store'}));
-    return;
-  }
+  if(url.pathname.endsWith('/version.json')){event.respondWith(fetch(event.request,{cache:'no-store'}));return}
   event.respondWith(fetch(event.request).then(response=>{const copy=response.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));return response}).catch(()=>caches.match(event.request).then(cached=>cached||caches.match('./index.html'))));
 });
