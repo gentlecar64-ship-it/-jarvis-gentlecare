@@ -100,6 +100,11 @@ export class GraphWorkflowEngine {
     for (const task of intervention.tasks) {
       if ([TASK_STATUS.RUNNING, TASK_STATUS.DONE, TASK_STATUS.CANCELLED].includes(task.status)) continue;
 
+      if (task.manualBlock) {
+        task.status = TASK_STATUS.BLOCKED;
+        continue;
+      }
+
       const dependenciesDone = task.dependencies.every((dependencyId) => {
         const dependency = this.getTask(intervention, dependencyId);
         return dependency.status === TASK_STATUS.DONE;
@@ -188,6 +193,7 @@ export class GraphWorkflowEngine {
     const task = this.getTask(intervention, taskId);
     assert(task.status !== TASK_STATUS.DONE, 'A completed task cannot be blocked');
     task.status = TASK_STATUS.BLOCKED;
+    task.manualBlock = true;
     task.blockReasons = [{
       code: reason.code || 'MANUAL_BLOCK',
       message: reason.message || String(reason),
@@ -195,6 +201,16 @@ export class GraphWorkflowEngine {
     }];
     this.record(intervention, 'task.blocked', { taskId, reason: clone(reason), operator: clone(operator) });
     return intervention;
+  }
+
+  unblockTask(intervention, taskId, operator = null, context = {}) {
+    const task = this.getTask(intervention, taskId);
+    assert(task.status === TASK_STATUS.BLOCKED, `Task ${taskId} is not blocked`);
+    task.manualBlock = false;
+    task.blockReasons = [];
+    task.status = TASK_STATUS.WAITING;
+    this.record(intervention, 'task.unblocked', { taskId, operator: clone(operator) });
+    return this.recalculate(intervention, context);
   }
 
   getReadyTasks(intervention, context = {}) {

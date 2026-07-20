@@ -1,5 +1,5 @@
-const CACHE='jarvis-gentlecare-v301';
-const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./gcos-comms.js','./jarvis-core.js','./mavik-insights.js','./mavik-updater.js','./mavik-update-settings.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css'];
+const CACHE='jarvis-gentlecare-v310';
+const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./gcos-comms.js','./jarvis-core.js','./mavik-insights.js','./mavik-updater.js','./mavik-update-settings.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css','./alpha/workshop/','./alpha/workshop/index.html','./alpha/workshop/workshop.css','./alpha/workshop/workshop-app.js','./core/application/workshop-orchestrator.js','./core/events/event-bus.js','./core/workflow/graph-workflow-engine.js','./core/interventions/intervention-engine.js','./core/resources/resource-manager.js','./core/decision/decision-engine.js'];
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
@@ -12,6 +12,11 @@ self.addEventListener('fetch',event=>{
       const contentType=response.headers.get('content-type')||'';
       if(!contentType.includes('text/html'))return response;
       let html=await response.text();
+      if(url.pathname.includes('/alpha/workshop/')){
+        const untouched=new Response(html,{status:response.status,statusText:response.statusText,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+        const copy=untouched.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+        return untouched;
+      }
       if(url.pathname.endsWith('/employe.html')&&!html.includes('atelier-responsive.css'))html=html.replace('</head>','<link rel="stylesheet" href="atelier-responsive.css?v=301"></head>');
       if(url.pathname.endsWith('/admin.html')){
         html=html.replace("['▤','Devis','Offres et validations','']","['▤','Devis','Offres et validations','devis.html']")
@@ -22,7 +27,7 @@ self.addEventListener('fetch',event=>{
           .replace("['🚘','Véhicules','Dossiers et photos','clients.html']","['🚘','Véhicules 360°','Historique et diagnostic Jarvis','vehicule.html']")
           .replace("['🎓','Formation','Compétences','']","['📊','Direction','Rentabilité et prévisions','direction.html']");
       }
-      html=html.replace(/GCOS v1\.0/g,'MAVIK GCOS v0.30.1').replace(/MAVIK GCOS v0\.30\.0/g,'MAVIK GCOS v0.30.1');
+      html=html.replace(/GCOS v1\.0/g,'MAVIK GCOS v0.31.0').replace(/MAVIK GCOS v0\.30\.[01]/g,'MAVIK GCOS v0.31.0');
       if(!html.includes('mavik-insights.js'))html=html.replace('</body>','<script src="mavik-insights.js?v=301"></script></body>');
       if(!html.includes('gcos-comms.js'))html=html.replace('</body>','<script src="gcos-comms.js?v=301"></script></body>');
       if(!html.includes('jarvis-core.js'))html=html.replace('</body>','<script src="jarvis-core.js?v=301"></script></body>');

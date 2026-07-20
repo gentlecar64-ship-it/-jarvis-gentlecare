@@ -1,0 +1,8 @@
+{
+  "name": "mavik-workshop-core",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/workshop-orchestrator.test.mjs"
+  }
+}
