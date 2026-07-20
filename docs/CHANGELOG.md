@@ -2,6 +2,26 @@
 
 Toutes les évolutions fonctionnelles, architecturales et documentaires significatives sont consignées ici.
 
+## 2026-07-20 — Version 0.33.0 · Atelier, procédures, rapports et propriétaire MAVIK
+
+### Ajouté
+- Procédure versionnée attachée à chaque dossier de la version Atelier en ligne, avec notes, preuves photographiques et progression.
+- Tâche « Rapport d’intervention » dans le graphe, entre les photos finales et la restitution.
+- Génération, ouverture, export JSON et validation de direction du rapport de test depuis l’Atelier public.
+- Routes serveur complètes pour la file atelier, la réception, l’affectation, les étapes, les preuves, le contrôle final et les rapports.
+- État de préparation du rapport : étapes manquantes, preuves manquantes, validation de direction et complétude documentaire.
+- Propriétaire unique du système MAVIK, choisi parmi les administrateurs actifs depuis le profil.
+- Fuseau `Europe/Paris`, créneau traversant minuit et jours autorisés pour les mises à jour automatiques.
+- Réponses Jarvis sur la prochaine étape atelier, la préparation du rapport, le propriétaire MAVIK et le créneau de mise à jour.
+
+### Décisions
+- Le propriétaire du système MAVIK est distinct du propriétaire d’un véhicule.
+- Le premier administrateur devient propriétaire initial ; lui seul peut transférer cette responsabilité.
+- Seul le propriétaire MAVIK modifie le calendrier d’installation automatique.
+- Le calendrier est conservé lors d’un transfert de propriété.
+- Une mise à jour est reportée si l’atelier est actif ; une sauvegarde locale précède toute installation.
+- Un rapport peut être généré en brouillon après validation de la procédure, mais ne peut être déclaré prêt à remettre s’il est incomplet.
+
 ## 2026-07-20 — Version 0.32.0 · Identité, procédures et Airtable
 
 ### Ajouté

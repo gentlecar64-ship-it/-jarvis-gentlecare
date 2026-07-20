@@ -50,7 +50,24 @@ function enrich(store, intervention) {
   const vehicle = resolve(store, 'vehicles', intervention.vehicleId) || {};
   const client = resolve(store, 'clients', intervention.clientId) || {};
   const steps = Array.isArray(intervention.procedureSteps) ? intervention.procedureSteps : [];
-  return { ...intervention, quote, vehicle, client, progress: progress(steps), canStart: intervention.workshopLocked !== true && steps.slice(0, 3).every((step) => step.status === 'Terminée'), canComplete: steps.length > 0 && steps.every((step) => !step.mandatory || step.status === 'Terminée') };
+  const missingSteps = steps.filter((step) => step.mandatory && step.status !== 'Terminée');
+  const missingEvidence = steps.filter((step) => step.evidenceRequired && step.status === 'Terminée' && !(step.evidence || []).length && !text(step.note));
+  const procedureComplete = steps.length > 0 && !missingSteps.length && !missingEvidence.length;
+  const directionApproved = intervention.procedureStatus === 'Validée par la direction';
+  return {
+    ...intervention, quote, vehicle, client, progress: progress(steps),
+    canStart: intervention.workshopLocked !== true && steps.slice(0, 3).every((step) => step.status === 'Terminée'),
+    canComplete: procedureComplete,
+    reportReadiness: {
+      procedureComplete, directionApproved,
+      missingSteps: missingSteps.map((step) => `${step.id} — ${step.label}`),
+      missingEvidence: missingEvidence.map((step) => `${step.id} — preuve ou note requise`),
+      canGenerate: procedureComplete && directionApproved,
+      canValidate: procedureComplete && directionApproved && intervention.reportCompleteness?.complete === true,
+      status: intervention.reportStatus || 'Non généré', url: intervention.reportUrl || '', version: intervention.reportVersion || 0,
+      missingReportFields: intervention.reportCompleteness?.missing || []
+    }
+  };
 }
 function ensureProcedure(store, intervention, quote = {}, vehicle = {}, user = {}) {
   const procedure = procedureFor(quote, vehicle, intervention);
@@ -216,6 +233,8 @@ function requestFinalValidation(store, reference, input = {}, user = {}) {
   let intervention = detail(store, reference, user);
   const missing = (intervention.procedureSteps || []).filter((step) => step.mandatory && step.status !== 'Terminée');
   if (missing.length) throw Object.assign(new Error('WORKSHOP_PROCEDURE_INCOMPLETE'), { status: 409, missingFields: missing.map((step) => `${step.id} — ${step.label}`) });
+  const missingEvidence = (intervention.procedureSteps || []).filter((step) => step.evidenceRequired && !(step.evidence || []).length && !text(step.note));
+  if (missingEvidence.length) throw Object.assign(new Error('WORKSHOP_EVIDENCE_REQUIRED'), { status: 409, missingFields: missingEvidence.map((step) => `${step.id} — ajouter une preuve ou une note de traçabilité`) });
   intervention = store.update('interventions', intervention.id, {
     procedureStatus: 'Contrôle final à valider', finalValidationRequestedAt: now(), finalValidationRequestedByUserId: user.id || '', finalValidationRequestedByName: user.name || '',
     finalNotes: text(input.finalNotes), workStatus: 'En attente', status: 'Contrôle final à valider', workstationReleased: true
@@ -238,6 +257,8 @@ function assertCompletable(store, reference, user = {}) {
   const intervention = detail(store, reference, user);
   const missing = (intervention.procedureSteps || []).filter((step) => step.mandatory && step.status !== 'Terminée');
   if (missing.length) throw Object.assign(new Error('WORKSHOP_PROCEDURE_INCOMPLETE'), { status: 409, missingFields: missing.map((step) => step.label) });
+  const missingEvidence = (intervention.procedureSteps || []).filter((step) => step.evidenceRequired && !(step.evidence || []).length && !text(step.note));
+  if (missingEvidence.length) throw Object.assign(new Error('WORKSHOP_EVIDENCE_REQUIRED'), { status: 409, missingFields: missingEvidence.map((step) => step.label) });
   if (intervention.procedureStatus !== 'Validée par la direction') throw Object.assign(new Error('WORKSHOP_DIRECTION_VALIDATION_REQUIRED'), { status: 409 });
   return intervention;
 }

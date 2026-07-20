@@ -7,6 +7,9 @@ const planning = require('./planning-service');
 const clientIntake = require('./client-intake');
 const intelligence = require('./jarvis-intelligence');
 const interventionReport = require('./intervention-report');
+const workshop = require('./workshop-service');
+const auth = require('./auth');
+const updater = require('./updater');
 const employeeFlow = require('./employee-flow');
 const leavePlanning = require('./leave-planning');
 const morale = require('./jarvis-morale');
@@ -77,6 +80,54 @@ function handleReport(store, input, text, user) {
     data: generated,
     links: [{ label: `Ouvrir le rapport ${generated.report.reportNumber}`, url: generated.htmlUrl }],
     actions: intent === 'validate' ? [] : [{ label: 'Valider le rapport', command: `Valide le rapport ${intervention.number}` }]
+  };
+}
+
+function handleWorkshopGovernance(store, text, user) {
+  const value = normalize(text);
+  if (/(propriétaire|proprietaire).*(mavik|système|systeme|gentlecare)|(mavik|système|systeme).*(propriétaire|proprietaire)/.test(value)) {
+    const owner = auth.systemOwner();
+    return {
+      type: 'system-owner',
+      answer: owner
+        ? `${owner.name} est le propriétaire unique du système MAVIK. Cette responsabilité est distincte de la propriété des véhicules. Le propriétaire choisit le créneau des mises à jour automatiques et peut transférer ce rôle à un autre administrateur actif.`
+        : 'Aucun propriétaire MAVIK actif n’est actuellement défini. Le premier administrateur actif doit être désigné.',
+      data: { owner }, links: [{ label: 'Gérer le propriétaire et les horaires', url: '/profile' }]
+    };
+  }
+  if (/mise.?à.?jour|mise a jour|actualisation/.test(value) && /(horaire|créneau|creneau|quand|automatique|prochaine)/.test(value)) {
+    const schedule = updater.updateWindowStatus();
+    const names = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+    return {
+      type: 'update-schedule',
+      answer: `Les mises à jour sont contrôlées toutes les 15 minutes. Leur installation automatique est ${schedule.automaticInstall ? 'activée' : 'désactivée'} et autorisée de ${schedule.start} à ${schedule.end}, fuseau ${schedule.timeZone}, les ${schedule.days.map((day) => names[day]).join(', ')}. ${schedule.allowed ? 'Le créneau est ouvert maintenant.' : 'Le créneau est fermé maintenant.'} Ce réglage appartient à ${schedule.ownerName || 'la configuration par défaut'}.`,
+      data: { schedule }, links: [{ label: 'Voir les horaires', url: '/profile' }]
+    };
+  }
+  if (!/atelier|procédure|procedure|étape|etape|rapport/.test(value)) return null;
+  if (!/(où en|ou en|prochaine|suivante|reste|prêt|pret|bloqu|avancement|statut|quelle)/.test(value)) return null;
+  const intervention = resolveIntervention(store, user, text);
+  if (!intervention) return { type: 'workshop-context-missing', answer: 'Je n’ai pas identifié l’intervention. Ouvrez le dossier atelier ou donnez-moi son numéro GC.', links: [{ label: 'Ouvrir l’atelier', url: '/workshop' }] };
+  const detail = workshop.detail(store, intervention.id, user);
+  const remaining = (detail.procedureSteps || []).filter((step) => step.status !== 'Terminée');
+  const readiness = detail.reportReadiness || {};
+  if (/rapport/.test(value)) {
+    const missing = [...(readiness.missingSteps || []), ...(readiness.missingEvidence || []), ...(readiness.missingReportFields || [])];
+    return {
+      type: 'workshop-report-readiness',
+      answer: readiness.status && readiness.status !== 'Non généré'
+        ? `Le rapport de ${detail.number} est au statut « ${readiness.status} »${readiness.version ? `, version ${readiness.version}.0` : ''}. ${missing.length ? `Il reste à compléter : ${missing.slice(0, 6).join(' ; ')}.` : readiness.directionApproved ? 'La procédure et le contrôle de direction sont validés.' : 'Le contrôle de direction reste requis.'}`
+        : `Le rapport de ${detail.number} n’est pas encore généré. ${remaining.length ? `La prochaine étape est ${remaining[0].id} — ${remaining[0].label}.` : readiness.directionApproved ? 'La procédure est validée ; le brouillon peut être généré.' : 'La procédure est terminée mais le contrôle de direction reste requis.'}`,
+      data: { interventionId: detail.id, readiness }, links: [{ label: 'Ouvrir le dossier atelier', url: '/workshop' }]
+    };
+  }
+  const next = remaining[0];
+  return {
+    type: 'workshop-next-step',
+    answer: next
+      ? `${detail.number} est à ${detail.progress?.percent || 0} %. La prochaine étape obligatoire est ${next.id} — ${next.label}.${next.evidenceRequired ? ' Ajoutez une photo ou une note de traçabilité avant de la clôturer.' : ''}`
+      : readiness.directionApproved ? `${detail.number} : toutes les étapes sont terminées et le contrôle de direction est validé. Le rapport peut être préparé.` : `${detail.number} : toutes les étapes sont terminées. Il faut maintenant demander ou obtenir le contrôle final de la direction.`,
+    data: { interventionId: detail.id, nextStep: next || null, readiness }, links: [{ label: 'Continuer dans l’atelier', url: '/workshop' }]
   };
 }
 
@@ -218,6 +269,9 @@ function execute(store, input = {}) {
 
   const reportResult = handleReport(store, enrichedInput, text, user);
   if (reportResult) return finish(store, enrichedInput, reportResult);
+
+  const workshopResult = handleWorkshopGovernance(store, text, user);
+  if (workshopResult) return finish(store, enrichedInput, workshopResult);
 
   const leaveResult = handleLeave(store, text, user);
   if (leaveResult) return finish(store, enrichedInput, leaveResult);

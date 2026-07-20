@@ -64,6 +64,15 @@ Chaque dossier client doit regrouper :
 - facture ;
 - historique des interventions.
 
+Règles MAVIK validées le 20 juillet 2026 :
+
+- chaque dossier atelier reçoit une procédure versionnée correspondant à sa catégorie ;
+- les étapes obligatoires et leur preuve ou note de traçabilité bloquent le contrôle final si elles manquent ;
+- le rapport est généré après le contrôle de direction et reste en brouillon tant que sa complétude n’est pas validée ;
+- le propriétaire du système MAVIK est unique et distinct du propriétaire d’un véhicule ;
+- le premier administrateur est propriétaire initial et peut transférer ce rôle à un autre administrateur actif ;
+- seul le propriétaire MAVIK définit les horaires de mise à jour automatique ; une sauvegarde précède l’installation et l’atelier actif la reporte.
+
 Après intervention industrielle, prévoir :
 
 - une étiquette de contrôle avec mois, année et mention « effectué par GentleCarE » ;

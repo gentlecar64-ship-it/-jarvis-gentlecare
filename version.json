@@ -1,15 +1,14 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.32.0",
+  "version": "0.33.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T00:25:00+02:00",
+  "releasedAt": "2026-07-21T01:30:00+02:00",
   "notes": [
-    "Identité officielle GentleCarE intégrée au tableau de bord et à l’atelier",
-    "Bibliothèque en ligne des huit familles de procédures GentleCarE",
-    "Cockpit Airtable public sans exposition de secret",
-    "Synchronisation serveur Airtable bidirectionnelle contrôlée",
-    "Contrôle du schéma Airtable et rapprochement anti-doublon",
-    "Politique Airtable central : import avant publication locale",
-    "Export automatique des catalogues procédures et Airtable"
+    "Atelier V1 relié aux procédures GentleCarE et aux preuves d’exécution",
+    "Rapport d’intervention généré, contrôlé et validé depuis le dossier atelier",
+    "Propriétaire système unique et transférable entre administrateurs actifs",
+    "Fenêtre de mise à jour automatique pilotée par le propriétaire et différée si l’atelier est actif",
+    "Contexte atelier, rapports et mises à jour disponible dans Jarvis",
+    "Documentation de transmission et décisions d’architecture actualisées"
   ]
 }

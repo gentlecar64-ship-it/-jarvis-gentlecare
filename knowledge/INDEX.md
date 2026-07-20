@@ -16,6 +16,7 @@
 
 - [`../docs/DOSSIER_TRANSMISSION_MAVIK.md`](../docs/DOSSIER_TRANSMISSION_MAVIK.md) — dossier de transmission et checklist de reprise.
 - [`adr/ADR-0002-Consolidation-Core-Orchestration.md`](adr/ADR-0002-Consolidation-Core-Orchestration.md) — décision de consolidation entre domaine, plateforme et façade applicative.
+- [`adr/ADR-0004-Atelier-Rapport-Proprietaire-Mises-a-jour.md`](adr/ADR-0004-Atelier-Rapport-Proprietaire-Mises-a-jour.md) — chaîne atelier/procédure/rapport et gouvernance du propriétaire MAVIK.
 
 ## Règle de chargement
 
