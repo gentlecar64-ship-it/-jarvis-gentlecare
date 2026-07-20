@@ -151,6 +151,8 @@
     }
     const workshopSide = addLink(sideNav, WORKSHOP_URL, '<b>🛠</b>Atelier');
     if (workshopSide) workshopSide.classList.add('workshop-menu');
+    addLink(sideNav, '/procedures', '<b>☷</b>Procédures');
+    addLink(sideNav, '/airtable', '<b>↔</b>Airtable');
 
     const mobile = document.querySelector('.mobile');
     if (mobile) {
@@ -158,6 +160,7 @@
       if (planning) planning.href = '/planning';
       addLink(mobile, '/quotes', '<b>€</b>Devis', 'prepend');
       addLink(mobile, WORKSHOP_URL, '<b>🛠</b>Atelier', 'prepend');
+      addLink(mobile, '/procedures', '<b>☷</b>Procédures', 'prepend');
     }
     const heroButtons = document.querySelector('.hero-buttons');
     if (heroButtons && !heroButtons.querySelector('a[href="/quotes"]')) {
@@ -175,6 +178,8 @@
     if (quick && !quick.querySelector(`a[href="${WORKSHOP_URL}"]`)) {
       const workshop = document.createElement('a'); workshop.href = WORKSHOP_URL; workshop.className = 'button'; workshop.textContent = '🛠 Procédure atelier'; quick.prepend(workshop);
     }
+    addLink(quick, '/procedures', '☷ Référentiel procédures', 'prepend');
+    addLink(quick, '/airtable', '↔ Cockpit Airtable', 'prepend');
     removeRepairFromOperationalHeaders();
     installClock();
     installLegalAndSessionFooter();

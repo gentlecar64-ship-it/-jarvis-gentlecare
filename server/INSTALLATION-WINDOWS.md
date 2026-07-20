@@ -13,7 +13,8 @@ Dans le dossier `server` :
 
 1. Copier `.env.example`.
 2. Renommer la copie en `.env`.
-3. Remplacer `pat_VOTRE_JETON_AIRTABLE` par le jeton Airtable réel.
+3. Créer un jeton limité à la base GentleCarE avec `data.records:read`, `data.records:write` et `schema.bases:read`.
+4. Remplacer `pat_VOTRE_JETON_AIRTABLE` par le jeton Airtable réel.
 
 Le fichier `.env` ne doit jamais être publié sur GitHub ni transmis par message.
 
@@ -33,6 +34,8 @@ Tester ensuite dans un navigateur :
 `http://127.0.0.1:4782/health`
 
 La réponse doit contenir `airtableConfigured: true`.
+
+Ouvrir ensuite `http://127.0.0.1:4782/airtable` avec le compte administrateur pour contrôler les tables avant la première importation.
 
 ## 3. Démarrage automatique avec Windows
 

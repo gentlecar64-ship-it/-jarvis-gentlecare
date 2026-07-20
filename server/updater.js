@@ -94,14 +94,14 @@ function validateInstalledFiles() {
     'server.js','auth.js','jarvis.js','jarvis-extended.js','jarvis-knowledge.js','jarvis-intelligence.js','jarvis-morale.js','emergency-alert.js','employee-flow.js','leave-planning.js',
     'quote-workflow.js','quote-workflow-current.js','quote-workflow-reference.js','quote-studio.js','quote-studio-service.js','quote-requests.js','tariff-catalog.js','workshop-procedures.js','workshop-service.js',
     'planning.js','planning-service.js','calendar-bridge.js','startup-status.js','intervention-report.js','client-intake.js','reputation.js','internal-messaging.js',
-    'public/jarvis-quote.js','public/reputation-client.js','public/command-dock.js','public/navigation-enhancer.js','public/quote-studio-client.js','public/quote-visual-preview.js','public/planning-client.js','public/workshop-client.js','public/generated/workshop/workshop-client.js','public/morale-client.js',
+    'public/jarvis-quote.js','public/reputation-client.js','public/command-dock.js','public/navigation-enhancer.js','public/quote-studio-client.js','public/quote-visual-preview.js','public/planning-client.js','public/workshop-client.js','public/generated/workshop/workshop-client.js','public/morale-client.js','public/airtable-client.js','public/procedures-client.js',
     'airtable-sync.js','updater.js','diagnostics.js','design-installer.js','launcher-check.js','restart-helper.js'
   ];
   for (const file of scripts) execFileSync(process.execPath, ['--check', path.join(__dirname, file)], { cwd: __dirname, windowsHide: true, stdio: 'pipe', timeout: 15000 });
   const required = [
     path.join(__dirname,'public','alpha.template.html'),path.join(__dirname,'public','login.template.html'),path.join(__dirname,'public','profile.template.html'),path.join(__dirname,'public','jarvis.template.html'),
     path.join(__dirname,'public','quotes.html'),path.join(__dirname,'public','planning.html'),path.join(__dirname,'public','jarvis-quote.js'),path.join(__dirname,'public','quote-studio-client.js'),path.join(__dirname,'public','quote-visual-preview.js'),
-    path.join(__dirname,'public','planning-client.js'),path.join(__dirname,'public','navigation-enhancer.js'),path.join(__dirname,'public','morale-client.js'),path.join(__dirname,'public','generated','legal','index.html'),path.join(__dirname,'assets','logo','01.txt')
+    path.join(__dirname,'public','planning-client.js'),path.join(__dirname,'public','navigation-enhancer.js'),path.join(__dirname,'public','morale-client.js'),path.join(__dirname,'public','procedures.html'),path.join(__dirname,'public','airtable.html'),path.join(__dirname,'public','brand-shell.css'),path.join(__dirname,'public','generated','legal','index.html'),path.join(ROOT_DIR,'assets','brand','gentlecare-logo.png'),path.join(ROOT_DIR,'assets','brand','gentlecare-banner.jpg'),path.join(__dirname,'assets','logo','01.txt')
   ];
   for (const file of required) if (!fs.existsSync(file)) throw new Error(`UPDATE_FILE_MISSING: ${path.relative(ROOT_DIR, file)}`);
 }

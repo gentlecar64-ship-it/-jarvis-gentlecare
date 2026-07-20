@@ -31,7 +31,8 @@ function gitProbe() { return { version: execFileSync('git', ['--version'], { cwd
 function validateGeneratedPage(filePath) {
   if (!fs.existsSync(filePath)) throw new Error(`INTERFACE_MISSING: ${path.basename(filePath)}`);
   const content = fs.readFileSync(filePath, 'utf8');
-  if (!content.includes('data:image/png;base64,') || !content.includes('mavik-design-lock')) throw new Error(`DESIGN_LOCK_MISSING: ${path.basename(filePath)}`);
+  const hasOfficialLogo = content.includes('/assets/official-logo.png') || content.includes('data:image/png;base64,');
+  if (!hasOfficialLogo || !content.includes('mavik-design-lock')) throw new Error(`DESIGN_LOCK_MISSING: ${path.basename(filePath)}`);
   return content.length;
 }
 function installDesign() {

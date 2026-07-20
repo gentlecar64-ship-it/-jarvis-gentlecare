@@ -2,6 +2,27 @@
 
 Toutes les évolutions fonctionnelles, architecturales et documentaires significatives sont consignées ici.
 
+## 2026-07-20 — Version 0.32.0 · Identité, procédures et Airtable
+
+### Ajouté
+- Logo officiel GentleCarE et bandeau automobile/moto sur les interfaces publiques prioritaires.
+- Bibliothèque en ligne des huit familles de procédures et de toutes leurs étapes.
+- Recherche, filtrage atelier/étude préalable et impression du référentiel.
+- Cockpit Airtable public décrivant le modèle, l’ordre de synchronisation et l’état de configuration sans exposer de secret.
+- Cockpit Airtable authentifié côté serveur avec test de connexion, contrôle du schéma, import et synchronisation complète.
+- Import Airtable paginé, rapprochement anti-doublon et synchronisation bidirectionnelle.
+- Génération automatique des catalogues publics procédures et schéma Airtable depuis le code de référence.
+- Test de fumée dédié à la synchronisation Airtable bidirectionnelle.
+
+### Décisions
+- Airtable reste la source de vérité centrale pour les données métier partagées.
+- Une synchronisation complète importe Airtable avant de publier les données locales.
+- En cas d’échec d’import, la publication locale est bloquée afin d’éviter l’écrasement de la base centrale.
+- Le jeton Airtable reste exclusivement dans l’environnement privé du serveur MAVIK.
+
+### Limite connue
+- Le jeton réel Airtable n’est pas encore installé : la démonstration publique affiche volontairement « configuration requise ».
+
 ## 2026-07-20 — Version 0.31.0 · Atelier V1 testable
 
 ### Ajouté

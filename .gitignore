@@ -1,0 +1,19 @@
+# Secrets locaux
+server/.env
+
+# Données d’exécution et sauvegardes locales
+server/data/*.json
+server/data/**/*.json
+server/logs/
+server/backups/
+
+# Documents et médias générés pendant les essais
+server/public/generated/photos/
+server/public/generated/quote-intake/
+server/public/generated/quotes/
+server/public/generated/reports/
+server/public/profile.html
+
+# Dépendances
+node_modules/
+server/node_modules/

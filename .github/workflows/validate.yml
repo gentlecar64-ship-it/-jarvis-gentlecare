@@ -56,6 +56,8 @@ jobs:
         run: node tests/emergency-quote-request-calendar-smoke.js
       - name: Workshop online procedure smoke test
         run: node tests/workshop-online-smoke.js
+      - name: Airtable bidirectional synchronization smoke test
+        run: node tests/airtable-sync-smoke.js
       - name: Continuous session legal quote and admin controls smoke test
         run: node tests/continuous-session-legal-admin-smoke.js
       - name: Photo industrial delivery and workshop day smoke test
