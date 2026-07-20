@@ -13,13 +13,16 @@ const PROFILE_TARGET = path.join(__dirname, 'public', 'profile.html');
 const JARVIS_TEMPLATE = path.join(__dirname, 'public', 'jarvis.template.html');
 const JARVIS_TARGET = path.join(__dirname, 'public', 'jarvis.html');
 const PARTS = path.join(__dirname, 'assets', 'logo');
-const DESIGN_VERSION = 'gentlecare-pc-validated-v1';
+const DESIGN_VERSION = 'gentlecare-official-brand-v2';
 const HOME_UPDATE_TEST_BUTTON = '<button onclick="testUpdate()">Tester la mise à jour automatique</button>';
 let announced = false;
 
 function iphoneUrls(port = Number(process.env.GCOS_PORT || 4782)) {
   const urls = [];
-  for (const addresses of Object.values(os.networkInterfaces())) {
+  let interfaces = {};
+  try { interfaces = os.networkInterfaces() || {}; }
+  catch { return urls; }
+  for (const addresses of Object.values(interfaces)) {
     for (const address of addresses || []) {
       if (address.family === 'IPv4' && !address.internal && !address.address.startsWith('169.254.')) urls.push(`http://${address.address}:${port}/iphone`);
     }

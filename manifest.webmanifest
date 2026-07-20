@@ -1,15 +1,21 @@
 {
-  "name": "GCOS — GentleCarE Operating System",
-  "short_name": "GCOS",
+  "name": "MAVIK — GentleCarE Operating System",
+  "short_name": "MAVIK",
   "description": "Système d’exploitation opérationnel de GentleCarE",
   "lang": "fr",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0d0f13",
-  "theme_color": "#111318",
+  "background_color": "#03111b",
+  "theme_color": "#03111b",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "assets/brand/gentlecare-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
     {
       "src": "icon.svg",
       "sizes": "any",

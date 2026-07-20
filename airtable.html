@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#03111b">
+  <title>MAVIK — Cockpit Airtable</title>
+  <link rel="stylesheet" href="./assets/brand/mavik-brand.css">
+</head>
+<body>
+  <header class="brandbar">
+    <a class="brand-home" href="./index.html"><img src="./assets/brand/gentlecare-logo.png" alt="GentleCarE"><span><strong>MAVIK</strong><small>GentleCarE Operating System</small></span></a>
+    <nav class="topnav" aria-label="Navigation principale">
+      <a href="./index.html">Tableau de bord</a>
+      <a href="./alpha/workshop/">Atelier</a>
+      <a href="./procedures.html">Procédures</a>
+      <a class="active" href="./airtable.html">Airtable</a>
+      <a href="./planning.html">Planning</a>
+      <a href="./gestion.html#clients">Clients</a>
+    </nav>
+    <span class="status-pill warning" id="headerState">CONFIGURATION REQUISE</span>
+  </header>
+
+  <main class="page">
+    <section class="brand-hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Base centrale GentleCarE</p>
+        <h1>Cockpit Airtable</h1>
+        <p>Contrôle du modèle de données, de la passerelle sécurisée et de la synchronisation bidirectionnelle MAVIK ↔ Airtable.</p>
+        <div class="hero-actions"><button class="button primary" id="testConnection" type="button">Tester la connexion</button><button class="button" id="checkSchema" type="button">Contrôler les tables</button><button class="button" id="runSync" type="button">Synchronisation complète</button></div>
+      </div>
+    </section>
+
+    <section class="metrics">
+      <article class="metric"><span>Tables synchronisées</span><strong id="tableCount">—</strong></article>
+      <article class="metric"><span>Champs mappés</span><strong id="fieldCount">—</strong></article>
+      <article class="metric"><span>Sens</span><strong>↔</strong></article>
+      <article class="metric"><span>Source centrale</span><strong>Airtable</strong></article>
+    </section>
+
+    <section class="two-column">
+      <div class="stack">
+        <article class="card">
+          <div class="card-label">État réel de la passerelle</div>
+          <h2 id="stateTitle">Contrôle en cours…</h2>
+          <div class="sync-state" id="syncState"><span class="light"></span><div><strong id="stateMessage">Lecture de la configuration</strong><div class="muted" id="stateDetail"></div></div></div>
+          <p class="muted" id="securityMessage">La clé Airtable ne doit jamais être placée dans cette page, dans GitHub Pages ou dans le code source. Elle reste exclusivement dans l’environnement privé du serveur MAVIK.</p>
+        </article>
+
+        <article class="card">
+          <div class="card-label">Architecture décidée</div>
+          <h2>Airtable reste la base centrale</h2>
+          <div class="flow">
+            <div class="flow-step"><b>1 · Airtable</b><span>Données métier de référence et relations entre dossiers.</span></div>
+            <div class="flow-step"><b>2 · Passerelle MAVIK</b><span>Clé privée, contrôle du schéma, import puis export.</span></div>
+            <div class="flow-step"><b>3 · Interfaces</b><span>Atelier, planning, CRM, documents et indicateurs.</span></div>
+          </div>
+          <div class="notice ok" style="margin-top:12px">Politique de conflit V1 : MAVIK importe d’abord Airtable, puis publie les données locales non présentes. Si l’import échoue, l’export est stoppé pour éviter d’écraser la base centrale.</div>
+        </article>
+
+        <article class="card">
+          <div class="card-label">Spécification opérationnelle</div>
+          <h2>Tables et correspondances</h2>
+          <div id="schemaTables"></div>
+        </article>
+      </div>
+
+      <aside class="stack">
+        <article class="card">
+          <div class="card-label">Activation sécurisée</div>
+          <h2>Ce qu’il reste à fournir</h2>
+          <div class="action-list">
+            <div class="action-row"><b>1</b><div><strong>Jeton personnel Airtable</strong><div class="muted">Scopes recommandés : données en lecture/écriture et schéma en lecture, limité à la base GentleCarE.</div></div></div>
+            <div class="action-row"><b>2</b><div><strong>Installation sur le serveur</strong><div class="muted"><code>AIRTABLE_TOKEN</code> dans <code>server/.env</code>. Ne pas l’envoyer dans une page publique.</div></div></div>
+            <div class="action-row"><b>3</b><div><strong>Contrôle puis première importation</strong><div class="muted">Test de connexion, contrôle des 7 tables, sauvegarde, import Airtable, export local.</div></div></div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-label">Procédure de synchronisation</div>
+          <h2>Ordre contrôlé</h2>
+          <ol class="steps" id="syncOrder"></ol>
+        </article>
+
+        <article class="card">
+          <div class="card-label">Journal du cockpit</div>
+          <h2>Dernière opération</h2>
+          <p class="muted" id="lastOperation">Aucune opération exécutée depuis cette page.</p>
+          <a class="button" href="./procedures.html">Voir les procédures atelier</a>
+        </article>
+      </aside>
+    </section>
+    <div class="footer">MAVIK · Connexion Airtable sécurisée · aucune clé stockée dans le navigateur</div>
+  </main>
+  <script src="./airtable-page.js" defer></script>
+</body>
+</html>

@@ -57,7 +57,7 @@ if (-not (Test-Path $envFile)) {
 }
 
 $envContent = Get-Content $envFile -Raw
-if ($envContent -match 'AIRTABLE_TOKEN=\s*$' -or $envContent -match 'AIRTABLE_TOKEN=CHANGE_ME') {
+if ($envContent -match 'AIRTABLE_TOKEN=\s*$' -or $envContent -match 'AIRTABLE_TOKEN=(CHANGE_ME|pat_VOTRE_JETON_AIRTABLE)') {
   Write-Host "`nLe jeton Airtable doit être ajouté dans :" -ForegroundColor Yellow
   Write-Host $envFile -ForegroundColor White
   Write-Host 'La ligne doit ressembler à : AIRTABLE_TOKEN=patXXXXXXXX' -ForegroundColor Yellow
@@ -66,7 +66,7 @@ if ($envContent -match 'AIRTABLE_TOKEN=\s*$' -or $envContent -match 'AIRTABLE_TO
 }
 
 $envContent = Get-Content $envFile -Raw
-if ($envContent -notmatch 'AIRTABLE_TOKEN=pat') {
+if ($envContent -notmatch 'AIRTABLE_TOKEN=pat' -or $envContent -match 'pat_VOTRE_JETON_AIRTABLE') {
   Write-Host '[ATTENTION] Aucun jeton Airtable valide détecté. Le serveur fonctionnera, mais Airtable restera indisponible.' -ForegroundColor Yellow
 }
 

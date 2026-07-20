@@ -51,6 +51,7 @@ const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN || '';
 const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN || '*';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const LOGO_DIR = path.join(__dirname, 'assets', 'logo');
+const BRAND_DIR = path.resolve(__dirname, '..', 'assets', 'brand');
 const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications', 'tasks', 'stockItems', 'quotes', 'quoteRequests', 'documents', 'photos', 'planningBlocks', 'workSessions', 'leaveRequests', 'externalCalendarEvents']);
 const diagnosticDependencies = { localStore, airtableSync, updater, backup };
 const HOME_PAGES = new Set(['dashboard', 'jarvis', 'quotes', 'planning', 'profile']);
@@ -94,6 +95,8 @@ function servePublicAsset(res, relativePath) {
   return binary(res, 200, fs.readFileSync(target), contentType(target));
 }
 function officialLogoBuffer() {
+  const officialFile = path.join(BRAND_DIR, 'gentlecare-logo.png');
+  if (fs.existsSync(officialFile)) return fs.readFileSync(officialFile);
   const parts = fs.readdirSync(LOGO_DIR).filter((name) => /^\d+\.txt$/.test(name)).sort();
   if (!parts.length) throw Object.assign(new Error('OFFICIAL_LOGO_MISSING'), { status: 404 });
   const base64 = parts.map((name) => fs.readFileSync(path.join(LOGO_DIR, name), 'utf8').trim()).join('');
@@ -112,7 +115,7 @@ async function readBody(req) {
   catch { throw Object.assign(new Error('GCOS_INVALID_JSON'), { status: 400 }); }
 }
 function requireAirtable(res) {
-  if (AIRTABLE_TOKEN) return true;
+  if (airtableSync.configured()) return true;
   json(res, 503, { error: 'AIRTABLE_NOT_CONFIGURED' });
   return false;
 }
@@ -170,12 +173,18 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
   try {
     if (req.method === 'GET' && url.pathname === '/login') return servePage(res, 'login.html', 'Connexion introuvable');
+    if (req.method === 'GET' && url.pathname === '/assets/official-logo.png') return binary(res, 200, officialLogoBuffer(), 'image/png');
+    if (req.method === 'GET' && url.pathname === '/assets/gentlecare-banner.jpg') {
+      const banner = path.join(BRAND_DIR, 'gentlecare-banner.jpg');
+      if (!fs.existsSync(banner)) return json(res, 404, { error: 'BRAND_BANNER_NOT_FOUND' });
+      return binary(res, 200, fs.readFileSync(banner), 'image/jpeg');
+    }
     if (req.method === 'GET' && url.pathname === '/calendar/mavik.ics' && calendarBridge.tokenValid(url.searchParams.get('token'))) {
       return binary(res, 200, calendarBridge.buildIcs(localStore), 'text/calendar; charset=utf-8', { 'Content-Disposition': 'inline; filename="MAVIK-GentleCarE.ics"' });
     }
     if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
       service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
-      airtableConfigured: Boolean(AIRTABLE_TOKEN), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(), diagnostics: diagnostics.readLastReport(),
+      airtableConfigured: airtableSync.configured(), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(), diagnostics: diagnostics.readLastReport(),
       quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, quoteStudio: { enabled: true, highValueThreshold: quoteStudio.HIGH_VALUE_THRESHOLD, tariffCatalog: true, motorcycle: true }, quoteRequests: { enabled: true, directionValidation: true },
       planning: { enabled: true, capacity: planning.WORKSHOP_CAPACITY, employeeEarlyStart: true, employeeDelay: false, saturdayClosed: true, sundayClosed: true, calendarBridge: true },
       emergencyAlert: { enabled: true, synchronized: true }, employeeFlow: { enabled: true }, leavePlanning: { enabled: true, principleThenValidation: true }, morale: { enabled: true }, reputation: { enabled: true }, internalMessaging: { enabled: true, multipleRecipients: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
@@ -185,13 +194,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req)); result.user = mergedUser(result.user); return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) }); }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() }); }
 
-    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning'];
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/procedures', '/airtable'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
 
-    if (req.method === 'GET' && url.pathname === '/assets/official-logo.png') return binary(res, 200, officialLogoBuffer(), 'image/png');
-    for (const asset of ['jarvis-quote.js', 'reputation-client.js', 'command-dock.js', 'navigation-enhancer.js', 'quote-studio-client.js', 'planning-client.js', 'morale-client.js']) if (req.method === 'GET' && url.pathname === `/assets/${asset}`) return servePublicAsset(res, asset);
+    for (const asset of ['jarvis-quote.js', 'reputation-client.js', 'command-dock.js', 'navigation-enhancer.js', 'quote-studio-client.js', 'planning-client.js', 'morale-client.js', 'airtable-client.js', 'procedures-client.js', 'brand-shell.css']) if (req.method === 'GET' && url.pathname === `/assets/${asset}`) return servePublicAsset(res, asset);
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
@@ -199,6 +207,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
     if (req.method === 'GET' && url.pathname === '/quotes') return servePage(res, 'quotes.html', 'Atelier devis introuvable', true);
     if (req.method === 'GET' && url.pathname === '/planning') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'planning.html', 'Planning introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/procedures') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'procedures.html', 'Bibliothèque de procédures introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/airtable') { auth.requirePermission(user, 'dashboard.read'); return servePage(res, 'airtable.html', 'Cockpit Airtable introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/calendar/mavik.ics') return binary(res, 200, calendarBridge.buildIcs(localStore), 'text/calendar; charset=utf-8', { 'Content-Disposition': 'attachment; filename="MAVIK-GentleCarE.ics"' });
     if (req.method === 'GET' && url.pathname === '/api/auth/me') return json(res, 200, { user: mergedUser(user), device: context.type, deviceContext: context });
 
@@ -296,7 +306,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/insights/events') { auth.requirePermission(user, 'jarvis.use'); const result = insightsStore.appendBatch((await readBody(req)).events, user); return json(res, 202, { ...result, stored: insightsStore.status().storedEvents }); }
     if (req.method === 'GET' && url.pathname === '/api/sync/status') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, airtableSync.status()); }
     if (req.method === 'POST' && url.pathname === '/api/sync/test') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, await airtableSync.testConnection()); }
+    if (req.method === 'GET' && url.pathname === '/api/sync/schema') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, await airtableSync.schemaStatus()); }
+    if (req.method === 'POST' && url.pathname === '/api/sync/pull-all') { auth.requirePermission(user, 'users.manage'); const body = await readBody(req); return json(res, 200, await airtableSync.pullAll(localStore, Array.isArray(body.collections) ? body.collections : undefined)); }
     if (req.method === 'POST' && url.pathname === '/api/sync/push-all') { auth.requirePermission(user, 'users.manage'); const body = await readBody(req); return json(res, 200, await airtableSync.pushAll(localStore, Array.isArray(body.collections) ? body.collections : undefined)); }
+    if (req.method === 'POST' && url.pathname === '/api/sync/run') { auth.requirePermission(user, 'users.manage'); const body = await readBody(req); return json(res, 200, await airtableSync.syncAll(localStore, Array.isArray(body.collections) ? body.collections : undefined)); }
     const syncRecordMatch = url.pathname.match(/^\/api\/sync\/([^/]+)\/([^/]+)$/);
     if (syncRecordMatch && req.method === 'POST') { const collection = decodeURIComponent(syncRecordMatch[1]); const id = decodeURIComponent(syncRecordMatch[2]); auth.requirePermission(user, auth.collectionPermission(collection, 'PATCH')); const record = localStore.list(collection).find((item) => item.id === id); if (!record) return json(res, 404, { error: 'GCOS_RECORD_NOT_FOUND' }); return json(res, 200, await airtableSync.push(collection, record, localStore)); }
 

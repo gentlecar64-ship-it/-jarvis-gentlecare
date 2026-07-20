@@ -1,0 +1,412 @@
+{
+  "version": "1.0",
+  "generatedAt": "2026-07-20",
+  "source": "server/airtable-sync.js",
+  "conflictPolicy": "AIRTABLE_WINS_THEN_PUSH_LOCAL",
+  "syncOrder": [
+    "clients",
+    "vehicles",
+    "quotes",
+    "interventions",
+    "tasks",
+    "stockItems",
+    "documents"
+  ],
+  "tables": [
+    {
+      "collection": "clients",
+      "table": "Clients",
+      "fields": [
+        {
+          "local": "name",
+          "remote": "Nom complet",
+          "type": "field"
+        },
+        {
+          "local": "email",
+          "remote": "Email",
+          "type": "field"
+        },
+        {
+          "local": "phone",
+          "remote": "Téléphone",
+          "type": "field"
+        },
+        {
+          "local": "notes",
+          "remote": "Notes client",
+          "type": "field"
+        },
+        {
+          "local": "status",
+          "remote": "Statut client",
+          "type": "field"
+        },
+        {
+          "local": "source",
+          "remote": "Origine du contact",
+          "type": "field"
+        },
+        {
+          "local": "clientType",
+          "remote": "Type de client",
+          "type": "field"
+        }
+      ],
+      "links": [],
+      "naturalKeys": [
+        [
+          "email"
+        ],
+        [
+          "phone"
+        ],
+        [
+          "name"
+        ]
+      ]
+    },
+    {
+      "collection": "vehicles",
+      "table": "Véhicules",
+      "fields": [
+        {
+          "local": "label",
+          "remote": "Véhicule",
+          "type": "field"
+        },
+        {
+          "local": "brand",
+          "remote": "Marque",
+          "type": "field"
+        },
+        {
+          "local": "model",
+          "remote": "Modèle",
+          "type": "field"
+        },
+        {
+          "local": "year",
+          "remote": "Année",
+          "type": "field"
+        },
+        {
+          "local": "mileage",
+          "remote": "Kilométrage",
+          "type": "field"
+        },
+        {
+          "local": "registration",
+          "remote": "Immatriculation",
+          "type": "field"
+        },
+        {
+          "local": "vin",
+          "remote": "VIN",
+          "type": "field"
+        },
+        {
+          "local": "history",
+          "remote": "Historique / état",
+          "type": "field"
+        }
+      ],
+      "links": [
+        {
+          "local": "clientId",
+          "remote": "Client",
+          "type": "link"
+        }
+      ],
+      "naturalKeys": [
+        [
+          "vin"
+        ],
+        [
+          "registration"
+        ],
+        [
+          "label"
+        ]
+      ]
+    },
+    {
+      "collection": "quotes",
+      "table": "Dossiers et devis",
+      "fields": [
+        {
+          "local": "number",
+          "remote": "Dossier",
+          "type": "field"
+        },
+        {
+          "local": "status",
+          "remote": "Statut",
+          "type": "field"
+        },
+        {
+          "local": "totalTtc",
+          "remote": "Montant TTC",
+          "type": "field"
+        },
+        {
+          "local": "requestDate",
+          "remote": "Date de demande",
+          "type": "field"
+        },
+        {
+          "local": "quoteDate",
+          "remote": "Date du devis",
+          "type": "field"
+        },
+        {
+          "local": "nextAction",
+          "remote": "Prochaine action",
+          "type": "field"
+        },
+        {
+          "local": "followUpDate",
+          "remote": "Échéance de suivi",
+          "type": "field"
+        },
+        {
+          "local": "notes",
+          "remote": "Notes",
+          "type": "field"
+        }
+      ],
+      "links": [
+        {
+          "local": "clientId",
+          "remote": "Client",
+          "type": "link"
+        },
+        {
+          "local": "vehicleId",
+          "remote": "Véhicule",
+          "type": "link"
+        }
+      ],
+      "naturalKeys": [
+        [
+          "number"
+        ]
+      ]
+    },
+    {
+      "collection": "interventions",
+      "table": "Interventions",
+      "fields": [
+        {
+          "local": "number",
+          "remote": "Intervention",
+          "type": "field"
+        },
+        {
+          "local": "scheduledDate",
+          "remote": "Date prévue",
+          "type": "field"
+        },
+        {
+          "local": "status",
+          "remote": "Statut",
+          "type": "field"
+        },
+        {
+          "local": "technician",
+          "remote": "Technicien",
+          "type": "field"
+        },
+        {
+          "local": "report",
+          "remote": "Compte rendu",
+          "type": "field"
+        },
+        {
+          "local": "dryIceKg",
+          "remote": "Glace réelle utilisée kg",
+          "type": "field"
+        },
+        {
+          "local": "dinitrolLiters",
+          "remote": "Dinitrol utilisé L",
+          "type": "field"
+        }
+      ],
+      "links": [
+        {
+          "local": "clientId",
+          "remote": "Client",
+          "type": "link"
+        },
+        {
+          "local": "vehicleId",
+          "remote": "Véhicule",
+          "type": "link"
+        },
+        {
+          "local": "quoteId",
+          "remote": "Dossier / devis",
+          "type": "link"
+        }
+      ],
+      "naturalKeys": [
+        [
+          "number"
+        ]
+      ]
+    },
+    {
+      "collection": "tasks",
+      "table": "Tâches Jarvis",
+      "fields": [
+        {
+          "local": "title",
+          "remote": "Tâche",
+          "type": "field"
+        },
+        {
+          "local": "status",
+          "remote": "Statut",
+          "type": "field"
+        },
+        {
+          "local": "priority",
+          "remote": "Priorité",
+          "type": "field"
+        },
+        {
+          "local": "assignee",
+          "remote": "Responsable",
+          "type": "field"
+        },
+        {
+          "local": "dueDate",
+          "remote": "Échéance",
+          "type": "field"
+        },
+        {
+          "local": "instructions",
+          "remote": "Instructions",
+          "type": "field"
+        },
+        {
+          "local": "result",
+          "remote": "Résultat / suivi",
+          "type": "field"
+        }
+      ],
+      "links": [],
+      "naturalKeys": [
+        [
+          "title",
+          "dueDate"
+        ],
+        [
+          "title"
+        ]
+      ]
+    },
+    {
+      "collection": "stockItems",
+      "table": "Stocks et consommables",
+      "fields": [
+        {
+          "local": "name",
+          "remote": "Article",
+          "type": "field"
+        },
+        {
+          "local": "category",
+          "remote": "Catégorie",
+          "type": "field"
+        },
+        {
+          "local": "reference",
+          "remote": "Référence",
+          "type": "field"
+        },
+        {
+          "local": "quantity",
+          "remote": "Quantité en stock",
+          "type": "field"
+        },
+        {
+          "local": "unit",
+          "remote": "Unité",
+          "type": "field"
+        },
+        {
+          "local": "alertThreshold",
+          "remote": "Seuil d’alerte",
+          "type": "field"
+        },
+        {
+          "local": "unitPriceHt",
+          "remote": "Prix unitaire HT",
+          "type": "field"
+        },
+        {
+          "local": "location",
+          "remote": "Emplacement",
+          "type": "field"
+        },
+        {
+          "local": "notes",
+          "remote": "Notes",
+          "type": "field"
+        }
+      ],
+      "links": [],
+      "naturalKeys": [
+        [
+          "reference"
+        ],
+        [
+          "name"
+        ]
+      ]
+    },
+    {
+      "collection": "documents",
+      "table": "Centre documentaire",
+      "fields": [
+        {
+          "local": "title",
+          "remote": "Document",
+          "type": "field"
+        },
+        {
+          "local": "category",
+          "remote": "Catégorie",
+          "type": "field"
+        },
+        {
+          "local": "subcategory",
+          "remote": "Sous-catégorie",
+          "type": "field"
+        },
+        {
+          "local": "summary",
+          "remote": "Résumé Jarvis",
+          "type": "field"
+        },
+        {
+          "local": "addedDate",
+          "remote": "Date d’ajout",
+          "type": "field"
+        }
+      ],
+      "links": [],
+      "naturalKeys": [
+        [
+          "title",
+          "addedDate"
+        ],
+        [
+          "title"
+        ]
+      ]
+    }
+  ]
+}
