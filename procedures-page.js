@@ -4,7 +4,7 @@ const state = { records: [], query: '', risk: 'all', category: 'all' };
 const icons = { voiture: '🚘', moto: '🏍', utilitaire: '🚐', camion: '🚛', avion: '✈', helicoptere: '🚁', industriel: '🏭', autre: '◎' };
 
 function riskOf(record) {
-  return /étude|préalable obligatoire|autorisation/i.test(`${record.label} ${(record.checklist || []).join(' ')}`) && !['voiture', 'moto', 'utilitaire'].includes(record.requestCategory) ? 'etude' : 'atelier';
+  return ['camion', 'avion', 'helicoptere', 'industriel', 'autre'].includes(record.requestCategory) ? 'etude' : 'atelier';
 }
 
 function matches(record) {
