@@ -12,6 +12,18 @@ permissions:
   contents: read
 
 jobs:
+  workshop-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Graph workshop orchestrator tests
+        run: node core/tests/workshop-orchestrator.test.mjs
+
   node-check:
     runs-on: ubuntu-latest
     defaults:

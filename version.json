@@ -1,14 +1,15 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.30.1",
+  "version": "0.31.0",
   "channel": "stable",
-  "releasedAt": "2026-07-20T10:15:00+02:00",
+  "releasedAt": "2026-07-20T23:30:00+02:00",
   "notes": [
-    "Version serveur et interface désormais synchronisées",
-    "Mise à jour forcée avec contrôle de version unique",
-    "Affichage de la progression en temps réel",
-    "Planification client des mises à jour",
-    "Journal local des mises à jour",
-    "Renouvellement du cache et rechargement automatique du service worker"
+    "Atelier V1 relié au Graph Workflow Engine",
+    "Tâches prêtes, en cours, bloquées et terminées",
+    "Affectation d’un opérateur actif",
+    "Contrôle des ressources et des stocks",
+    "Blocage automatique DINITROL selon l’humidité",
+    "Recommandations MAVIK calculées par le Decision Engine",
+    "Sauvegarde locale, export et import des essais"
   ]
 }

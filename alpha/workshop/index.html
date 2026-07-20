@@ -1,61 +1,95 @@
 <!doctype html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>MAVIK — Alpha Atelier</title>
-<style>
-:root{--bg:#031019;--panel:#071a27;--panel2:#0a2333;--line:#16475d;--text:#f5fbff;--muted:#91a9b7;--green:#19ef68;--cyan:#00d8ff;--amber:#ffb000;--red:#ef4444;--blue:#2987ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% -10%,#0d3245,transparent 35%),var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}button,input,select{font:inherit}.app{max-width:1480px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:16px}.top h1{margin:0;font-size:1.35rem}.top p{margin:4px 0 0;color:var(--muted);font-size:.86rem}.pill{border:1px solid #197142;background:#0d3e27;color:var(--green);border-radius:999px;padding:7px 10px;font-size:.74rem}.grid{display:grid;grid-template-columns:1.55fr .85fr;gap:14px}.card{background:linear-gradient(180deg,rgba(8,28,42,.98),rgba(4,15,24,.98));border:1px solid var(--line);border-radius:14px;padding:15px;box-shadow:0 16px 40px rgba(0,0,0,.24)}.card h2,.card h3{margin:0}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.stat{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:13px}.stat small{color:var(--muted);text-transform:uppercase;font-size:.65rem;font-weight:800}.stat strong{display:block;font-size:1.65rem;margin-top:7px}.recommend{border-color:#167240;background:linear-gradient(135deg,rgba(25,239,104,.12),rgba(0,216,255,.05)),var(--panel)}.recommend .action{font-size:1.25rem;font-weight:900;margin:9px 0}.reason{color:#cfe1e9;font-size:.86rem;line-height:1.45}.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.btn{border:1px solid #246079;background:#0a2535;color:#fff;border-radius:9px;padding:9px 11px;cursor:pointer}.btn.primary{background:#0c612d;border-color:#128e43;font-weight:800}.btn.danger{border-color:#73313a;background:#35151a}.btn:disabled{opacity:.45;cursor:not-allowed}.vehicles{display:grid;gap:10px}.vehicle{border:1px solid var(--line);background:#061722;border-radius:12px;padding:12px;display:grid;grid-template-columns:1fr auto;gap:10px}.vehicle.selected{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(0,216,255,.25)}.vehicle h3{font-size:1rem}.meta{color:var(--muted);font-size:.75rem;margin-top:4px}.status{display:inline-block;border:1px solid #20536a;border-radius:999px;padding:4px 8px;font-size:.68rem;color:#d9edf5;margin-top:8px}.score{font-size:1.3rem;font-weight:900;color:var(--amber);text-align:right}.vehicle button{margin-top:9px}.flow{display:flex;overflow:auto;gap:7px;padding:5px 0 10px}.step{white-space:nowrap;border:1px solid #1a4d64;background:#071b28;border-radius:999px;padding:7px 9px;color:var(--muted);font-size:.69rem}.step.done{color:var(--green);border-color:#17683d}.step.current{color:#fff;border-color:var(--cyan);background:#083044}.resources{display:grid;gap:10px}.resource{display:grid;grid-template-columns:1fr auto;gap:8px}.resource small{color:var(--muted)}.bar{grid-column:1/-1;height:8px;background:#031019;border:1px solid #123b4e;border-radius:999px;overflow:hidden}.bar span{display:block;height:100%;background:linear-gradient(90deg,var(--green),var(--cyan))}.alert{border-left:3px solid var(--amber);padding:9px 10px;background:#241b08;border-radius:7px;font-size:.8rem;margin-top:8px}.journal{max-height:230px;overflow:auto}.journal div{border-top:1px solid rgba(45,91,111,.45);padding:8px 0;font-size:.77rem}.journal time{color:var(--cyan);margin-right:8px}.form{display:grid;grid-template-columns:1fr 1fr;gap:8px}.form input,.form select{width:100%;background:#04131e;color:#fff;border:1px solid var(--line);border-radius:9px;padding:10px}.form .wide{grid-column:1/-1}.empty{color:var(--muted);font-size:.84rem;padding:16px 0}.footer{color:var(--muted);font-size:.7rem;text-align:center;margin-top:16px}
-@media(max-width:900px){.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:560px){.app{padding:10px}.top{align-items:flex-start}.pill{font-size:.62rem}.stats{gap:7px}.stat{padding:10px}.stat strong{font-size:1.3rem}.vehicle{grid-template-columns:1fr}.score{text-align:left}.form{grid-template-columns:1fr}.form .wide{grid-column:auto}.btn{min-height:44px}.toolbar{display:grid;grid-template-columns:1fr 1fr}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#031019">
+  <title>MAVIK — Atelier V1 test</title>
+  <link rel="stylesheet" href="./workshop.css">
 </head>
 <body>
-<main class="app">
-  <header class="top"><div><h1>MAVIK — Chef d’atelier</h1><p>Alpha 1 · moteur de règles local · aucune donnée transmise</p></div><span class="pill">● Système opérationnel</span></header>
-  <section class="stats" id="stats"></section>
-  <section class="grid">
-    <div>
-      <article class="card recommend"><small>RECOMMANDATION MAINTENANT</small><div class="action" id="recommendedAction">Chargement…</div><div class="reason" id="recommendedReason"></div></article>
-      <article class="card" style="margin-top:14px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><h2>Véhicules et interventions</h2><button class="btn" id="toggleForm">+ Nouveau</button></div><form class="form" id="newForm" hidden style="margin-top:12px"><input id="client" placeholder="Client" required><input id="vehicle" placeholder="Véhicule" required><input id="plate" placeholder="Immatriculation"><select id="priority"><option value="normal">Priorité normale</option><option value="founder">Pass Fondateur</option><option value="urgent">Restitution urgente</option></select><input class="wide" id="deadline" type="datetime-local"><button class="btn primary wide" type="submit">Créer l’intervention</button></form><div id="vehicles" class="vehicles" style="margin-top:12px"></div></article>
-      <article class="card" style="margin-top:14px"><h2>Parcours de l’intervention</h2><div id="flow" class="flow"></div><div class="toolbar"><button class="btn primary" id="nextStep">Valider l’étape et continuer</button><button class="btn" id="delayStep">Signaler un retard (+30 min)</button><button class="btn danger" id="deleteVehicle">Supprimer l’intervention</button></div><div id="selectionHint" class="empty"></div></article>
-    </div>
-    <aside>
-      <article class="card"><h2>Ressources atelier</h2><div id="resources" class="resources" style="margin-top:13px"></div><div class="toolbar"><button class="btn" id="useIce">– 20 kg glace</button><button class="btn" id="useDinitrol">– 1 L DINITROL</button><button class="btn" id="refill">Réapprovisionner démo</button></div><div id="alerts"></div></article>
-      <article class="card" style="margin-top:14px"><h2>Journal automatique</h2><div id="journal" class="journal"></div></article>
-      <article class="card" style="margin-top:14px"><h2>Données de démonstration</h2><p class="reason">Les données restent dans ce navigateur. Le bouton ci-dessous recharge un atelier exemple sans modifier l’application principale.</p><button class="btn" id="resetDemo">Réinitialiser la démo</button></article>
-    </aside>
-  </section>
-  <div class="footer">MAVIK GCOS 1.0 Atelier — prototype fonctionnel destiné aux essais internes GentleCarE</div>
-</main>
-<script>
-const STEPS=['Demande','Inspection','Devis','Validation client','Planification','Réception','Cryonettoyage','Contrôle','DINITROL','Séchage','Contrôle qualité','Restitution','Facturation','Suivi client'];
-const KEY='mavik.workshop.alpha1';
-const now=()=>new Date();
-const isoIn=(hours)=>{const d=new Date(Date.now()+hours*3600000);d.setMinutes(0,0,0);return d.toISOString().slice(0,16)};
-const seed=()=>({selected:'v1',resources:{iceKg:240,dinitrolL:18,cryoAvailable:true,compressorAvailable:true,dryingZones:2},vehicles:[{id:'v1',client:'Jean Dupont',vehicle:'Ford Mustang GT',plate:'AA-123-BB',priority:'urgent',deadline:isoIn(8),step:6,delay:0},{id:'v2',client:'Marie Martin',vehicle:'Mini 2005',plate:'CC-456-DD',priority:'founder',deadline:isoIn(30),step:4,delay:0},{id:'v3',client:'Club Mustang',vehicle:'Audi S5 V8',plate:'EE-789-FF',priority:'normal',deadline:isoIn(54),step:1,delay:0}],journal:[{at:new Date().toISOString(),text:'Alpha Atelier initialisée'}]});
-let state=load();
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||seed()}catch{return seed()}}
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function log(text){state.journal.unshift({at:new Date().toISOString(),text});state.journal=state.journal.slice(0,60)}
-function selected(){return state.vehicles.find(v=>v.id===state.selected)}
-function score(v){let s=0;const left=(new Date(v.deadline)-Date.now())/3600000;if(v.priority==='urgent')s+=100;if(left<=2)s+=80;else if(left<=8)s+=70;else if(left<=24)s+=50;if(v.priority==='founder')s+=20;if(v.step===6&&state.resources.cryoAvailable)s+=25;if(v.step===8)s+=20;if(v.delay)s+=Math.min(30,v.delay/2);return Math.round(s)}
-function recommendation(){if(!state.vehicles.length)return {a:'Créer la première intervention',r:'Aucun véhicule actif dans l’atelier.'};const ranked=[...state.vehicles].sort((a,b)=>score(b)-score(a));const v=ranked[0];let action=`${STEPS[v.step]} — ${v.vehicle}`;let reason=`${v.client} · score de priorité ${score(v)}.`;if(v.step===6&&!state.resources.cryoAvailable){action=`Préparer ${v.vehicle}`;reason+=' La machine cryo est indisponible : éviter un temps mort et préparer l’étape suivante.'}else if(v.step===8&&state.resources.dinitrolL<3){action='Réapprovisionner le DINITROL';reason=`${v.vehicle} attend le traitement, mais le stock est insuffisant.`}else if(v.step===9){action=`Profiter du séchage de ${v.vehicle}`;reason='Préparer le véhicule suivant, terminer un devis ou contrôler le stock pendant ce temps d’attente.'}return {a:action,r:reason}}
-function render(){save();const counts={active:state.vehicles.filter(v=>v.step<11).length,cryo:state.vehicles.filter(v=>v.step===6).length,drying:state.vehicles.filter(v=>v.step===9).length,ready:state.vehicles.filter(v=>v.step===10||v.step===11).length};document.querySelector('#stats').innerHTML=[['Véhicules actifs',counts.active],['En cryo',counts.cryo],['En séchage',counts.drying],['À restituer',counts.ready]].map(([l,n])=>`<div class="stat"><small>${l}</small><strong>${n}</strong></div>`).join('');const rec=recommendation();recommendedAction.textContent=rec.a;recommendedReason.textContent=rec.r;vehicles.innerHTML=state.vehicles.length?state.vehicles.map(v=>`<div class="vehicle ${v.id===state.selected?'selected':''}"><div><h3>${escapeHtml(v.vehicle)}</h3><div class="meta">${escapeHtml(v.client)} · ${escapeHtml(v.plate||'Sans immatriculation')}</div><span class="status">${STEPS[v.step]}</span><br><button class="btn" onclick="selectVehicle('${v.id}')">Ouvrir</button></div><div><div class="score">${score(v)}</div><div class="meta">priorité</div></div></div>`).join(''):'<div class="empty">Aucune intervention.</div>';const v=selected();flow.innerHTML=STEPS.map((s,i)=>`<span class="step ${v&&i<v.step?'done':''} ${v&&i===v.step?'current':''}">${i+1}. ${s}</span>`).join('');selectionHint.textContent=v?`${v.vehicle} — étape actuelle : ${STEPS[v.step]}. Échéance : ${new Date(v.deadline).toLocaleString('fr-FR')}${v.delay?` · retard signalé ${v.delay} min`:''}`:'Sélectionnez un véhicule.';nextStep.disabled=!v||v.step>=STEPS.length-1;delayStep.disabled=!v;deleteVehicle.disabled=!v;resources.innerHTML=resourceHtml('Glace carbonique',`${state.resources.iceKg} kg`,Math.min(100,state.resources.iceKg/3.5))+resourceHtml('DINITROL',`${state.resources.dinitrolL} L`,Math.min(100,state.resources.dinitrolL*4))+resourceHtml('Machine cryo',state.resources.cryoAvailable?'Disponible':'Occupée',state.resources.cryoAvailable?100:25)+resourceHtml('Compresseur',state.resources.compressorAvailable?'Disponible':'Occupé',state.resources.compressorAvailable?100:25)+resourceHtml('Zones de séchage',`${state.resources.dryingZones} libres`,state.resources.dryingZones*50);const list=[];if(state.resources.iceKg<100)list.push('Stock de glace inférieur à 100 kg.');if(state.resources.dinitrolL<5)list.push('Stock DINITROL faible.');if(state.vehicles.some(v=>new Date(v.deadline)<Date.now()&&v.step<11))list.push('Une restitution est en retard.');alerts.innerHTML=list.map(x=>`<div class="alert">${x}</div>`).join('');journal.innerHTML=state.journal.map(j=>`<div><time>${new Date(j.at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</time>${escapeHtml(j.text)}</div>`).join('')||'<div class="empty">Aucune action enregistrée.</div>'}
-function resourceHtml(name,value,pct){return `<div class="resource"><strong>${name}</strong><span>${value}</span><div class="bar"><span style="width:${pct}%"></span></div></div>`}
-function escapeHtml(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
-window.selectVehicle=id=>{state.selected=id;log(`Intervention ouverte : ${selected().vehicle}`);render()};
-toggleForm.onclick=()=>newForm.hidden=!newForm.hidden;
-newForm.onsubmit=e=>{e.preventDefault();const id='v'+Date.now();state.vehicles.push({id,client:client.value.trim(),vehicle:vehicle.value.trim(),plate:plate.value.trim(),priority:priority.value,deadline:deadline.value||isoIn(48),step:0,delay:0});state.selected=id;log(`Nouvelle intervention créée : ${vehicle.value.trim()}`);newForm.reset();newForm.hidden=true;render()};
-nextStep.onclick=()=>{const v=selected();if(!v)return;const previous=STEPS[v.step];v.step=Math.min(STEPS.length-1,v.step+1);if(previous==='Cryonettoyage')state.resources.cryoAvailable=true;if(STEPS[v.step]==='Cryonettoyage')state.resources.cryoAvailable=false;if(STEPS[v.step]==='Séchage')state.resources.dryingZones=Math.max(0,state.resources.dryingZones-1);if(previous==='Séchage')state.resources.dryingZones=Math.min(2,state.resources.dryingZones+1);log(`${v.vehicle} : ${previous} validé → ${STEPS[v.step]}`);render()};
-delayStep.onclick=()=>{const v=selected();if(!v)return;v.delay+=30;log(`${v.vehicle} : retard de 30 minutes signalé`);render()};
-deleteVehicle.onclick=()=>{const v=selected();if(!v||!confirm(`Supprimer l’intervention ${v.vehicle} ?`))return;state.vehicles=state.vehicles.filter(x=>x.id!==v.id);state.selected=state.vehicles[0]?.id||null;log(`Intervention supprimée : ${v.vehicle}`);render()};
-useIce.onclick=()=>{state.resources.iceKg=Math.max(0,state.resources.iceKg-20);log('Consommation enregistrée : 20 kg de glace');render()};
-useDinitrol.onclick=()=>{state.resources.dinitrolL=Math.max(0,state.resources.dinitrolL-1);log('Consommation enregistrée : 1 L de DINITROL');render()};
-refill.onclick=()=>{state.resources.iceKg=350;state.resources.dinitrolL=25;log('Stocks de démonstration réapprovisionnés');render()};
-resetDemo.onclick=()=>{if(confirm('Réinitialiser toutes les données de cette Alpha ?')){state=seed();render()}};
-render();
-</script>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">GENTLECARE OPERATING SYSTEM</p>
+        <h1>MAVIK — Poste atelier</h1>
+        <p class="subtitle">Version test · vrai graphe de tâches · sauvegarde locale automatique</p>
+      </div>
+      <div class="header-controls">
+        <label>Opérateur actif<select id="operatorSelect"></select></label>
+        <span class="online-pill">● PRÊT À TESTER</span>
+      </div>
+    </header>
+
+    <section class="stats" id="stats"></section>
+
+    <section class="layout">
+      <div class="primary-column">
+        <article class="card recommendation">
+          <div class="card-label">RECOMMANDATION MAVIK</div>
+          <h2 id="recommendationTitle">Chargement…</h2>
+          <p id="recommendationReason"></p>
+        </article>
+
+        <article class="card">
+          <div class="card-heading">
+            <div><div class="card-label">DOSSIERS ACTIFS</div><h2>Interventions</h2></div>
+            <button class="button" id="toggleCreate">+ Nouvelle intervention</button>
+          </div>
+          <form id="createForm" class="form-grid" hidden>
+            <input id="clientName" placeholder="Nom du client" required>
+            <input id="vehicleName" placeholder="Véhicule" required>
+            <input id="registration" placeholder="Immatriculation">
+            <select id="priority"><option value="0">Priorité normale</option><option value="1">Club</option><option value="2">Pass Fondateur</option><option value="3">Urgent</option></select>
+            <input id="deadline" type="datetime-local">
+            <button class="button primary" type="submit">Créer le dossier</button>
+          </form>
+          <div class="interventions" id="interventions"></div>
+        </article>
+
+        <article class="card">
+          <div class="card-heading">
+            <div><div class="card-label">GRAPHE OPÉRATIONNEL</div><h2 id="workflowTitle">Sélectionnez une intervention</h2></div>
+            <button class="button danger" id="deleteIntervention" disabled>Supprimer</button>
+          </div>
+          <p class="context-line" id="workflowContext"></p>
+          <div class="task-board" id="taskBoard"></div>
+        </article>
+      </div>
+
+      <aside class="side-column">
+        <article class="card">
+          <div class="card-label">CONDITIONS ATELIER</div>
+          <div class="humidity-control"><label for="humidity">Humidité</label><strong id="humidityValue">55 %</strong></div>
+          <input id="humidity" class="range" type="range" min="20" max="95" step="1">
+          <p class="hint">Au-dessus de 80 %, MAVIK bloque automatiquement l’application DINITROL.</p>
+        </article>
+
+        <article class="card">
+          <div class="card-label">DISPONIBILITÉ</div><h2>Ressources</h2>
+          <div class="resource-list" id="resourceList"></div>
+        </article>
+
+        <article class="card">
+          <div class="card-heading"><div><div class="card-label">TRAÇABILITÉ</div><h2>Journal</h2></div></div>
+          <div class="journal" id="journal"></div>
+        </article>
+
+        <article class="card">
+          <div class="card-label">DONNÉES DE TEST</div>
+          <p class="hint">Les données restent sur cet appareil. Exportez-les avant de changer de navigateur.</p>
+          <div class="button-row">
+            <button class="button" id="exportData">Exporter</button>
+            <label class="button file-button">Importer<input id="importData" type="file" accept="application/json"></label>
+            <button class="button danger" id="resetDemo">Réinitialiser</button>
+          </div>
+        </article>
+      </aside>
+    </section>
+
+    <div class="toast" id="toast" hidden></div>
+    <footer>MAVIK V1 Atelier · moteur Graph Workflow · essai interne GentleCarE · 20/07/2026</footer>
+  </main>
+  <script type="module" src="./workshop-app.js"></script>
 </body>
 </html>
