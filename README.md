@@ -1,6 +1,18 @@
 # GCOS — GentleCarE Operating System
 
-MVP opérationnel de Jarvis pour GentleCarE, développé et versionné directement dans GitHub.
+MVP opérationnel de MAVIK pour GentleCarE, développé et versionné directement dans GitHub.
+
+## Mémoire partagée — à lire en premier
+
+La mémoire commune de David, Bénédicte, ChatGPT et MAVIK se trouve ici :
+
+- **[`MEMORY.md`](./MEMORY.md)** — synthèse opérationnelle et règles validées ;
+- [`knowledge/INDEX.md`](./knowledge/INDEX.md) — index des documents détaillés ;
+- [`knowledge/MAVIK_BRAIN.md`](./knowledge/MAVIK_BRAIN.md) — contexte central de MAVIK.
+
+Instruction à donner à ChatGPT depuis tout compte ayant accès au dépôt :
+
+> Lis le fichier `MEMORY.md` du dépôt `gentlecar64-ship-it/-jarvis-gentlecare`, puis consulte `knowledge/INDEX.md` et les documents qu’il référence. Utilise-les comme source de vérité pour cette conversation. Signale toute information absente, contradictoire ou ancienne au lieu de l’inventer.
 
 ## Référence produit
 
@@ -22,7 +34,7 @@ Toute évolution importante doit rester conforme au document fondateur ou faire 
 - Mode Atelier pour la Mini blanche 2005
 - Checklist, chronomètre, notes et photos depuis un iPhone
 - Recherche globale
-- Commande vocale Jarvis lorsque le navigateur la prend en charge
+- Commande vocale MAVIK lorsque le navigateur la prend en charge
 - Journal automatique des actions
 - Sauvegarde locale dans le navigateur
 
