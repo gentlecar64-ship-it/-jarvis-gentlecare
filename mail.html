@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Betty — Centre de messagerie MAVIK</title>
+<link rel="stylesheet" href="betty-mail.css?v=1">
+</head>
+<body>
+<header class="topbar">
+  <a class="back" href="index.html">← Tableau de bord</a>
+  <div><strong>Centre de messagerie</strong><small>Betty · MAVIK</small></div>
+  <span class="status" id="connectionStatus">Mode préparation</span>
+</header>
+<main class="layout">
+  <aside class="filters" aria-label="Filtres de messagerie">
+    <h1>Betty Mail</h1>
+    <p>Prioriser les messages utiles sans envoyer d’e-mail sans validation humaine.</p>
+    <button class="filter active" data-filter="all">Tous</button>
+    <button class="filter" data-filter="priority">Prioritaires</button>
+    <button class="filter" data-filter="reply">Réponse attendue</button>
+    <button class="filter" data-filter="client">Clients</button>
+    <button class="filter" data-filter="supplier">Fournisseurs</button>
+    <button class="filter" data-filter="finance">Banque & comptabilité</button>
+    <section class="security">
+      <strong>Sécurité</strong>
+      <ul>
+        <li>Lecture seule par défaut</li>
+        <li>Brouillons soumis à validation</li>
+        <li>Aucun secret dans le navigateur</li>
+      </ul>
+    </section>
+  </aside>
+
+  <section class="workspace">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">BRIEFING BETTY</span>
+        <h2>Voici ce qui mérite votre attention.</h2>
+        <p id="briefingText">Le connecteur MAVIK Gmail doit encore être configuré. L’interface et les règles de priorisation sont prêtes.</p>
+      </div>
+      <div class="actions">
+        <button id="refreshButton">Actualiser</button>
+        <button class="primary" id="configureButton">Configurer Gmail</button>
+      </div>
+    </section>
+
+    <section class="metrics" aria-label="Indicateurs">
+      <article><span>Non lus</span><strong id="unreadCount">—</strong></article>
+      <article><span>Prioritaires</span><strong id="priorityCount">0</strong></article>
+      <article><span>Réponses attendues</span><strong id="replyCount">0</strong></article>
+      <article><span>Brouillons à valider</span><strong id="draftCount">0</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><h3>Boîte de réception analysée</h3><p>Betty explique toujours pourquoi un message est prioritaire.</p></div>
+        <input id="searchInput" type="search" placeholder="Rechercher un expéditeur ou un sujet">
+      </div>
+      <div id="messageList" class="message-list"></div>
+      <div id="emptyState" class="empty hidden">Aucun message pour ce filtre.</div>
+    </section>
+  </section>
+</main>
+<script src="betty-mail.js?v=1"></script>
+</body>
+</html>
