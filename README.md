@@ -9,6 +9,7 @@ La mémoire commune de David, Bénédicte, ChatGPT et MAVIK se trouve ici :
 - **[`MEMORY.md`](./MEMORY.md)** — synthèse opérationnelle et règles validées ;
 - [`knowledge/INDEX.md`](./knowledge/INDEX.md) — index des documents détaillés ;
 - [`knowledge/MAVIK_BRAIN.md`](./knowledge/MAVIK_BRAIN.md) — contexte central de MAVIK.
+- [`docs/DOSSIER_TRANSMISSION_MAVIK.md`](./docs/DOSSIER_TRANSMISSION_MAVIK.md) — dossier complet de transmission et reprise du développement.
 
 Instruction à donner à ChatGPT depuis tout compte ayant accès au dépôt :
 

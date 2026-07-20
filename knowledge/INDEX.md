@@ -12,6 +12,11 @@
 7. `adr/`
 8. `roadmap/`
 
+## Références de continuité
+
+- [`../docs/DOSSIER_TRANSMISSION_MAVIK.md`](../docs/DOSSIER_TRANSMISSION_MAVIK.md) — dossier de transmission et checklist de reprise.
+- [`adr/ADR-0002-Consolidation-Core-Orchestration.md`](adr/ADR-0002-Consolidation-Core-Orchestration.md) — décision de consolidation entre domaine, plateforme et façade applicative.
+
 ## Règle de chargement
 
 Au démarrage, MAVIK charge tous les fichiers Markdown présents dans ce dossier et ses sous-dossiers. Le contexte complet n’est pas injecté dans chaque réponse : le Knowledge Manager sélectionne d’abord les documents pertinents selon les mots-clés de la demande.
