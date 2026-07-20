@@ -44,7 +44,7 @@ try {
   assert.ok(fs.existsSync(htmlPath));
   assert.ok(fs.existsSync(jsonPath));
   const html = fs.readFileSync(htmlPath, 'utf8');
-  for (const title of ['Identification','Mission et périmètre','État d’entrée','Diagnostic préalable','Protocole cryogénique','Protection Dinitrol','Avant / après','Anomalies révélées','Contrôle final','Conseils et suivi','Pièces et preuves','Visa complémentaire']) assert.match(html, new RegExp(title));
+  for (const title of ['Identification','Mission et périmètre','État d’entrée','Diagnostic préalable','Protocole cryogénique','Protection Dinitrol','Avant / après','Anomalies révélées','Contrôle final','Conseils et suivi','Pièces, procédure et preuves','Visa complémentaire']) assert.match(html, new RegExp(title));
 
   const validated = reportModule.validate(store, 'i1', { managerValidation: 'Bénédicte Lopez' }, { id: 'u2', name: 'Bénédicte Lopez' });
   assert.equal(validated.report.version, 2);

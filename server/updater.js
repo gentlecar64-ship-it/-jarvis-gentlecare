@@ -12,9 +12,10 @@ const UPDATE_DIR = path.join(DATA_DIR, 'updates');
 const STATE_FILE = path.join(UPDATE_DIR, 'state.json');
 const PENDING_FILE = path.join(UPDATE_DIR, 'pending-update.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const LOCAL_DATA_FILE = path.join(DATA_DIR, 'gcos-local.json');
 const PACKAGE_FILE = path.join(__dirname, 'package.json');
 const DEFAULT_REPOSITORY = 'gentlecar64-ship-it/-jarvis-gentlecare';
-const DEFAULT_SCHEDULE = Object.freeze({ start: '18:00', end: '07:30', days: [1,2,3,4,5,6,0], automaticInstall: true });
+const DEFAULT_SCHEDULE = Object.freeze({ start: '18:00', end: '07:30', timeZone: 'Europe/Paris', days: [1,2,3,4,5,6,0], automaticInstall: true });
 
 let automaticUpdateRunning = false;
 let checkingNow = false;
@@ -33,32 +34,45 @@ function localCommit() { try { return runGit(['rev-parse', 'HEAD']); } catch { r
 function updateBranch() { if (process.env.GCOS_UPDATE_BRANCH) return process.env.GCOS_UPDATE_BRANCH; try { return runGit(['rev-parse', '--abbrev-ref', 'HEAD']) || 'main'; } catch { return 'main'; } }
 function gitStatus() { try { return { ok: true, version: runGit(['--version']), branch: updateBranch(), commit: localCommit(), remote: runGit(['remote', 'get-url', 'origin']) }; } catch (error) { return { ok: false, error: String(error.message || error), branch: updateBranch(), commit: localCommit() }; } }
 function validTime(value, fallback) { return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(value || '')) ? String(value) : fallback; }
-function adminSchedule() {
+function ownerSchedule() {
   const users = readJson(USERS_FILE, []);
-  const admin = (Array.isArray(users) ? users : []).find((user) => user?.role === 'admin' && user.active !== false) || {};
-  const preferences = admin.preferences || {};
+  const activeAdmins = (Array.isArray(users) ? users : []).filter((user) => user?.role === 'admin' && user.active !== false);
+  const owner = activeAdmins.find((user) => user.systemOwner === true) || activeAdmins[0] || {};
+  const preferences = owner.preferences || {};
   const days = [...new Set((Array.isArray(preferences.updateDays) ? preferences.updateDays : DEFAULT_SCHEDULE.days).map(Number).filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))];
   return {
     start: validTime(preferences.updateWindowStart, DEFAULT_SCHEDULE.start),
     end: validTime(preferences.updateWindowEnd, DEFAULT_SCHEDULE.end),
+    timeZone: ['Europe/Paris', 'UTC'].includes(preferences.updateTimeZone) ? preferences.updateTimeZone : DEFAULT_SCHEDULE.timeZone,
     days: days.length ? days : [...DEFAULT_SCHEDULE.days],
     automaticInstall: preferences.updateAutoInstall !== false,
-    source: admin.id ? 'profil administrateur' : 'valeurs par défaut'
+    onlyWhenIdle: preferences.updateOnlyWhenIdle !== false,
+    ownerId: owner.id || '', ownerName: owner.name || '',
+    source: owner.id ? `propriétaire MAVIK — ${owner.name || owner.username || owner.id}` : 'valeurs par défaut'
   };
 }
+function adminSchedule() { return ownerSchedule(); }
 function minutes(value) { const [hour, minute] = String(value).split(':').map(Number); return hour * 60 + minute; }
+function workshopIdle() {
+  const data = readJson(LOCAL_DATA_FILE, {});
+  const activeIntervention = (Array.isArray(data.interventions) ? data.interventions : []).some((item) => /en cours/i.test(`${item.workStatus || ''} ${item.status || ''}`));
+  const activeSession = (Array.isArray(data.workSessions) ? data.workSessions : []).some((item) => /active|en cours/i.test(`${item.status || ''}`) && !item.endedAt);
+  return { idle: !activeIntervention && !activeSession, activeIntervention, activeSession };
+}
 function updateWindowStatus(at = new Date()) {
-  const schedule = adminSchedule();
-  const day = at.getDay();
+  const schedule = ownerSchedule();
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: schedule.timeZone, weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const day = ({ Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 })[values.weekday];
   const previousDay = (day + 6) % 7;
-  const nowMinutes = at.getHours() * 60 + at.getMinutes();
+  const nowMinutes = Number(values.hour) * 60 + Number(values.minute);
   const startMinutes = minutes(schedule.start);
   const endMinutes = minutes(schedule.end);
   let allowed;
   if (startMinutes === endMinutes) allowed = schedule.days.includes(day);
   else if (startMinutes < endMinutes) allowed = schedule.days.includes(day) && nowMinutes >= startMinutes && nowMinutes < endMinutes;
   else allowed = (schedule.days.includes(day) && nowMinutes >= startMinutes) || (schedule.days.includes(previousDay) && nowMinutes < endMinutes);
-  return { ...schedule, allowed, checkedAt: at.toISOString(), label: `${schedule.start}–${schedule.end}` };
+  return { ...schedule, allowed, checkedAt: at.toISOString(), localTime: `${values.weekday} ${values.hour}:${values.minute}`, label: `${schedule.start}–${schedule.end} (${schedule.timeZone})` };
 }
 function state() {
   const saved = readJson(STATE_FILE, {});
@@ -81,6 +95,8 @@ async function sha256(filePath) { return new Promise((resolve, reject) => { cons
 async function download() {
   const checked = await check(); if (!checked.updateAvailable || !checked.latest) return checked;
   if ((process.env.GCOS_UPDATE_CHANNEL || 'development') !== 'stable') return installGitUpdate(checked.latest);
+  const backupPath = require('./backup').createBackup();
+  saveState({ preUpdateBackup: backupPath, preUpdateBackupAt: new Date().toISOString() });
   ensureDir(); const destination = path.join(UPDATE_DIR, checked.latest.fileName || `gcos-${checked.latest.version}.zip`);
   const response = await fetchWithTimeout(checked.latest.downloadUrl, { headers: { ...githubHeaders(), Accept: 'application/octet-stream' }, redirect: 'follow' }, 120000);
   if (!response.ok) throw Object.assign(new Error(`UPDATE_DOWNLOAD_${response.status}`), { status: 502 });
@@ -94,7 +110,7 @@ function validateInstalledFiles() {
     'server.js','auth.js','jarvis.js','jarvis-extended.js','jarvis-knowledge.js','jarvis-intelligence.js','jarvis-morale.js','emergency-alert.js','employee-flow.js','leave-planning.js',
     'quote-workflow.js','quote-workflow-current.js','quote-workflow-reference.js','quote-studio.js','quote-studio-service.js','quote-requests.js','tariff-catalog.js','workshop-procedures.js','workshop-service.js',
     'planning.js','planning-service.js','calendar-bridge.js','startup-status.js','intervention-report.js','client-intake.js','reputation.js','internal-messaging.js',
-    'public/jarvis-quote.js','public/reputation-client.js','public/command-dock.js','public/navigation-enhancer.js','public/quote-studio-client.js','public/quote-visual-preview.js','public/planning-client.js','public/workshop-client.js','public/generated/workshop/workshop-client.js','public/morale-client.js','public/airtable-client.js','public/procedures-client.js',
+    'public/jarvis-quote.js','public/jarvis-workshop-context.js','public/reputation-client.js','public/command-dock.js','public/navigation-enhancer.js','public/quote-studio-client.js','public/quote-visual-preview.js','public/planning-client.js','public/workshop-client.js','public/profile-owner.js','public/generated/workshop/workshop-client.js','public/morale-client.js','public/airtable-client.js','public/procedures-client.js',
     'airtable-sync.js','updater.js','diagnostics.js','design-installer.js','launcher-check.js','restart-helper.js'
   ];
   for (const file of scripts) execFileSync(process.execPath, ['--check', path.join(__dirname, file)], { cwd: __dirname, windowsHide: true, stdio: 'pipe', timeout: 15000 });
@@ -110,6 +126,8 @@ async function installGitUpdate(latest) {
   automaticUpdateRunning = true; const before = localCommit(); const branch = latest?.branch || updateBranch();
   saveState({ lastError: null, previousCommit: before, targetCommit: latest?.commit || '', installStartedAt: new Date().toISOString() });
   try {
+    const backupPath = require('./backup').createBackup();
+    saveState({ preUpdateBackup: backupPath, preUpdateBackupAt: new Date().toISOString() });
     runGit(['fetch','--prune','origin',branch],{timeout:60000}); const target = runGit(['rev-parse',`origin/${branch}`]);
     if (!target || target === before) { automaticUpdateRunning = false; return saveState({ updateAvailable:false,currentCommit:before,lastError:null }); }
     runGit(['reset','--hard',target],{timeout:60000}); designInstaller.install(); validateInstalledFiles();
@@ -124,7 +142,9 @@ async function automaticCycle() {
   const checked = await check();
   const window = updateWindowStatus();
   if (checked.updateAvailable && process.env.GCOS_AUTO_INSTALL !== 'false' && window.automaticInstall) {
-    if (!window.allowed) return saveState({ updateDeferred:true, deferredReason:`Hors créneau administrateur ${window.label}`, nextInstallWindow:window.label });
+    if (!window.allowed) return saveState({ updateDeferred:true, deferredReason:`Hors créneau du propriétaire ${window.label}`, nextInstallWindow:window.label });
+    const activity = workshopIdle();
+    if (window.onlyWhenIdle && !activity.idle) return saveState({ updateDeferred:true, deferredReason:'Atelier actif : installation reportée jusqu’à la fin du travail en cours', workshopActivity:activity, nextInstallWindow:window.label });
     return download();
   }
   return saveState({ updateDeferred:false, deferredReason:null });
@@ -137,4 +157,4 @@ function startAutomaticChecks() {
   setTimeout(execute,20000).unref(); setInterval(execute,intervalMinutes*60*1000).unref();
 }
 
-module.exports = { state,check,download,installGitUpdate,automaticCycle,clearPending,startAutomaticChecks,currentVersion,gitStatus,adminSchedule,updateWindowStatus };
+module.exports = { state,check,download,installGitUpdate,automaticCycle,clearPending,startAutomaticChecks,currentVersion,gitStatus,adminSchedule,ownerSchedule,updateWindowStatus,workshopIdle };

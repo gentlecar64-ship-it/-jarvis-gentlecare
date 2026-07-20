@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#031019">
   <title>MAVIK — Atelier V1 test</title>
   <link rel="stylesheet" href="./workshop.css">
+  <link rel="stylesheet" href="./workshop-v2.css?v=330">
 </head>
 <body>
   <main class="app">
@@ -40,6 +41,11 @@
             <input id="clientName" placeholder="Nom du client" required>
             <input id="vehicleName" placeholder="Véhicule" required>
             <input id="registration" placeholder="Immatriculation">
+            <input id="vin" placeholder="VIN / référence équipement">
+            <input id="mileage" type="number" min="0" placeholder="Kilométrage">
+            <select id="procedureCategory" required></select>
+            <input id="service" placeholder="Prestation vendue">
+            <textarea id="clientRequest" placeholder="Demande du client et résultat attendu"></textarea>
             <select id="priority"><option value="0">Priorité normale</option><option value="1">Club</option><option value="2">Pass Fondateur</option><option value="3">Urgent</option></select>
             <input id="deadline" type="datetime-local">
             <button class="button primary" type="submit">Créer le dossier</button>
@@ -55,6 +61,12 @@
           <p class="context-line" id="workflowContext"></p>
           <div class="task-board" id="taskBoard"></div>
         </article>
+
+        <article class="card">
+          <div class="card-heading"><div><div class="card-label">PROCÉDURE ATTACHÉE AU DOSSIER</div><h2 id="procedureTitle">Sélectionnez une intervention</h2></div><span class="badge" id="procedureProgress">0 %</span></div>
+          <p class="context-line" id="procedureContext">Chaque étape conserve l’opérateur, la note et les preuves.</p>
+          <div class="procedure-board" id="procedureBoard"></div>
+        </article>
       </div>
 
       <aside class="side-column">
@@ -68,6 +80,13 @@
         <article class="card">
           <div class="card-label">DISPONIBILITÉ</div><h2>Ressources</h2>
           <div class="resource-list" id="resourceList"></div>
+        </article>
+
+        <article class="card report-card">
+          <div class="card-label">RAPPORT D’INTERVENTION</div><h2 id="reportTitle">Non généré</h2>
+          <p class="hint" id="reportStatus">Terminez le contrôle final, la procédure et ses preuves.</p>
+          <div class="report-checks" id="reportChecks"></div>
+          <div class="button-row"><button class="button primary" id="generateReport" disabled>Générer</button><button class="button" id="openReport" disabled>Ouvrir</button><button class="button" id="validateReport" disabled>Valider</button><button class="button" id="downloadReport" disabled>JSON</button></div>
         </article>
 
         <article class="card">
@@ -90,6 +109,6 @@
     <div class="toast" id="toast" hidden></div>
     <footer>MAVIK V1 Atelier · moteur Graph Workflow · référentiel procédures GentleCarE · 20/07/2026</footer>
   </main>
-  <script type="module" src="./workshop-app.js"></script>
+  <script type="module" src="./workshop-app.js?v=330"></script>
 </body>
 </html>

@@ -38,6 +38,9 @@ Toute évolution importante doit rester conforme au document fondateur ou faire 
 - Commande vocale MAVIK lorsque le navigateur la prend en charge
 - Journal automatique des actions
 - Sauvegarde locale dans le navigateur
+- Atelier V1 avec graphe, procédure par catégorie, notes et preuves
+- Rapport d’intervention local testable, imprimable et exportable
+- Serveur multi-utilisateur avec Airtable bidirectionnel, rapports versionnés et propriétaire MAVIK unique
 
 ## Déploiement GitHub Pages
 
@@ -74,13 +77,12 @@ Ouvrir ensuite `http://localhost:4173`.
 
 ## État technique
 
-Cette première version ne transmet aucune donnée sensible à un serveur. Les données sont conservées dans `localStorage` sur l’appareil utilisé.
+La démonstration GitHub Pages conserve les essais dans `localStorage`. La version serveur authentifiée ajoute la persistance locale partagée, la synchronisation Airtable, les procédures, les rapports et les contrôles de rôle. Les secrets restent exclusivement dans l’environnement privé du serveur.
 
 ## Prochains blocs
 
-1. Authentification David / Bénédicte.
-2. Connexion Airtable en lecture et écriture.
-3. Connexion Gmail avec préparation de brouillons.
-4. Stockage centralisé des photos et documents.
-5. Validation humaine avant toute action sensible.
-6. Installation de GCOS comme application sur iPhone.
+1. Installer le jeton Airtable dans l’environnement privé et valider le schéma réel.
+2. Tester le cycle atelier complet sur un dossier de démonstration puis sur une intervention encadrée.
+3. Connecter le fournisseur de messagerie pour les brouillons validés.
+4. Centraliser les photos et documents lourds.
+5. Installer MAVIK comme application web sur les appareils de l’équipe.

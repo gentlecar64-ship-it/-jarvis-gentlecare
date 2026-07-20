@@ -11,6 +11,8 @@ const quoteStudio = require('./quote-studio-service');
 const quoteRequests = require('./quote-requests');
 const tariffCatalog = require('./tariff-catalog');
 const workshopProcedures = require('./workshop-procedures');
+const workshopService = require('./workshop-service');
+const interventionReport = require('./intervention-report');
 const planning = require('./planning-service');
 const calendarBridge = require('./calendar-bridge');
 const emergencyAlert = require('./emergency-alert');
@@ -140,6 +142,7 @@ function servePage(res, fileName, missingMessage, protect = false) {
   let content = fs.readFileSync(filePath, 'utf8');
   if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
   if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-workshop-context.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/navigation-enhancer.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/morale-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
   return html(res, 200, content);
 }
@@ -194,12 +197,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req)); result.user = mergedUser(result.user); return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) }); }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() }); }
 
-    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/procedures', '/airtable'];
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
 
-    for (const asset of ['jarvis-quote.js', 'reputation-client.js', 'command-dock.js', 'navigation-enhancer.js', 'quote-studio-client.js', 'planning-client.js', 'morale-client.js', 'airtable-client.js', 'procedures-client.js', 'brand-shell.css']) if (req.method === 'GET' && url.pathname === `/assets/${asset}`) return servePublicAsset(res, asset);
+    for (const asset of ['jarvis-quote.js', 'jarvis-workshop-context.js', 'reputation-client.js', 'command-dock.js', 'navigation-enhancer.js', 'quote-studio-client.js', 'planning-client.js', 'workshop-client.js', 'profile-owner.js', 'morale-client.js', 'airtable-client.js', 'procedures-client.js', 'brand-shell.css']) if (req.method === 'GET' && url.pathname === `/assets/${asset}`) return servePublicAsset(res, asset);
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
@@ -207,6 +210,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
     if (req.method === 'GET' && url.pathname === '/quotes') return servePage(res, 'quotes.html', 'Atelier devis introuvable', true);
     if (req.method === 'GET' && url.pathname === '/planning') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'planning.html', 'Planning introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/workshop') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'generated/workshop/index.html', 'Atelier introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/procedures') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'procedures.html', 'Bibliothèque de procédures introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/airtable') { auth.requirePermission(user, 'dashboard.read'); return servePage(res, 'airtable.html', 'Cockpit Airtable introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/calendar/mavik.ics') return binary(res, 200, calendarBridge.buildIcs(localStore), 'text/calendar; charset=utf-8', { 'Content-Disposition': 'attachment; filename="MAVIK-GentleCarE.ics"' });
@@ -216,6 +220,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'PATCH' && url.pathname === '/api/profile') return json(res, 200, { user: profileUpdate(user, await readBody(req), context) });
     if (req.method === 'POST' && (url.pathname === '/api/profile/pin' || url.pathname === '/api/auth/pin')) { const result = auth.changeMyPin(user, await readBody(req)); return json(res, 200, result, { 'Set-Cookie': clearSessionCookie() }); }
     if (req.method === 'POST' && url.pathname === '/api/profile/devices/revoke') { const body = await readBody(req); return json(res, 200, { user: auth.revokeTrustedDevice(user, body.deviceId, context) }); }
+    if (req.method === 'GET' && url.pathname === '/api/system/owner') return json(res, 200, auth.ownerSettings(user));
+    if (req.method === 'PATCH' && url.pathname === '/api/system/owner') { const body = await readBody(req); return json(res, 200, auth.setSystemOwner(user, body.userId)); }
 
     if (req.method === 'GET' && url.pathname === '/api/emergency/status') return json(res, 200, emergencyAlert.status(user));
     if (req.method === 'POST' && url.pathname === '/api/emergency/activate') return json(res, 201, emergencyAlert.activate(await readBody(req), user));
@@ -240,6 +246,34 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/tariffs') return json(res, 200, { records: tariffCatalog.list({ includeInactive: url.searchParams.get('all') === '1' }) });
     if ((req.method === 'POST' || req.method === 'PATCH') && url.pathname === '/api/tariffs') return json(res, req.method === 'POST' ? 201 : 200, { tariff: tariffCatalog.save(await readBody(req), user) });
     if (req.method === 'GET' && url.pathname === '/api/workshop/procedures') return json(res, 200, { records: workshopProcedures.list() });
+    if (req.method === 'GET' && url.pathname === '/api/workshop/overview') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, workshopService.overview(localStore, user)); }
+    if (req.method === 'POST' && url.pathname === '/api/workshop/restore') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, workshopService.restoreAcceptedQuotes(localStore, user)); }
+    const workshopDetailRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)$/);
+    if (workshopDetailRoute && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, workshopService.detail(localStore, decodeURIComponent(workshopDetailRoute[1]), user)); }
+    const workshopActionRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/(assign|reception|work-action|request-final|approve-final|report|report-validate)$/);
+    if (workshopActionRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'interventions.write');
+      const reference = decodeURIComponent(workshopActionRoute[1]);
+      const action = workshopActionRoute[2];
+      const body = await readBody(req);
+      if (action === 'assign') return json(res, 200, workshopService.assign(localStore, reference, body, user));
+      if (action === 'reception') return json(res, 200, workshopService.reception(localStore, reference, body, user));
+      if (action === 'work-action') return json(res, 200, workshopService.workAction(localStore, reference, body, user));
+      if (action === 'request-final') return json(res, 200, workshopService.requestFinalValidation(localStore, reference, body, user));
+      if (action === 'approve-final') {
+        const approved = workshopService.approveFinal(localStore, reference, body, user);
+        const report = interventionReport.generate(localStore, approved.id, { managerValidation: user.name, finalChecklist: { procedureComplete: true, directionApproved: true } }, user);
+        return json(res, 200, { intervention: workshopService.detail(localStore, approved.id, user), report });
+      }
+      workshopService.assertCompletable(localStore, reference, user);
+      if (action === 'report') return json(res, 201, interventionReport.generate(localStore, reference, body, user));
+      if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('WORKSHOP_DIRECTION_VALIDATION_REQUIRED'), { status: 403 });
+      return json(res, 200, interventionReport.validate(localStore, reference, { ...body, managerValidation: body.managerValidation || user.name }, user));
+    }
+    const workshopStepRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/steps\/([^/]+)$/);
+    if (workshopStepRoute && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, workshopService.updateStep(localStore, decodeURIComponent(workshopStepRoute[1]), decodeURIComponent(workshopStepRoute[2]), await readBody(req), user)); }
+    const workshopEvidenceRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/steps\/([^/]+)\/evidence$/);
+    if (workshopEvidenceRoute && req.method === 'POST') { auth.requirePermission(user, 'interventions.write'); return json(res, 201, workshopService.saveEvidence(localStore, decodeURIComponent(workshopEvidenceRoute[1]), decodeURIComponent(workshopEvidenceRoute[2]), await readBody(req), user)); }
 
     if (req.method === 'GET' && url.pathname === '/api/quote-requests') return json(res, 200, { records: quoteRequests.list(localStore, user) });
     if (req.method === 'POST' && url.pathname === '/api/quote-requests/draft') return json(res, 201, quoteRequests.saveDraft(localStore, await readBody(req), user));

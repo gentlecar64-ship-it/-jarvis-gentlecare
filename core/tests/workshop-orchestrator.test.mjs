@@ -41,7 +41,7 @@ assert.equal(restored.resourceManager.get('cryo-machine').status, RESOURCE_STATU
 assert.ok(restored.getDashboard().audit.length > 0);
 
 const full = new WorkshopOrchestrator({ storage: storage() });
-const cycle = full.createIntervention({ clientName: 'Cycle complet', vehicleName: 'Mustang test' });
+const cycle = full.createIntervention({ clientName: 'Cycle complet', vehicleName: 'Mustang test', registration: 'TEST-001' });
 const complete = (taskId) => { full.startTask(cycle.id, taskId); full.completeTask(cycle.id, taskId); };
 for (const taskId of ['request', 'inspection', 'quote', 'client-validation', 'planning', 'reception', 'wheel-removal', 'protection', 'before-photos']) complete(taskId);
 
@@ -61,5 +61,18 @@ complete('dinitrol');
 assert.equal(full.resourceManager.get('dinitrol-stock').quantity, 17);
 assert.equal(full.getIntervention(cycle.id).consumptions.length, 2);
 assert.equal(full.getIntervention(cycle.id).qualityChecks.length, 1);
+
+complete('drying');
+complete('quality-control-2');
+complete('final-photos');
+for (const step of full.getIntervention(cycle.id).procedureSteps) full.updateProcedureStep(cycle.id, step.id, { complete: true, note: 'Contrôle tracé pour le test.' });
+assert.equal(full.getReportReadiness(cycle.id).complete, true);
+const report = full.generateReport(cycle.id);
+assert.equal(report.version, 1);
+assert.match(report.status, /Brouillon/);
+assert.equal(full.getIntervention(cycle.id).tasks.find((task) => task.id === 'report').status, TASK_STATUS.DONE);
+assert.match(full.renderReport(cycle.id), /Rapport d’intervention MAVIK/);
+const validated = full.validateReport(cycle.id);
+assert.match(validated.status, /prêt à remettre/);
 
 console.log('WorkshopOrchestrator tests passed.');

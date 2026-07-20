@@ -1,0 +1,12 @@
+.stats{grid-template-columns:repeat(6,1fr)}
+.form-grid textarea{border:1px solid #246079;background:#0a2535;color:#fff;border-radius:9px;padding:9px 11px;font:inherit;min-height:74px;resize:vertical}
+.procedure-board{display:grid;gap:8px;margin-top:12px}
+.procedure-step{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;border:1px solid var(--line);border-radius:12px;padding:11px;background:#061722}
+.procedure-step.done{border-color:#245b31;background:rgba(120,202,23,.055)}
+.procedure-step input[type=checkbox]{width:21px;height:21px;accent-color:var(--green)}
+.procedure-copy{font-size:.78rem;line-height:1.42}.procedure-copy small{display:block;color:var(--muted);margin-top:4px}
+.procedure-tools{display:grid;grid-template-columns:minmax(160px,1fr) auto auto;gap:6px;margin-top:8px}.procedure-tools input{border:1px solid #246079;background:#041722;color:white;border-radius:8px;padding:8px}
+.proof-list{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}.proof{font-size:.65rem;border:1px solid #25546a;border-radius:999px;padding:4px 7px;color:#ccebf7}
+.report-checks{display:grid;gap:6px;margin:10px 0}.report-check{font-size:.72rem;padding:8px;border:1px solid var(--line);border-radius:9px;color:var(--muted)}.report-check.ok{color:#bdf28e;border-color:#356522}.report-card{border-color:#3c6e25}
+@media(max-width:1120px){.stats{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}.procedure-step{grid-template-columns:auto 1fr}.procedure-step>.button{grid-column:2}.procedure-tools{grid-template-columns:1fr 1fr}.procedure-tools input{grid-column:1/-1}}

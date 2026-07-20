@@ -3,7 +3,7 @@
   if (window.__MAVIK_NAVIGATION_ENHANCER__) return;
   window.__MAVIK_NAVIGATION_ENHANCER__ = true;
 
-  const WORKSHOP_URL = '/generated/workshop/index.html';
+  const WORKSHOP_URL = '/workshop';
   const LEGAL_URL = '/generated/legal/index.html';
   const KEEPALIVE_INTERVAL_MS = 3 * 60 * 1000;
   const api = async (url, options = {}) => {

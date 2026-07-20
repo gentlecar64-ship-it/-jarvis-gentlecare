@@ -1,9 +1,9 @@
 # Dossier de transmission MAVIK / GentleCarE
 
 **Document de référence du projet**  
-Version documentaire : 1.0  
+Version documentaire : 1.1
 Date de référence : 20 juillet 2026  
-Branche analysée : `feature/graph-workflow-ui`  
+Branche de référence : `main` · version produit `0.33.0`
 Dépôt : `gentlecar64-ship-it/-jarvis-gentlecare`
 
 ## 1. Objet et règle d’autorité
@@ -18,7 +18,9 @@ MAVIK est le système d’exploitation métier de GentleCarE. Le nom du logiciel
 
 La priorité absolue est une V1 stable, testable et réversible. La vision IA, l’assistant vocal complet, l’application mobile native, la simulation avancée, l’apprentissage automatique et la maintenance prédictive sont exclus de la V1 initiale.
 
-Le dépôt contient deux générations techniques. `src/core/` porte un noyau historique déjà doté d’un audit, de notifications, de tâches, de stockage et d’un registre de modules. `core/` porte la nouvelle orchestration métier : Rule Engine, Workflow Engine, Graph Workflow Engine, Event Bus, Intervention Engine, Resource Manager et Decision Engine. La prochaine étape n’est pas de réécrire ces moteurs, mais de choisir et documenter la façade d’intégration qui reliera la nouvelle orchestration à l’interface atelier et à la persistance.
+Le dépôt contient deux générations techniques. `src/core/` porte un noyau historique déjà doté d’un audit, de notifications, de tâches, de stockage et d’un registre de modules. `core/` porte la nouvelle orchestration métier : Rule Engine, Workflow Engine, Graph Workflow Engine, Event Bus, Intervention Engine, Resource Manager et Decision Engine. La façade `WorkshopOrchestrator` relie désormais cette orchestration à l’interface Atelier publique ; le serveur relie les mêmes règles à la persistance partagée et à Airtable.
+
+État au 20 juillet 2026 : la façade `WorkshopOrchestrator` est intégrée à l’Atelier public. Chaque intervention possède une procédure versionnée, des étapes et preuves, puis une tâche de rapport avant restitution. Le serveur reprend la même chaîne et conserve les rapports versionnés. Un propriétaire MAVIK unique pilote les horaires de mise à jour automatique ; l’installation attend un atelier inactif et crée une sauvegarde préalable.
 
 ## 3. Identité et vocabulaire
 
@@ -518,4 +520,3 @@ Chaque mise à jour indique : date ; auteur ou validateur ; sections touchées ;
 ## 37. Conclusion de transmission
 
 MAVIK ne doit pas être recréé. Le socle utile existe. La reprise correcte consiste à consolider les deux générations de noyau, protéger la persistance, connecter l’interface atelier au graphe, compléter les projections et la planification, puis valider un cycle complet sur le terrain. Le premier objectif mesurable reste une intervention GentleCarE complète, traçable et restaurable dans MAVIK V1.
-

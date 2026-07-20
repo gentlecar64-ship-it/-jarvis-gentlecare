@@ -34,6 +34,7 @@ const DEFAULT_PREFERENCES = Object.freeze({
   preferredHome: 'dashboard',
   updateWindowStart: '18:00',
   updateWindowEnd: '07:30',
+  updateTimeZone: 'Europe/Paris',
   updateDays: [1,2,3,4,5,6,0],
   updateOnlyWhenIdle: true,
   updateAutoInstall: true
@@ -130,6 +131,7 @@ function normalizePreferences(input = {}) {
     preferredHome,
     updateWindowStart: normalizeTime(input.updateWindowStart, DEFAULT_PREFERENCES.updateWindowStart),
     updateWindowEnd: normalizeTime(input.updateWindowEnd, DEFAULT_PREFERENCES.updateWindowEnd),
+    updateTimeZone: ['Europe/Paris', 'UTC'].includes(input.updateTimeZone) ? input.updateTimeZone : DEFAULT_PREFERENCES.updateTimeZone,
     updateDays: normalizeUpdateDays(input.updateDays),
     updateOnlyWhenIdle: input.updateOnlyWhenIdle !== false,
     updateAutoInstall: input.updateAutoInstall !== false
@@ -149,7 +151,10 @@ function readUsers() {
   const parsed = readRequiredJson(USERS_FILE, 'USER_STORE_UNREADABLE');
   if (!Array.isArray(parsed)) throw Object.assign(new Error('USER_STORE_INVALID'), { status: 500 });
   const raw = parsed;
-  const normalized = raw.map(normalizeStoredUser);
+  let normalized = raw.map(normalizeStoredUser);
+  const activeAdmins = normalized.filter((user) => user.role === 'admin' && user.active !== false);
+  const designated = activeAdmins.find((user) => user.systemOwner === true) || activeAdmins[0] || null;
+  normalized = normalized.map((user) => ({ ...user, systemOwner: Boolean(designated && user.id === designated.id) }));
   if (JSON.stringify(raw) !== JSON.stringify(normalized)) writeUsers(normalized);
   return normalized;
 }
@@ -187,7 +192,7 @@ function createInitialAdmin(input = {}, context = {}) {
   if (!validPin(password)) throw Object.assign(new Error('PIN_MUST_BE_4_DIGITS'), { status: 400 });
   const now = new Date().toISOString();
   const ctx = context.id ? context : { id: 'setup-pc', type: normalizeDevice(context.device), label: normalizeDevice(context.device) === 'iphone' ? 'iPhone' : 'PC' };
-  const user = registerTrustedDevice(normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role: 'admin', active: true, passwordHash: hashPassword(password), legacyPinHashes: [], preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now }), ctx);
+  const user = registerTrustedDevice(normalizeStoredUser({ id: crypto.randomUUID(), name, username, email, role: 'admin', systemOwner: true, active: true, passwordHash: hashPassword(password), legacyPinHashes: [], preferences: DEFAULT_PREFERENCES, trustedDevices: [], createdAt: now, updatedAt: now }), ctx);
   writeUsers([user]);
   return publicUser(user, ctx);
 }
@@ -210,6 +215,37 @@ function createUser(actor, input = {}) {
   users.push(user); writeUsers(users); return publicUser(user);
 }
 function listUsers(actor) { requirePermission(actor, 'users.manage'); return readUsers().map((user) => publicUser(user)); }
+function systemOwner() {
+  const owner = readUsers().find((user) => user.systemOwner === true && user.role === 'admin' && user.active !== false) || null;
+  return publicUser(owner);
+}
+function ownerSettings(actor) {
+  requirePermission(actor, 'users.manage');
+  const users = readUsers();
+  return {
+    owner: publicUser(users.find((user) => user.systemOwner === true) || null),
+    candidates: users.filter((user) => user.role === 'admin' && user.active !== false).map((user) => publicUser(user)),
+    canTransfer: users.some((user) => user.id === actor.id && user.systemOwner === true)
+  };
+}
+function setSystemOwner(actor, targetUserId) {
+  requirePermission(actor, 'users.manage');
+  const users = readUsers();
+  const current = users.find((user) => user.systemOwner === true) || null;
+  if (current && current.id !== actor.id) throw Object.assign(new Error('SYSTEM_OWNER_REQUIRED'), { status: 403 });
+  const target = users.find((user) => user.id === targetUserId && user.role === 'admin' && user.active !== false);
+  if (!target) throw Object.assign(new Error('SYSTEM_OWNER_MUST_BE_ACTIVE_ADMIN'), { status: 400 });
+  const changedAt = new Date().toISOString();
+  const scheduleKeys = ['updateWindowStart', 'updateWindowEnd', 'updateTimeZone', 'updateDays', 'updateOnlyWhenIdle', 'updateAutoInstall'];
+  const preservedSchedule = Object.fromEntries(scheduleKeys.map((key) => [key, current?.preferences?.[key]]).filter(([, value]) => value !== undefined));
+  const updated = users.map((user) => normalizeStoredUser({
+    ...user, systemOwner: user.id === target.id,
+    preferences: user.id === target.id ? { ...(user.preferences || {}), ...preservedSchedule } : user.preferences,
+    ownerChangedAt: user.id === target.id ? changedAt : user.ownerChangedAt, ownerChangedBy: user.id === target.id ? actor.id : user.ownerChangedBy
+  }));
+  writeUsers(updated);
+  return ownerSettings(publicUser(updated.find((user) => user.id === actor.id)));
+}
 function recoveryKey(input = {}) { return `${String(input.username || '').trim().toLowerCase()}|${normalizeEmail(input.email)}`; }
 function enforceRecoveryRateLimit(key) {
   const now = Date.now(); const entry = recoveryAttempts.get(key);
@@ -272,6 +308,10 @@ function updateMyProfile(actor, input = {}, context = {}) {
   if (!name) throw Object.assign(new Error('USER_NAME_REQUIRED'), { status: 400 });
   if (!validEmail(email)) throw Object.assign(new Error('INVALID_EMAIL'), { status: 400 });
   if (users.some((item, itemIndex) => itemIndex !== index && normalizeEmail(item.email) === email)) throw Object.assign(new Error('EMAIL_ALREADY_EXISTS'), { status: 409 });
+  const scheduleKeys = ['updateWindowStart', 'updateWindowEnd', 'updateTimeZone', 'updateDays', 'updateOnlyWhenIdle', 'updateAutoInstall'];
+  if (scheduleKeys.some((key) => Object.prototype.hasOwnProperty.call(input.preferences || {}, key)) && users[index].systemOwner !== true) {
+    throw Object.assign(new Error('SYSTEM_OWNER_REQUIRED'), { status: 403 });
+  }
   const preferences = normalizePreferences({ ...users[index].preferences, ...(input.preferences || {}) });
   users[index] = normalizeStoredUser({ ...users[index], name, email, preferences, updatedAt: new Date().toISOString() });
   if (context.id) users[index] = registerTrustedDevice(users[index], context);
@@ -344,6 +384,7 @@ function collectionPermission(collection, method) { return `${collection}.${meth
 module.exports = {
   USERS_FILE, SESSIONS_FILE, ROLE_PERMISSIONS, DEFAULT_PREFERENCES, DESIGN_LOCK, SESSION_TTL_MS,
   setupRequired, createInitialAdmin, createUser, listUsers, login, resetPassword, recoverAndLogin,
+  systemOwner, ownerSettings, setSystemOwner,
   updateMyProfile, changeMyPin, setCurrentDevicePin, revokeTrustedDevice, logout,
   tokenFromRequest, authenticate, deviceContextFromRequest, deviceFromRequest,
   normalizeDevice, can, requirePermission, collectionPermission
