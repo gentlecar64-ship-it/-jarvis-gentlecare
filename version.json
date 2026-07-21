@@ -2,7 +2,7 @@
   "name": "MAVIK GCOS",
   "version": "0.39.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T12:20:00+02:00",
+  "releasedAt": "2026-07-21T12:30:00+02:00",
   "notes": [
     "Dossier Améliorations implanté pour recueillir les idées, boutons et fonctions demandés par chaque utilisateur",
     "Analyse Jarvis des demandes selon le rôle, les habilitations, les données concernées et le caractère réversible de l’action",
@@ -13,6 +13,7 @@
     "Garde-fou anti-écran blanc injecté dans toutes les pages par le service worker",
     "Interface de secours avec accès à l’Accueil, l’Atelier, le Planning, la Gestion, les Améliorations et la Mise à jour",
     "Page de mise à jour forcée préservant les comptes, dossiers et données locales",
+    "Veille juridique MAVIK prévue sur les sources officielles françaises",
     "Cache PWA renouvelé en version 0.39.0"
   ]
 }
