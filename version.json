@@ -1,14 +1,13 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T01:30:00+02:00",
+  "releasedAt": "2026-07-21T07:30:00+02:00",
   "notes": [
-    "Atelier V1 relié aux procédures GentleCarE et aux preuves d’exécution",
-    "Rapport d’intervention généré, contrôlé et validé depuis le dossier atelier",
-    "Propriétaire système unique et transférable entre administrateurs actifs",
-    "Fenêtre de mise à jour automatique pilotée par le propriétaire et différée si l’atelier est actif",
-    "Contexte atelier, rapports et mises à jour disponible dans Jarvis",
-    "Documentation de transmission et décisions d’architecture actualisées"
+    "Logo officiel fourni par GentleCarE utilisé dans MAVIK, les devis et les rapports",
+    "Accès directs au poste atelier, au planning spécifique et à l’atelier du jour",
+    "Planning du lundi au vendredi avec capacité, expertise, dépôt et restitution",
+    "Navigation atelier harmonisée sur ordinateur, tablette et mobile",
+    "Synchronisation Airtable et mise à jour automatique conservées"
   ]
 }
