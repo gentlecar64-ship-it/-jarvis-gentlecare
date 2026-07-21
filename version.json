@@ -1,16 +1,17 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.39.1",
+  "version": "0.40.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T09:50:00+02:00",
+  "releasedAt": "2026-07-21T10:20:00+02:00",
   "notes": [
-    "Correction de la boucle de l’interface de secours",
-    "Suppression du déclenchement automatique après 900 millisecondes",
-    "Le garde-fou affiche désormais seulement un bandeau non bloquant lorsqu’une véritable erreur JavaScript est détectée",
-    "L’écran de connexion dispose du temps nécessaire pour initialiser les profils utilisateurs",
-    "Le service worker remplace les anciennes références de stabilité v3900 par v3910",
-    "Le cache PWA est renouvelé sous jarvis-gentlecare-v3910",
-    "L’installateur 0.39.1 purge les anciens caches sans supprimer les comptes ni les dossiers",
-    "Le dossier Améliorations et les règles d’habilitation restent actifs"
+    "Centre des modules implanté avec accès direct à toutes les pages métiers",
+    "24 pages autonomes ajoutées pour le commercial, les opérations, la Direction, la conformité et la sécurité",
+    "Chaque page propose ajout, modification, suppression, recherche, indicateurs et export JSON",
+    "Les actions sont journalisées avec l’utilisateur, le rôle, l’heure et le module concerné",
+    "Les pages sensibles restent visibles mais bloquent les modifications pour les profils non habilités",
+    "Pages ajoutées : prospects, partenaires, fournisseurs, achats, stock, factures, paiements, rapports, documents, tâches, équipe, formations, événements, campagnes, conformité, sécurité, maintenance, incidents, qualité, assurances, financement, équipements, sous-traitants et journal entreprise",
+    "Bouton Modules injecté dans toutes les pages MAVIK",
+    "Service worker et cache renouvelés sous jarvis-gentlecare-v4000",
+    "Dossier Améliorations, garde-fou non bloquant et veille juridique conservés"
   ]
 }
