@@ -12,6 +12,7 @@ permissions:
 
 env:
   MAVIK_VERSION: "0.42.0"
+  MAVIK_CORE_VERSION: "0.42.0-core.1"
 
 concurrency:
   group: mavik-pages
@@ -34,6 +35,14 @@ jobs:
           node --check mavik-stability.js
           node --check service-worker.js
           node --check install.js
+          node --check scripts/validate-instance.mjs
+
+      - name: Validate MAVIK instance metadata
+        run: |
+          node scripts/validate-instance.mjs
+          grep -q '"coreVersion": "0.42.0-core.1"' mavik.instance.json
+          grep -q '"mavikCoreVersion": "0.42.0-core.1"' client.config.json
+          ! grep -Eq '"pin"[[:space:]]*:[[:space:]]*"[0-9]{4}"' client.config.json
 
       - name: Assemble static site
         shell: bash
@@ -46,8 +55,8 @@ jobs:
             --exclude 'dist' \
             --exclude 'docs'
           touch dist/.nojekyll
-          printf '{"version":"%s","commit":"%s","builtAt":"%s"}\n' \
-            "$MAVIK_VERSION" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > dist/deployment.json
+          printf '{"version":"%s","coreVersion":"%s","commit":"%s","builtAt":"%s"}\n' \
+            "$MAVIK_VERSION" "$MAVIK_CORE_VERSION" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > dist/deployment.json
           test -f dist/mavik-autonomous.js
           test -f dist/jarvis-voice.js
           test -f dist/mavik-autonomous.css
@@ -57,12 +66,15 @@ jobs:
           test -f dist/gestion.html
           test -f dist/profil.html
           test -f dist/devis.html
+          test -f dist/client.config.json
+          test -f dist/mavik.instance.json
           grep -q 'data-page="workshop"' dist/alpha/workshop/index.html
           grep -q 'data-page="planning"' dist/planning.html
           grep -q 'data-page="gestion"' dist/gestion.html
           grep -q 'data-page="profile"' dist/profil.html
           grep -q 'data-page="devis"' dist/devis.html
           grep -q '0.42.0' dist/version.json
+          grep -q '0.42.0-core.1' dist/mavik.instance.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
