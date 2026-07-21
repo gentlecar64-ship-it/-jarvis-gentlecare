@@ -1,17 +1,15 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.37.0",
+  "version": "0.37.1",
   "channel": "stable",
-  "releasedAt": "2026-07-21T09:15:00+02:00",
+  "releasedAt": "2026-07-21T10:05:00+02:00",
   "notes": [
-    "Poste atelier simplifié autour de la liste des véhicules et de leur fiche d’intervention",
-    "Forfaits disponibles dans un menu déroulant avec tarifs GentleCarE préremplis lorsqu’ils sont validés",
-    "Saisie vocale Jarvis, téléphone et e-mail client, champs obligatoires signalés en rouge",
-    "Prise de photos repositionnée en étape 3 et préparation sous véhicule adaptée à la fosse atelier",
-    "Devis préparé selon les règles GentleCarE puis envoyé uniquement lorsque les conditions sont remplies",
-    "Détection de validation e-mail préparée pour déclencher automatiquement la planification",
-    "Dates distinctes pour la prise en charge et l’intervention, avec enlèvement ou rapatriement Naza",
-    "Boutons d’action ajoutés au Planning spécifique GentleCarE",
-    "Traçabilité, ressources et données de test déplacées dans Profil / réglages"
+    "Correction des pages blanches provoquées par l’ancien cache PWA",
+    "Service worker simplifié : une ressource absente ne bloque plus toute la mise à jour",
+    "Déploiement GitHub Pages relancé depuis la branche main avec publication complète",
+    "Page 404 de récupération ajoutée avec accès direct aux modules essentiels",
+    "Page diagnostic ajoutée pour tester les fichiers, purger les caches et réinstaller MAVIK",
+    "Garde-fou commun : les erreurs JavaScript affichent une interface de récupération au lieu d’un écran blanc",
+    "Poste atelier, Planning spécifique, dossier vocal, devis et logistique Naza conservés"
   ]
 }
