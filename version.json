@@ -1,19 +1,16 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.39.0",
+  "version": "0.39.1",
   "channel": "stable",
-  "releasedAt": "2026-07-21T12:30:00+02:00",
+  "releasedAt": "2026-07-21T09:50:00+02:00",
   "notes": [
-    "Dossier Améliorations implanté pour recueillir les idées, boutons et fonctions demandés par chaque utilisateur",
-    "Analyse Jarvis des demandes selon le rôle, les habilitations, les données concernées et le caractère réversible de l’action",
-    "Refus automatique des demandes visant les mots de passe, les messages personnels, le contournement des droits ou les comptes sensibles sans habilitation",
-    "Validation Direction obligatoire pour les extensions de droits, les actions externes, les suppressions, les finances et les communications sensibles",
-    "Contrôle juridique obligatoire pour la surveillance, la géolocalisation, les ressources humaines et les données personnelles sensibles",
-    "Journal de traçabilité et export du dossier des améliorations",
-    "Garde-fou anti-écran blanc injecté dans toutes les pages par le service worker",
-    "Interface de secours avec accès à l’Accueil, l’Atelier, le Planning, la Gestion, les Améliorations et la Mise à jour",
-    "Page de mise à jour forcée préservant les comptes, dossiers et données locales",
-    "Veille juridique MAVIK prévue sur les sources officielles françaises",
-    "Cache PWA renouvelé en version 0.39.0"
+    "Correction de la boucle de l’interface de secours",
+    "Suppression du déclenchement automatique après 900 millisecondes",
+    "Le garde-fou affiche désormais seulement un bandeau non bloquant lorsqu’une véritable erreur JavaScript est détectée",
+    "L’écran de connexion dispose du temps nécessaire pour initialiser les profils utilisateurs",
+    "Le service worker remplace les anciennes références de stabilité v3900 par v3910",
+    "Le cache PWA est renouvelé sous jarvis-gentlecare-v3910",
+    "L’installateur 0.39.1 purge les anciens caches sans supprimer les comptes ni les dossiers",
+    "Le dossier Améliorations et les règles d’habilitation restent actifs"
   ]
 }
