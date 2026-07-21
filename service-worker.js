@@ -44,7 +44,7 @@ self.addEventListener('fetch',event=>{
     })());
     return;
   }
-  if(url.pathname.endsWith('/version.json')||url.pathname.endsWith('/health.json')||url.pathname.endsWith('/mavik-stability.js')||url.pathname.endsWith('/module-page.js')||url.pathname.endsWith('/module-shell.css')){
+  if(url.pathname.endsWith('/version.json')||url.pathname.endsWith('/health.json')||url.pathname.endsWith('/mavik-stability.js')||url.pathname.endsWith('/module-loader.js')||url.pathname.endsWith('/module-page.js')||url.pathname.endsWith('/module-shell.css')){
     event.respondWith(fetch(event.request,{cache:'no-store'}).catch(()=>caches.match(event.request)));
     return;
   }
