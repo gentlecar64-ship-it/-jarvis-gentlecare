@@ -1,17 +1,21 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.41.1",
+  "version": "0.42.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T11:35:00+02:00",
+  "releasedAt": "2026-07-21T12:45:00+02:00",
   "notes": [
-    "Nouveau point d’entrée autonome mavik-0411.html sans service worker ni écran masqué au démarrage",
-    "Nouveau lanceur launch-0411.html supprimant les caches techniques avant ouverture de l’application autonome",
-    "Publication forcée sur main, master et gh-pages",
-    "Workflow de publication double : artefact GitHub Pages et branche gh-pages",
-    "Procédure Code oublié conservée avec accès Employé temporaire de 8 heures et notification Direction",
-    "16 nouvelles sections autonomes implantées dans la Suite opérationnelle",
-    "Sections ajoutées : rendez-vous, livraisons, photos, check-lists, SAV, garanties, glace carbonique, flotte, notifications, distribution Dinitrol, activité industrielle, commandes clients, contrats, rentabilité, objectifs et courriers",
-    "Les sections sensibles restent réservées à la Direction et ne chargent aucune donnée pour un profil Employé",
-    "Les 24 pages métiers, le Poste atelier, le Planning et le dossier Améliorations restent actifs"
+    "Poste atelier remplacé par une version autonome sans ancien moteur de session ni module ES bloquant",
+    "Planning spécifique remplacé par une version autonome avec prise en charge et intervention séparées",
+    "Gestion remplacée par un cockpit autonome pour clients, véhicules, devis, stock, rapports et facturation",
+    "Réglages remplacés par une page autonome pour profil, ressources, sauvegarde, vocal et traçabilité",
+    "Page Devis autonome implantée avec registre, ouverture, modification, aperçu, impression PDF, acompte et conditions GentleCarE",
+    "Jarvis vocal implanté sur les pages principales et chargé automatiquement sur les modules compatibles",
+    "Commandes vocales : navigation, nouveau dossier, nouveau devis, nouveau rendez-vous et dictée des champs",
+    "Mode vocal continu et réponses vocales configurables dans Réglages",
+    "Les demandes vocales non reconnues sont enregistrées pour analyse et ne déclenchent pas d’action sensible",
+    "Diagnostic visuel des pages ajouté en complément du contrôle HTTP",
+    "Workflow GitHub Pages renforcé par node --check sur les moteurs JavaScript",
+    "Cache PWA renouvelé sous jarvis-gentlecare-v4200",
+    "Les 24 modules et les 16 sections opérationnelles restent actifs"
   ]
 }
