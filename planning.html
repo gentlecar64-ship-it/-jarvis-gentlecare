@@ -3,101 +3,31 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>MAVIK — Planning atelier GentleCarE</title>
   <meta name="theme-color" content="#061014">
-  <script src="mavik-session.js?v=1"></script>
+  <title>MAVIK — Planning spécifique GentleCarE</title>
+  <script src="mavik-session.js?v=2"></script>
   <style>
-    :root{--bg:#061014;--panel:#0b1820;--panel2:#0e2028;--line:#163847;--text:#f4f8fa;--muted:#8ca2ad;--green:#46e36d;--cyan:#18d6df;--blue:#3a9cff;--amber:#f0b33c;--red:#ef5b5b}
-    *{box-sizing:border-box}
-    body{margin:0;background:radial-gradient(circle at 70% 0,#0a2630 0,transparent 30%),linear-gradient(180deg,#061014,#030709);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;min-height:100vh}
-    .shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
-    .side{border-right:1px solid #12303b;background:#050c10;padding:22px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-    .brand{text-align:center}.brand img{width:74px;height:74px;background:#fff;border-radius:24px;padding:5px}.brand h2{margin:10px 0 2px}.brand small{color:var(--green);font-size:.68rem;text-transform:uppercase}
-    .nav{display:grid;gap:6px;margin-top:26px}.nav a{color:#d4e0e4;text-decoration:none;padding:12px;border-radius:12px}.nav a.active,.nav a:hover{background:linear-gradient(90deg,#0d3d2c,#0b2228);color:#8cff9d}
-    .side .jarvis{margin-top:auto;border:1px solid var(--line);border-radius:17px;padding:16px;text-align:center;background:#09161b}.orb{width:60px;height:60px;border-radius:50%;margin:auto;background:radial-gradient(circle,#69efff 0 12%,#0a5263 13% 35%,#06171c 36% 60%,#12323a 61%);box-shadow:0 0 24px #19d7e766;display:grid;place-items:center;font-weight:900}
-    .main{min-width:0}.top{min-height:70px;border-bottom:1px solid #12303b;display:flex;justify-content:space-between;align-items:center;gap:14px;padding:8px 20px;background:#061015dd;backdrop-filter:blur(14px);position:sticky;top:0;z-index:10}.top a,.btn{border:1px solid var(--line);background:#0d1d24;color:var(--text);border-radius:10px;padding:9px 12px;text-decoration:none;cursor:pointer}.btn.primary{background:linear-gradient(180deg,#2d8a4b,#1f6337);border-color:#3fb861;font-weight:800}.top-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
-    .content{padding:20px;max-width:1500px;margin:auto}.hero{display:flex;justify-content:space-between;gap:16px;align-items:end;border:1px solid var(--line);border-radius:18px;background:linear-gradient(90deg,#071216ee,#0a2228d9);padding:22px;margin-bottom:14px}.hero h1{margin:0 0 6px;font-size:1.8rem}.muted{color:var(--muted)}.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:8px 10px;border-radius:999px;background:#0b2228;border:1px solid var(--line);font-size:.82rem}
-    .timeline-card,.details-card{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#0a171d,#071116);padding:14px;box-shadow:0 16px 40px #0005}.timeline-wrap{overflow-x:auto}.timeline{min-width:1040px}.hours,.lane{display:grid;grid-template-columns:150px repeat(10,1fr);gap:2px}.hours div{padding:9px;text-align:center;color:var(--muted);font-size:.8rem}.lane{min-height:104px;margin-bottom:8px}.person{position:sticky;left:0;z-index:4;background:#081319;border:1px solid var(--line);border-radius:11px 0 0 11px;padding:14px;font-weight:800}.slot{background:#0a151b;border-top:1px solid #13333f;border-bottom:1px solid #13333f}.job{margin:7px 3px;background:linear-gradient(135deg,#0b3c4a,#10232c);border:1px solid #2184a0;border-radius:11px;padding:10px;min-height:90px;cursor:pointer;box-shadow:inset 0 0 20px #18d6df12}.job strong{display:block}.badge{display:inline-block;margin-top:6px;padding:4px 8px;border-radius:999px;background:#123e23;color:#8cf0a8;font-size:.72rem}
-    .details-card{margin-top:14px}.details-head{display:flex;justify-content:space-between;align-items:center}.items{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}.item{background:#0b1920;border:1px solid #173844;border-radius:14px;padding:14px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.actions{display:flex;gap:8px;flex-wrap:wrap}
-    .modal{position:fixed;inset:0;background:#020608e8;display:none;place-items:center;padding:15px;z-index:50}.modal.open{display:grid}.box{width:min(620px,100%);background:#0a171d;border:1px solid var(--line);border-radius:18px;padding:20px}textarea{width:100%;background:#061014;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:11px}.mobilebar{display:none}
-    @media(max-width:900px){.shell{grid-template-columns:76px 1fr}.brand h2,.brand small,.nav span,.side .jarvis p{display:none}.brand img{width:50px;height:50px}.nav a{text-align:center}.side .jarvis{padding:8px}.items{grid-template-columns:1fr}}
-    @media(max-width:700px){.shell{display:block}.side{display:none}.top{min-height:64px;padding:6px 10px}.top>strong{font-size:.88rem}.top .desktop-only{display:none}.top-actions{gap:6px}.content{padding:12px 10px 86px}.hero{align-items:flex-start;padding:16px}.hero h1{font-size:1.35rem}.chips{display:none}.timeline-card{padding:10px}.timeline{min-width:900px}.hours,.lane{grid-template-columns:120px repeat(10,78px)}.person{padding:11px;font-size:.86rem}.job{min-height:82px;padding:8px}.details-head{align-items:flex-start}.items{grid-template-columns:1fr}.mobilebar{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:#050c10f5;border-top:1px solid var(--line);padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:40}.mobilebar a,.mobilebar button{background:none;border:0;color:#cbd8dc;text-decoration:none;text-align:center;font-size:.72rem}.mobilebar b{display:block;font-size:1.2rem}}
+    :root{--bg:#061014;--panel:#0b1820;--line:#163847;--text:#f4f8fa;--muted:#8ca2ad;--green:#46e36d;--cyan:#18d6df;--amber:#f0b33c;--red:#ef5b5b}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 70% 0,#0a2630 0,transparent 30%),linear-gradient(180deg,#061014,#030709);color:var(--text);font-family:Inter,system-ui,-apple-system,sans-serif;min-height:100vh}.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}.side{border-right:1px solid #12303b;background:#050c10;padding:18px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}.brand{text-align:center}.brand img{width:82px;height:82px;background:#fff;border-radius:22px;padding:5px}.brand h2{margin:9px 0 2px}.brand small{color:var(--green);font-size:.68rem;text-transform:uppercase}.nav{display:grid;gap:6px;margin-top:24px}.nav a{color:#d4e0e4;text-decoration:none;padding:12px;border-radius:12px}.nav a.active,.nav a:hover{background:linear-gradient(90deg,#0d3d2c,#0b2228);color:#8cff9d}.main{min-width:0}.top{min-height:70px;border-bottom:1px solid #12303b;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 20px;background:#061015dd;backdrop-filter:blur(14px);position:sticky;top:0;z-index:10}.top-actions,.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.btn{border:1px solid var(--line);background:#0d1d24;color:var(--text);border-radius:10px;padding:9px 12px;text-decoration:none;cursor:pointer}.btn.primary{background:linear-gradient(180deg,#2d8a4b,#1f6337);border-color:#3fb861;font-weight:800}.content{padding:20px;max-width:1500px;margin:auto}.hero,.card{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#0a171d,#071116);box-shadow:0 16px 40px #0005}.hero{display:flex;justify-content:space-between;gap:16px;align-items:end;padding:22px;margin-bottom:14px}.hero h1{margin:0 0 6px;font-size:1.8rem}.muted{color:var(--muted)}.date-tools{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.date-tools label{font-size:.7rem;color:var(--muted);font-weight:800}.date-tools input,select,input,textarea{display:block;border:1px solid var(--line);background:#071920;color:#fff;border-radius:9px;padding:9px;font:inherit}.card{padding:14px}.timeline-wrap{overflow-x:auto}.timeline{min-width:1080px}.hours,.lane{display:grid;grid-template-columns:160px repeat(10,1fr);gap:2px}.hours div{padding:9px;text-align:center;color:var(--muted);font-size:.8rem}.lane{min-height:104px;margin-bottom:8px}.person{position:sticky;left:0;z-index:4;background:#081319;border:1px solid var(--line);border-radius:11px 0 0 11px;padding:14px;font-weight:800}.slot{background:#0a151b;border-top:1px solid #13333f;border-bottom:1px solid #13333f}.job{margin:7px 3px;background:linear-gradient(135deg,#0b3c4a,#10232c);border:1px solid #2184a0;border-radius:11px;padding:10px;min-height:90px;cursor:pointer;color:#fff;text-align:left;overflow:hidden}.job strong{display:block}.badge{display:inline-block;margin-top:6px;padding:4px 8px;border-radius:999px;background:#123e23;color:#8cf0a8;font-size:.72rem}.below{display:grid;grid-template-columns:1.2fr .8fr;gap:14px;margin-top:14px}.items{display:grid;gap:9px;margin-top:10px}.item{background:#0b1920;border:1px solid #173844;border-radius:14px;padding:13px}.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.warning{border-color:#74531b;background:#241a09}.modal{position:fixed;inset:0;background:#020608e8;display:none;place-items:center;padding:15px;z-index:50}.modal.open{display:grid}.box{width:min(720px,100%);max-height:92vh;overflow:auto;background:#0a171d;border:1px solid var(--line);border-radius:18px;padding:20px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.form-grid label{font-size:.7rem;color:var(--muted);font-weight:800}.span-2{grid-column:1/-1}.form-grid input,.form-grid select,.form-grid textarea{width:100%;margin-top:5px}.modal-head{display:flex;justify-content:space-between;align-items:center}.close{border:0;background:none;color:#fff;font-size:1.7rem;cursor:pointer}.toast{position:fixed;right:18px;bottom:18px;background:#0c3041;border:1px solid var(--cyan);border-radius:10px;padding:12px 15px;box-shadow:0 12px 40px #000;color:#fff;z-index:60}.mobilebar{display:none}@media(max-width:900px){.shell{grid-template-columns:76px 1fr}.brand h2,.brand small,.nav span{display:none}.brand img{width:50px;height:50px}.nav a{text-align:center}.below{grid-template-columns:1fr}}@media(max-width:700px){.shell{display:block}.side{display:none}.top{min-height:64px;padding:6px 10px}.content{padding:12px 10px 86px}.hero{align-items:flex-start;padding:16px;display:grid}.hero h1{font-size:1.35rem}.timeline{min-width:900px}.hours,.lane{grid-template-columns:120px repeat(10,78px)}.person{padding:11px;font-size:.86rem}.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.mobilebar{position:fixed;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);background:#050c10f5;border-top:1px solid var(--line);padding:8px 4px calc(8px + env(safe-area-inset-bottom));z-index:40}.mobilebar a,.mobilebar button{background:none;border:0;color:#cbd8dc;text-decoration:none;text-align:center;font-size:.72rem}.mobilebar b{display:block;font-size:1.2rem}}
   </style>
 </head>
 <body>
   <div class="shell">
     <aside class="side">
       <div class="brand"><img src="assets/brand/gentlecare-logo.png" alt="GentleCarE"><h2>GentleCarE</h2><small>Operations System</small></div>
-      <nav class="nav">
-        <a href="index.html">⌂ <span>Tableau de bord</span></a>
-        <a class="active" href="planning.html">▣ <span>Planning</span></a>
-        <a href="alpha/workshop/">🛠 <span>Poste atelier</span></a>
-        <a href="gestion.html#clients">👥 <span>Clients</span></a>
-        <a href="gestion.html#devis">▤ <span>Devis</span></a>
-        <a href="admin.html">⚙ <span>Paramètres</span></a>
-      </nav>
-      <div class="jarvis"><div class="orb">J</div><p>Jarvis<br><span class="muted">Assistant atelier</span></p><button class="btn primary" data-jarvis>🎙 Parler</button></div>
+      <nav class="nav"><a href="index.html">⌂ <span>Tableau de bord</span></a><a class="active" href="planning.html">▣ <span>Planning</span></a><a href="alpha/workshop/">🛠 <span>Poste atelier</span></a><a href="gestion.html#clients">👥 <span>Clients</span></a><a href="profil.html">⚙ <span>Profil / réglages</span></a></nav>
     </aside>
     <main class="main">
-      <header class="top">
-        <strong>Planning atelier</strong>
-        <div class="top-actions">
-          <div data-mavik-session-slot></div>
-          <a class="desktop-only" href="alpha/workshop/">Poste atelier</a>
-          <a href="index.html">Accueil</a>
-        </div>
-      </header>
+      <header class="top"><strong>Planning atelier</strong><div class="top-actions"><button class="btn primary" id="actionButton">⚡ Actions</button><a class="btn" href="alpha/workshop/">Poste atelier</a><div data-mavik-session-slot></div></div></header>
       <div class="content">
-        <section class="hero">
-          <div><h1>Planning spécifique GentleCarE</h1><div class="muted">Affectation par opérateur, préparation des véhicules et suivi de chaque intervention.</div></div>
-          <div class="chips"><span class="chip">3 opérateurs</span><span class="chip">10 heures visibles</span><span class="chip">Session MAVIK active</span><span class="chip">GCOS v0.36.0</span></div>
-        </section>
-        <section class="timeline-card timeline-wrap">
-          <div class="timeline">
-            <div class="hours"><div>Équipe</div><div>8 h</div><div>9 h</div><div>10 h</div><div>11 h</div><div>12 h</div><div>13 h</div><div>14 h</div><div>15 h</div><div>16 h</div><div>17 h</div></div>
-            <div id="lanes"></div>
-          </div>
-        </section>
-        <section class="details-card">
-          <div class="details-head"><div><h2>Interventions et préparation</h2><div class="muted">Notes, contrôles et éléments à valider.</div></div></div>
-          <div id="details" class="items"></div>
-        </section>
+        <section class="hero"><div><h1>Planning spécifique GentleCarE</h1><div class="muted">La prise en charge du véhicule et l’intervention disposent chacune de leur propre date et heure.</div></div><div class="date-tools"><label>Journée affichée<input id="planningDate" type="date"></label><button class="btn" id="todayButton">Aujourd’hui</button><button class="btn primary" id="heroAction">Nouvelle action</button></div></section>
+        <section class="card timeline-wrap"><div class="timeline"><div class="hours"><div>Équipe</div><div>8 h</div><div>9 h</div><div>10 h</div><div>11 h</div><div>12 h</div><div>13 h</div><div>14 h</div><div>15 h</div><div>16 h</div><div>17 h</div></div><div id="lanes"></div></div></section>
+        <section class="below"><article class="card"><div class="row"><div><h2>Interventions du jour</h2><div class="muted">Cliquez sur une intervention pour agir.</div></div></div><div class="items" id="dayItems"></div></article><article class="card"><h2>À planifier</h2><div class="items" id="unscheduled"></div></article></section>
       </div>
     </main>
   </div>
-  <div class="mobilebar"><a href="index.html"><b>⌂</b>Accueil</a><a href="planning.html"><b>▣</b>Planning</a><a href="alpha/workshop/"><b>🛠</b>Atelier</a><button data-jarvis><b>🎙</b>Jarvis</button></div>
-  <div class="modal" id="editModal"><div class="box"><h2 id="editTitle"></h2><textarea id="newElement" rows="4" placeholder="Ajouter une consigne, une préparation ou une note…"></textarea><div class="actions" style="margin-top:10px"><button class="btn primary" onclick="addElement()">Ajouter</button><button class="btn" onclick="editModal.classList.remove('open')">Fermer</button></div></div></div>
-  <script>
-    const team=['David','Séverine','Apprenti'];
-    let state=JSON.parse(localStorage.getItem('gcos-state')||'null')||{interventions:[]};
-    if(!state.interventions?.length)state.interventions=[{id:'i1',client:'Béné',vehicle:'Mini blanche 2005',status:'Préparation',date:new Date().toISOString(),detail:'Cryonettoyage dessous, moteur, passages de roues et protection anticorrosion.',assigned:'David',startHour:8,duration:4}];
-    state.interventions=state.interventions.map((i,n)=>({...i,assigned:team.includes(i.assigned)?i.assigned:team[n%team.length],startHour:Number(i.startHour||8+(n%3)*2),duration:Number(i.duration||3)}));
-    localStorage.setItem('gcos-state',JSON.stringify(state));
-    let selected=null;
-    function extras(id){let all=JSON.parse(localStorage.getItem('gcos-planning-elements')||'{}');return all[id]||[]}
-    function saveExtras(id,list){let all=JSON.parse(localStorage.getItem('gcos-planning-elements')||'{}');all[id]=list;localStorage.setItem('gcos-planning-elements',JSON.stringify(all))}
-    function render(){
-      lanes.innerHTML=team.map(name=>{
-        let jobs=state.interventions.filter(i=>i.assigned===name);
-        let cells=Array.from({length:10},(_,idx)=>{
-          let hour=8+idx,job=jobs.find(i=>Math.floor(i.startHour)===hour);
-          return job?'<div class="job" style="grid-column:span '+Math.min(job.duration,10-idx)+'" onclick="focusJob(\''+job.id+'\')"><strong>'+job.vehicle+'</strong><span class="muted">'+job.client+'</span><span class="badge">'+job.status+'</span></div>':'<div class="slot"></div>'
-        }).join('');
-        return'<div class="lane"><div class="person">'+name+'</div>'+cells+'</div>'
-      }).join('');
-      details.innerHTML=[...state.interventions].sort((a,b)=>new Date(a.date)-new Date(b.date)).map(i=>{
-        let list=extras(i.id);
-        return'<div class="item" id="job-'+i.id+'"><div class="row"><div><strong>'+i.vehicle+'</strong><div class="muted">'+i.assigned+' • '+new Date(i.date).toLocaleDateString('fr-FR')+' • '+i.startHour+' h</div></div><span class="badge">'+i.status+'</span></div><p>'+(i.detail||'Intervention atelier')+'</p><div class="actions"><button class="btn primary" onclick="openEdit(\''+i.id+'\')">+ Ajouter</button><button class="btn" onclick="prepare(\''+i.id+'\')">Préparer</button></div>'+list.map((e,n)=>'<div class="item row"><div><strong>'+(e.done?'✓ ':'')+e.text+'</strong><div class="muted">'+new Date(e.at).toLocaleString('fr-FR')+'</div></div><button class="btn" onclick="toggle(\''+i.id+'\','+n+')">'+(e.done?'Rouvrir':'Valider')+'</button></div>').join('')+'</div>'
-      }).join('')
-    }
-    function focusJob(id){document.getElementById('job-'+id)?.scrollIntoView({behavior:'smooth',block:'center'})}
-    function openEdit(id){selected=id;let i=state.interventions.find(x=>x.id===id);editTitle.textContent='Ajouter un élément — '+i.vehicle;newElement.value='';editModal.classList.add('open')}
-    function addElement(){let text=newElement.value.trim();if(!text)return;let list=extras(selected);list.push({text,done:false,at:new Date().toISOString()});saveExtras(selected,list);editModal.classList.remove('open');render()}
-    function toggle(id,n){let list=extras(id);list[n].done=!list[n].done;saveExtras(id,list);render()}
-    function prepare(id){localStorage.setItem('gcos-current-intervention',id);location.href='employe.html'}
-    render();
-  </script>
-  <script src="gcos-comms.js?v=16"></script>
-  <script src="jarvis-core.js?v=10"></script>
+  <nav class="mobilebar"><a href="index.html"><b>⌂</b>Accueil</a><a href="planning.html"><b>▣</b>Planning</a><a href="alpha/workshop/"><b>🛠</b>Atelier</a><button id="mobileAction"><b>⚡</b>Action</button></nav>
+  <div class="modal" id="actionModal"><form class="box" id="actionForm"><div class="modal-head"><div><div class="muted">ACTION PLANNING</div><h2>Planifier un dossier</h2></div><button type="button" class="close" data-close>×</button></div><div class="form-grid"><label class="span-2">Véhicule<select id="actionVehicle"></select></label><label>Opérateur<select id="actionOperator"></select></label><label>Durée prévue (heures)<input id="actionDuration" type="number" min="1" max="10" step="1" value="4"></label><label>Date et heure de prise en charge<input id="actionIntakeAt" type="datetime-local"></label><label>Date et heure d’intervention<input id="actionInterventionAt" type="datetime-local"></label><label>Entrée du véhicule<select id="actionIntakeMode"><option value="client-dropoff">Déposé par le client</option><option value="naza-pickup">Enlèvement par Naza</option></select></label><label>Restitution<select id="actionReturnMode"><option value="client-collection">Récupéré par le client</option><option value="naza-return">Rapatriement par Naza</option></select></label><label class="span-2">Adresse transport<input id="actionAddress"></label></div><div id="nazaNotice" class="item warning" hidden>Une demande de prix doit être préparée pour Naza avant confirmation du rendez-vous.</div><div class="actions" style="justify-content:flex-end;margin-top:12px"><button type="button" class="btn" id="openDossier">Ouvrir la fiche</button><button type="button" class="btn" data-close>Annuler</button><button type="submit" class="btn primary">Enregistrer l’action</button></div></form></div>
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="planning-app.js?v=3700"></script>
 </body>
 </html>
