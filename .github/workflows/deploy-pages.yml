@@ -11,7 +11,7 @@ permissions:
   id-token: write
 
 env:
-  MAVIK_VERSION: "0.41.1"
+  MAVIK_VERSION: "0.42.0"
 
 concurrency:
   group: mavik-pages
@@ -27,6 +27,14 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      - name: Validate JavaScript
+        run: |
+          node --check mavik-autonomous.js
+          node --check jarvis-voice.js
+          node --check mavik-stability.js
+          node --check service-worker.js
+          node --check install.js
+
       - name: Assemble static site
         shell: bash
         run: |
@@ -40,14 +48,21 @@ jobs:
           touch dist/.nojekyll
           printf '{"version":"%s","commit":"%s","builtAt":"%s"}\n' \
             "$MAVIK_VERSION" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > dist/deployment.json
-          test -f dist/index.html
-          test -f dist/mavik-0411.html
-          test -f dist/launch-0411.html
-          test -f dist/operations-suite.html
-          test -f dist/modules.html
-          grep -q '0.41.1' dist/index.html
-          grep -q 'Connexion autonome 0.41.1' dist/mavik-0411.html
-          grep -q '16 nouvelles sections' dist/operations-suite.html
+          test -f dist/mavik-autonomous.js
+          test -f dist/jarvis-voice.js
+          test -f dist/mavik-autonomous.css
+          test -f dist/fix-0420.html
+          test -f dist/alpha/workshop/index.html
+          test -f dist/planning.html
+          test -f dist/gestion.html
+          test -f dist/profil.html
+          test -f dist/devis.html
+          grep -q 'data-page="workshop"' dist/alpha/workshop/index.html
+          grep -q 'data-page="planning"' dist/planning.html
+          grep -q 'data-page="gestion"' dist/gestion.html
+          grep -q 'data-page="profile"' dist/profil.html
+          grep -q 'data-page="devis"' dist/devis.html
+          grep -q '0.42.0' dist/version.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
