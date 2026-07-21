@@ -1,17 +1,20 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T10:20:00+02:00",
+  "releasedAt": "2026-07-21T10:55:00+02:00",
   "notes": [
-    "Centre des modules implanté avec accès direct à toutes les pages métiers",
-    "24 pages autonomes ajoutées pour le commercial, les opérations, la Direction, la conformité et la sécurité",
-    "Chaque page propose ajout, modification, suppression, recherche, indicateurs et export JSON",
-    "Les actions sont journalisées avec l’utilisateur, le rôle, l’heure et le module concerné",
-    "Les pages sensibles restent visibles mais bloquent les modifications pour les profils non habilités",
-    "Pages ajoutées : prospects, partenaires, fournisseurs, achats, stock, factures, paiements, rapports, documents, tâches, équipe, formations, événements, campagnes, conformité, sécurité, maintenance, incidents, qualité, assurances, financement, équipements, sous-traitants et journal entreprise",
-    "Bouton Modules injecté dans toutes les pages MAVIK",
-    "Service worker et cache renouvelés sous jarvis-gentlecare-v4000",
-    "Dossier Améliorations, garde-fou non bloquant et veille juridique conservés"
+    "Écran de connexion entièrement remplacé pour supprimer l’écran blanc après authentification",
+    "Le tableau de bord connecté s’affiche immédiatement sans attendre le son Jarvis ni un module secondaire",
+    "Procédure Code oublié implantée pour les profils Employé",
+    "Un employé ayant oublié son code reçoit un accès temporaire restreint de 8 heures afin de continuer son travail",
+    "La Direction reçoit une notification interne, une demande de réinitialisation et une inscription automatique dans Sécurité et accès",
+    "Les modules Direction, comptes, paiements, finances et données sensibles restent interdits pendant l’accès temporaire",
+    "Les comptes Direction ne reçoivent aucun contournement temporaire et doivent être réinitialisés par un autre compte Direction",
+    "David ou Bénédicte peuvent attribuer un nouveau code depuis les notifications du tableau de bord",
+    "Toutes les ouvertures temporaires, refus d’accès et réinitialisations sont inscrits dans le journal MAVIK",
+    "Expiration de la session temporaire vérifiée sur l’Accueil et sur toutes les pages métiers",
+    "Cache PWA renouvelé sous jarvis-gentlecare-v4100",
+    "Les 24 pages métiers et le dossier Améliorations restent actifs"
   ]
 }
