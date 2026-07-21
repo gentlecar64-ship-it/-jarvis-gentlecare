@@ -1,13 +1,13 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.35.0",
+  "version": "0.36.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T10:15:00+02:00",
+  "releasedAt": "2026-07-21T08:03:00+02:00",
   "notes": [
-    "Connexion par choix du compte et code personnel conservée",
-    "Signature sonore originale MAVIK après validation de la connexion",
-    "Horloge et date visibles en permanence en haut à droite",
-    "Menus actuels et futurs organisés dans la colonne de gauche",
-    "Logo officiel, atelier, planning, Airtable et mise à jour automatique conservés"
+    "Verrou de session commun ajouté au Planning et au Poste atelier",
+    "Ouverture directe d’un module renvoyée vers le choix du compte et le code personnel",
+    "Retour automatique vers le module demandé après connexion Direction",
+    "Profil, rôle, horloge et déconnexion visibles dans les modules Atelier et Planning",
+    "Cache PWA renouvelé pour forcer le déploiement de la version 0.36.0"
   ]
 }
