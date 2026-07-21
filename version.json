@@ -1,16 +1,18 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T11:10:00+02:00",
+  "releasedAt": "2026-07-21T12:20:00+02:00",
   "notes": [
-    "Nouveau tableau de bord unifié connecté aux dossiers Atelier réels",
-    "Cockpit Gestion implanté pour les clients, véhicules, devis, stock, rapports et facturation",
-    "Synchronisation des dossiers Atelier avec l’ancien registre local clients et véhicules",
-    "Création d’un nouveau dossier Atelier prérempli depuis un client ou un véhicule",
-    "Anciennes pages Clients, Véhicules, Devis, Administration, Employé et Ordres redirigées vers les modules actuels",
-    "Poste atelier raccordé au cockpit Gestion et mis à niveau en 0.38.0",
-    "Cache PWA renouvelé et déploiement disponible depuis main et gh-pages",
-    "Planning spécifique, saisie vocale, contrôle du devis, prise en charge distincte et logistique Naza conservés"
+    "Dossier Améliorations implanté pour recueillir les idées, boutons et fonctions demandés par chaque utilisateur",
+    "Analyse Jarvis des demandes selon le rôle, les habilitations, les données concernées et le caractère réversible de l’action",
+    "Refus automatique des demandes visant les mots de passe, les messages personnels, le contournement des droits ou les comptes sensibles sans habilitation",
+    "Validation Direction obligatoire pour les extensions de droits, les actions externes, les suppressions, les finances et les communications sensibles",
+    "Contrôle juridique obligatoire pour la surveillance, la géolocalisation, les ressources humaines et les données personnelles sensibles",
+    "Journal de traçabilité et export du dossier des améliorations",
+    "Garde-fou anti-écran blanc injecté dans toutes les pages par le service worker",
+    "Interface de secours avec accès à l’Accueil, l’Atelier, le Planning, la Gestion, les Améliorations et la Mise à jour",
+    "Page de mise à jour forcée préservant les comptes, dossiers et données locales",
+    "Cache PWA renouvelé en version 0.39.0"
   ]
 }
