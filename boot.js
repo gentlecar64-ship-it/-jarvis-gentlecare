@@ -1,10 +1,10 @@
 (()=>{
-  const VERSION='0.36.0';
+  const VERSION='0.37.0';
   const steps=['SYSTÈME','DONNÉES','ATELIER','JARVIS'];
 
   const css=document.createElement('link');
   css.rel='stylesheet';
-  css.href='jarvis-responsive.css?v=16';
+  css.href='jarvis-responsive.css?v=17';
   document.head.appendChild(css);
 
   function requestedRedirect(){
