@@ -1,5 +1,5 @@
 {
-  "mavikCoreVersion": "0.42.0-core.2",
+  "mavikCoreVersion": "0.42.0-core.3",
   "client": {
     "id": "GENTLECARE",
     "displayName": "GentleCarE",
@@ -16,6 +16,7 @@
   "users": [
     {"id": "david", "name": "David", "role": "direction", "pin": null},
     {"id": "bene", "name": "Bénédicte", "role": "direction", "pin": null},
+    {"id": "atelier", "name": "Atelier", "role": "workshop", "pin": null, "autoLogin": true},
     {"id": "severine", "name": "Séverine", "role": "employee", "pin": null},
     {"id": "apprenti", "name": "Apprenti", "role": "employee", "pin": null}
   ],
@@ -46,6 +47,24 @@
         "quality.write",
         "voice.use",
         "improvements.create"
+      ]
+    },
+    "workshop": {
+      "label": "Poste Atelier",
+      "inherits": [],
+      "permissions": [
+        "dashboard.read",
+        "planning.read",
+        "records.read.assigned",
+        "records.write.assigned",
+        "photos.read.assigned",
+        "photos.write.assigned",
+        "reports.read.assigned",
+        "reports.write.assigned",
+        "stock.read",
+        "voice.use",
+        "notifications.read",
+        "calls.internal"
       ]
     }
   },
@@ -84,7 +103,7 @@
   "voice": {
     "routes": {
       "accueil": {"path": "mavik-0411.html", "aliases": ["tableau de bord"]},
-      "atelier": {"path": "alpha/workshop/index.html", "aliases": ["poste atelier", "dossiers atelier"]},
+      "atelier": {"path": "alpha/workshop/index.html?station=atelier", "aliases": ["poste atelier", "dossiers atelier"]},
       "planning": {"path": "planning.html", "aliases": ["agenda", "calendrier"]},
       "gestion": {"path": "gestion.html", "aliases": ["clients", "véhicules"]},
       "devis": {"path": "devis.html", "aliases": ["estimations"]},
@@ -92,6 +111,35 @@
       "modules": {"path": "modules.html", "aliases": ["tous les modules"]},
       "améliorations": {"path": "ameliorations.html", "aliases": ["idées", "suggestions"]}
     }
+  },
+  "workstations": {
+    "atelier": {
+      "id": "atelier",
+      "displayName": "PC Atelier",
+      "profile": "workshop",
+      "userId": "atelier",
+      "autoLogin": true,
+      "entryPoint": "alpha/workshop/index.html?station=atelier",
+      "fullscreen": true,
+      "startupSound": true,
+      "announceDailyProgram": true,
+      "camera": {"enabled": true, "preferredLabel": "Logitech", "idealWidth": 1920, "idealHeight": 1080},
+      "workday": {"start": "08:00", "end": "18:00"},
+      "allowedMenus": ["dashboard", "intervention", "photos", "report", "stock-read", "voice"],
+      "forbiddenCapabilities": ["administration", "settings.system", "billing", "banking", "users.manage", "development", "github", "system.configure"],
+      "notifications": ["intervention-completed", "client-arrival", "next-intervention", "deliveries", "reminders"],
+      "hardware": ["pc-windows", "logitech-usb-camera-1080p", "microphone", "speakers", "ethernet"]
+    }
+  },
+  "internalContacts": {
+    "david": {"displayName": "David", "channel": "internal-call", "phone": null},
+    "bene": {"displayName": "Bénédicte", "channel": "internal-call", "phone": null}
+  },
+  "server": {
+    "mode": "planned-central-server",
+    "endpoint": null,
+    "localOutboxEnabled": true,
+    "synchronize": ["planning", "notifications", "reports", "photos", "internal-calls"]
   },
   "terminology": {
     "record": "Dossier d’intervention",
