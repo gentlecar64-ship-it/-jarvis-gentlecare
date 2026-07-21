@@ -1,1 +1,1 @@
-{"name":"MAVIK GCOS","version":"0.38.0","status":"ready","updatedAt":"2026-07-21T11:12:00+02:00","modules":{"dashboard":"ready","workshop":"ready","planning":"ready","management":"ready","settings":"ready"}}
+{"name":"MAVIK GCOS","version":"0.39.0","status":"ready","stabilityGuard":true,"improvementsModule":true,"updatedAt":"2026-07-21T12:20:00+02:00"}
