@@ -1,0 +1,117 @@
+{
+  "mavikCoreVersion": "0.42.0-core.1",
+  "client": {
+    "id": "GENTLECARE",
+    "displayName": "GentleCarE",
+    "legalName": "SARL GentleCarE",
+    "locale": "fr-FR",
+    "timezone": "Europe/Paris"
+  },
+  "branding": {
+    "logo": "assets/brand/gentlecare-logo.png",
+    "primaryColor": "#031019",
+    "accentColor": "#46e36d",
+    "assistantDisplayName": "Jarvis"
+  },
+  "users": [
+    {"id": "david", "name": "David", "role": "direction", "pin": null},
+    {"id": "bene", "name": "Bénédicte", "role": "direction", "pin": null},
+    {"id": "severine", "name": "Séverine", "role": "employee", "pin": null},
+    {"id": "apprenti", "name": "Apprenti", "role": "employee", "pin": null}
+  ],
+  "roles": {
+    "direction": {
+      "label": "Direction",
+      "inherits": [],
+      "permissions": ["*"]
+    },
+    "employee": {
+      "label": "Employé",
+      "inherits": [],
+      "permissions": [
+        "dashboard.read",
+        "planning.read",
+        "planning.write",
+        "records.read.assigned",
+        "records.write.assigned",
+        "documents.read.assigned",
+        "documents.write.assigned",
+        "reports.read.assigned",
+        "reports.write.assigned",
+        "stock.read",
+        "stock.write",
+        "maintenance.read",
+        "maintenance.write",
+        "quality.read",
+        "quality.write",
+        "voice.use",
+        "improvements.create"
+      ]
+    }
+  },
+  "modules": {
+    "dashboard": true,
+    "planning": true,
+    "records": true,
+    "quotes": true,
+    "clients": true,
+    "assets": true,
+    "documents": true,
+    "reports": true,
+    "stock": true,
+    "suppliers": true,
+    "billing": true,
+    "improvements": true,
+    "compliance": true,
+    "voice": true
+  },
+  "moduleLabels": {
+    "dashboard": "Tableau de bord",
+    "planning": "Planning spécifique",
+    "records": "Dossiers atelier",
+    "quotes": "Devis",
+    "clients": "Clients",
+    "assets": "Véhicules",
+    "documents": "Documents",
+    "reports": "Rapports",
+    "stock": "Stock atelier",
+    "suppliers": "Fournisseurs",
+    "billing": "Facturation",
+    "improvements": "Améliorations",
+    "compliance": "Conformité",
+    "voice": "Jarvis vocal"
+  },
+  "voice": {
+    "routes": {
+      "accueil": {"path": "mavik-0411.html", "aliases": ["tableau de bord"]},
+      "atelier": {"path": "alpha/workshop/index.html", "aliases": ["poste atelier", "dossiers atelier"]},
+      "planning": {"path": "planning.html", "aliases": ["agenda", "calendrier"]},
+      "gestion": {"path": "gestion.html", "aliases": ["clients", "véhicules"]},
+      "devis": {"path": "devis.html", "aliases": ["estimations"]},
+      "réglages": {"path": "profil.html", "aliases": ["profil", "paramètres"]},
+      "modules": {"path": "modules.html", "aliases": ["tous les modules"]},
+      "améliorations": {"path": "ameliorations.html", "aliases": ["idées", "suggestions"]}
+    }
+  },
+  "terminology": {
+    "record": "Dossier d’intervention",
+    "asset": "Véhicule",
+    "customer": "Client",
+    "operator": "Opérateur"
+  },
+  "businessRules": {
+    "forgottenCodeTemporaryAccessHours": 8,
+    "temporaryAccessRole": "employee",
+    "directionApprovalRequiredForSensitiveChanges": true,
+    "auditEnabled": true,
+    "voiceUnknownRequestsGoToReviewQueue": true
+  },
+  "clientExtensions": [
+    "automotive-workshop",
+    "cryogenic-cleaning",
+    "dinitrol",
+    "dry-ice",
+    "naza-transport",
+    "industrial-services"
+  ]
+}
