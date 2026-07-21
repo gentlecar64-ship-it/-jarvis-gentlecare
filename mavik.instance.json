@@ -1,0 +1,22 @@
+{
+  "instanceId": "GENTLECARE",
+  "displayName": "GentleCarE",
+  "coreRepository": "gentlecar64-ship-it/app",
+  "coreVersion": "0.42.0-core.1",
+  "instanceVersion": "0.42.0",
+  "extensions": [
+    "automotive-workshop",
+    "cryogenic-cleaning",
+    "dinitrol",
+    "dry-ice",
+    "naza-transport",
+    "industrial-services"
+  ],
+  "migrationHistory": [
+    {
+      "coreVersion": "0.42.0-core.1",
+      "appliedAt": "2026-07-21T13:20:00+02:00",
+      "source": "initial-consolidation"
+    }
+  ]
+}
