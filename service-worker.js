@@ -1,5 +1,5 @@
-const CACHE='jarvis-gentlecare-v3600';
-const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./procedures.html','./procedures-page.js','./airtable.html','./airtable-page.js','./data/workshop-procedures.json','./data/airtable-schema.json','./assets/brand/gentlecare-logo.png','./assets/brand/gentlecare-banner.jpg','./assets/brand/mavik-brand.css','./gcos-comms.js','./jarvis-core.js','./mavik-session.js','./mavik-insights.js','./mavik-updater.js','./mavik-update-settings.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css','./alpha/workshop/','./alpha/workshop/index.html','./alpha/workshop/workshop.css','./alpha/workshop/workshop-v2.css','./alpha/workshop/workshop-app.js','./core/application/workshop-orchestrator.js','./core/reports/workshop-report.js','./core/events/event-bus.js','./core/workflow/graph-workflow-engine.js','./core/interventions/intervention-engine.js','./core/resources/resource-manager.js','./core/decision/decision-engine.js'];
+const CACHE='jarvis-gentlecare-v3700';
+const CORE=['./','./index.html','./planning.html','./planning-app.js','./profil.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./procedures.html','./procedures-page.js','./airtable.html','./airtable-page.js','./data/workshop-procedures.json','./data/airtable-schema.json','./assets/brand/gentlecare-logo.png','./assets/brand/gentlecare-banner.jpg','./assets/brand/mavik-brand.css','./gcos-comms.js','./jarvis-core.js','./mavik-session.js','./mavik-insights.js','./mavik-updater.js','./mavik-update-settings.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css','./alpha/workshop/','./alpha/workshop/index.html','./alpha/workshop/workshop.css','./alpha/workshop/workshop-v2.css','./alpha/workshop/workshop-app.js','./core/application/workshop-orchestrator.js','./core/reports/workshop-report.js','./core/events/event-bus.js','./core/workflow/graph-workflow-engine.js','./core/interventions/intervention-engine.js','./core/resources/resource-manager.js','./core/decision/decision-engine.js'];
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()))});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
@@ -28,9 +28,9 @@ self.addEventListener('fetch',event=>{
           .replace("['🚘','Véhicules','Dossiers et photos','clients.html']","['🚘','Véhicules 360°','Historique et diagnostic Jarvis','vehicule.html']")
           .replace("['🎓','Formation','Compétences','']","['📊','Direction','Rentabilité et prévisions','direction.html']");
       }
-      html=html.replace(/GCOS v1\.0/g,'MAVIK GCOS v0.36.0').replace(/MAVIK GCOS v0\.3[0-5]\.[0-9]+/g,'MAVIK GCOS v0.36.0');
+      html=html.replace(/GCOS v1\.0/g,'MAVIK GCOS v0.37.0').replace(/MAVIK GCOS v0\.3[0-6]\.[0-9]+/g,'MAVIK GCOS v0.37.0');
       const isHome=url.pathname.endsWith('/index.html')||url.pathname.endsWith('/-jarvis-gentlecare/');
-      if(!isHome&&!html.includes('mavik-session.js'))html=html.replace('</head>','<script src="mavik-session.js?v=360"></script></head>');
+      if(!isHome&&!html.includes('mavik-session.js'))html=html.replace('</head>','<script src="mavik-session.js?v=370"></script></head>');
       if(!html.includes('mavik-insights.js'))html=html.replace('</body>','<script src="mavik-insights.js?v=301"></script></body>');
       if(!html.includes('gcos-comms.js'))html=html.replace('</body>','<script src="gcos-comms.js?v=301"></script></body>');
       if(!html.includes('jarvis-core.js'))html=html.replace('</body>','<script src="jarvis-core.js?v=301"></script></body>');
@@ -38,8 +38,7 @@ self.addEventListener('fetch',event=>{
       if(!html.includes('mavik-update-settings.js'))html=html.replace('</body>','<script src="mavik-update-settings.js?v=301"></script></body>');
       if(!html.includes('jarvisGlobalButton'))html=html.replace('</body>',`<style>#jarvisGlobalButton{position:fixed;right:18px;bottom:18px;z-index:41000;width:62px;height:62px;border-radius:50%;border:1px solid #80e8ff;background:radial-gradient(circle at 35% 30%,#eaffff,#46d9ff 25%,#087fa8 50%,#03131c 76%);color:#fff;font-size:1.55rem;box-shadow:0 0 24px #00cfff88;cursor:pointer}#jarvisGlobalButton:active{transform:scale(.94)}@media(max-width:720px){#jarvisGlobalButton{right:14px;bottom:78px;width:56px;height:56px}}</style><button id="jarvisGlobalButton" aria-label="Ouvrir Jarvis" title="Parler à Jarvis">🎙</button></body>`);
       const finalResponse=new Response(html,{status:response.status,statusText:response.statusText,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
-      const copy=finalResponse.clone();
-      caches.open(CACHE).then(cache=>cache.put(event.request,copy));
+      const copy=finalResponse.clone();caches.open(CACHE).then(cache=>cache.put(event.request,copy));
       return finalResponse;
     }).catch(()=>caches.match(event.request).then(cached=>cached||caches.match('./index.html'))));
     return;
