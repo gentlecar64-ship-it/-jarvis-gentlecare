@@ -1,1 +1,2 @@
 MAVIK GCOS 0.42.0
+Poste atelier, Planning, Gestion, Réglages, Devis et Jarvis vocal autonomes.
