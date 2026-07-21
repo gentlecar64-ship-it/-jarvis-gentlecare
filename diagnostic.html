@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#031019">
+  <title>MAVIK — Diagnostic</title>
+  <style>
+    :root{--bg:#031019;--panel:#071a27;--line:#20536a;--text:#f4fbff;--muted:#8faaba;--green:#46e36d;--amber:#ffb000;--red:#ff5d68}*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 70% 0,#0b3345,#031019 52%);color:var(--text);font-family:Inter,system-ui,sans-serif;padding:18px}.wrap{max-width:900px;margin:auto}.top,.card{border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,#0a2030,#06151f);box-shadow:0 18px 50px #0005}.top{padding:18px;display:flex;gap:16px;align-items:center}.top img{width:120px;background:white;border-radius:12px;padding:4px}.top h1{margin:0}.muted{color:var(--muted)}.card{padding:16px;margin-top:14px}.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid #183d50}.row:first-child{border-top:0}.status{font-weight:900}.ok{color:var(--green)}.warn{color:var(--amber)}.bad{color:var(--red)}button,a{border:1px solid #2b6077;background:#0b2a3b;color:white;border-radius:11px;padding:11px 14px;text-decoration:none;cursor:pointer;font:inherit}.primary{background:#275f3d;border-color:#438d60;font-weight:900}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}.log{white-space:pre-wrap;background:#020b11;border:1px solid #163847;border-radius:12px;padding:12px;max-height:280px;overflow:auto;color:#b9d5df;font-family:ui-monospace,monospace;font-size:.75rem}@media(max-width:620px){.top{display:grid;text-align:center}.top img{margin:auto}.row{grid-template-columns:1fr}.actions{display:grid}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="top"><img src="assets/brand/gentlecare-logo.png" alt="GentleCarE"><div><h1>Diagnostic MAVIK</h1><p class="muted">Contrôle des pages, du cache et des fichiers essentiels de GCOS.</p></div></section>
+    <section class="card"><div id="checks"></div><div class="actions"><button class="primary" id="repair">Réparer et recharger MAVIK</button><button id="run">Relancer les tests</button><a href="index.html">Retour à l’accueil</a></div></section>
+    <section class="card"><h2>Journal technique</h2><div class="log" id="log">Initialisation…</div></section>
+  </main>
+  <script>
+    const targets=[
+      ['Tableau de bord','index.html'],
+      ['Planning','planning.html'],
+      ['Poste atelier','alpha/workshop/index.html'],
+      ['Profil / réglages','profil.html'],
+      ['Moteur Planning','planning-app.js'],
+      ['Moteur Atelier','alpha/workshop/workshop-app.js'],
+      ['Session','mavik-session.js'],
+      ['Version','version.json']
+    ];
+    const checks=document.getElementById('checks'),log=document.getElementById('log');
+    const write=t=>{log.textContent+='\n'+t;log.scrollTop=log.scrollHeight};
+    async function test(){
+      log.textContent='Début du diagnostic '+new Date().toLocaleString('fr-FR');
+      checks.innerHTML='';
+      for(const [name,path] of targets){
+        const row=document.createElement('div');row.className='row';row.innerHTML='<div><strong>'+name+'</strong><div class="muted">'+path+'</div></div><span class="status warn">Test…</span>';checks.appendChild(row);
+        try{
+          const response=await fetch(path+'?diagnostic='+Date.now(),{cache:'no-store'});
+          const ok=response.ok;
+          row.querySelector('.status').textContent=ok?'Disponible ('+response.status+')':'Erreur '+response.status;
+          row.querySelector('.status').className='status '+(ok?'ok':'bad');
+          write(name+' : HTTP '+response.status);
+        }catch(error){
+          row.querySelector('.status').textContent='Inaccessible';row.querySelector('.status').className='status bad';write(name+' : '+error.message);
+        }
+      }
+      if('serviceWorker' in navigator){
+        const registrations=await navigator.serviceWorker.getRegistrations();
+        write('Service workers enregistrés : '+registrations.length);
+      }
+      const cacheNames='caches' in window?await caches.keys():[];
+      write('Caches présents : '+cacheNames.join(', '));
+    }
+    async function repair(){
+      const button=document.getElementById('repair');button.disabled=true;button.textContent='Réparation en cours…';
+      try{
+        if('serviceWorker' in navigator){
+          const registrations=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations.map(reg=>reg.unregister()));
+          write('Anciens service workers supprimés.');
+        }
+        if('caches' in window){
+          const names=await caches.keys();
+          await Promise.all(names.map(name=>caches.delete(name)));
+          write('Anciens caches supprimés.');
+        }
+        sessionStorage.removeItem('jarvis-booted');
+        const registration=await navigator.serviceWorker.register('./service-worker.js?v=3710',{updateViaCache:'none'});
+        await registration.update();
+        if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
+        write('Nouveau service worker installé.');
+        location.replace('index.html?repaired='+Date.now());
+      }catch(error){
+        write('Échec de réparation : '+error.message);button.disabled=false;button.textContent='Réparer et recharger MAVIK';
+      }
+    }
+    document.getElementById('run').onclick=test;
+    document.getElementById('repair').onclick=repair;
+    test();
+  </script>
+</body>
+</html>
