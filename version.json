@@ -1,15 +1,16 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.37.1",
+  "version": "0.38.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T10:05:00+02:00",
+  "releasedAt": "2026-07-21T11:10:00+02:00",
   "notes": [
-    "Correction des pages blanches provoquées par l’ancien cache PWA",
-    "Service worker simplifié : une ressource absente ne bloque plus toute la mise à jour",
-    "Déploiement GitHub Pages relancé depuis la branche main avec publication complète",
-    "Page 404 de récupération ajoutée avec accès direct aux modules essentiels",
-    "Page diagnostic ajoutée pour tester les fichiers, purger les caches et réinstaller MAVIK",
-    "Garde-fou commun : les erreurs JavaScript affichent une interface de récupération au lieu d’un écran blanc",
-    "Poste atelier, Planning spécifique, dossier vocal, devis et logistique Naza conservés"
+    "Nouveau tableau de bord unifié connecté aux dossiers Atelier réels",
+    "Cockpit Gestion implanté pour les clients, véhicules, devis, stock, rapports et facturation",
+    "Synchronisation des dossiers Atelier avec l’ancien registre local clients et véhicules",
+    "Création d’un nouveau dossier Atelier prérempli depuis un client ou un véhicule",
+    "Anciennes pages Clients, Véhicules, Devis, Administration, Employé et Ordres redirigées vers les modules actuels",
+    "Poste atelier raccordé au cockpit Gestion et mis à niveau en 0.38.0",
+    "Cache PWA renouvelé et déploiement disponible depuis main et gh-pages",
+    "Planning spécifique, saisie vocale, contrôle du devis, prise en charge distincte et logistique Naza conservés"
   ]
 }
