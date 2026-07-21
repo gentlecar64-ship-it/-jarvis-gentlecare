@@ -11,8 +11,8 @@ permissions:
   id-token: write
 
 env:
-  MAVIK_VERSION: "0.42.0"
-  MAVIK_CORE_VERSION: "0.42.0-core.2"
+  MAVIK_VERSION: "0.43.0"
+  MAVIK_CORE_VERSION: "0.42.0-core.3"
 
 concurrency:
   group: mavik-pages
@@ -35,13 +35,17 @@ jobs:
           node --check mavik-stability.js
           node --check service-worker.js
           node --check install.js
+          node --check alpha/workshop/station.js
           node --check scripts/validate-instance.mjs
 
       - name: Validate MAVIK instance metadata
         run: |
           node scripts/validate-instance.mjs
-          grep -q '"coreVersion": "0.42.0-core.2"' mavik.instance.json
-          grep -q '"mavikCoreVersion": "0.42.0-core.2"' client.config.json
+          grep -q '"coreVersion": "0.42.0-core.3"' mavik.instance.lock.json
+          grep -q '"mavikCoreVersion": "0.42.0-core.3"' client.config.json
+          grep -q '"version": "0.43.0"' version.json
+          grep -q '"role": "workshop"' client.config.json
+          grep -q '"autoLogin": true' client.config.json
           ! grep -Eq '"pin"[[:space:]]*:[[:space:]]*"[0-9]{4}"' client.config.json
 
       - name: Assemble static site
@@ -60,21 +64,25 @@ jobs:
           test -f dist/mavik-autonomous.js
           test -f dist/jarvis-voice.js
           test -f dist/mavik-autonomous.css
-          test -f dist/fix-0420.html
           test -f dist/alpha/workshop/index.html
+          test -f dist/alpha/workshop/station.js
+          test -f dist/alpha/workshop/station.css
           test -f dist/planning.html
           test -f dist/gestion.html
           test -f dist/profil.html
           test -f dist/devis.html
           test -f dist/client.config.json
-          test -f dist/mavik.instance.json
-          grep -q 'data-page="workshop"' dist/alpha/workshop/index.html
+          test -f dist/mavik.instance.lock.json
+          test -f dist/windows/atelier/lancer-mavik-atelier.cmd
+          grep -q 'data-mavik-workstation="atelier"' dist/alpha/workshop/index.html
+          grep -q 'Logitech' dist/alpha/workshop/station.js
+          grep -q 'now-line' dist/alpha/workshop/station.css
           grep -q 'data-page="planning"' dist/planning.html
           grep -q 'data-page="gestion"' dist/gestion.html
           grep -q 'data-page="profile"' dist/profil.html
           grep -q 'data-page="devis"' dist/devis.html
-          grep -q '0.42.0' dist/version.json
-          grep -q '0.42.0-core.2' dist/mavik.instance.json
+          grep -q '0.43.0' dist/version.json
+          grep -q '0.42.0-core.3' dist/mavik.instance.lock.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
