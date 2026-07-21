@@ -2,7 +2,7 @@
   "instanceId": "GENTLECARE",
   "displayName": "GentleCarE",
   "coreRepository": "gentlecar64-ship-it/app",
-  "coreVersion": "0.42.0-core.1",
+  "coreVersion": "0.42.0-core.2",
   "instanceVersion": "0.42.0",
   "extensions": [
     "automotive-workshop",
@@ -17,6 +17,11 @@
       "coreVersion": "0.42.0-core.1",
       "appliedAt": "2026-07-21T13:20:00+02:00",
       "source": "initial-consolidation"
+    },
+    {
+      "coreVersion": "0.42.0-core.2",
+      "appliedAt": "2026-07-21T13:40:00+02:00",
+      "source": "operational-template-and-configurator"
     }
   ]
 }
