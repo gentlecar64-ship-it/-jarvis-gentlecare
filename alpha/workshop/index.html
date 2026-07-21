@@ -7,6 +7,7 @@
   <title>MAVIK — Poste atelier GentleCarE</title>
   <link rel="stylesheet" href="./workshop.css">
   <link rel="stylesheet" href="./workshop-v2.css?v=340">
+  <script src="../../mavik-session.js?v=1"></script>
 </head>
 <body>
   <main class="app">
@@ -16,6 +17,7 @@
         <div><p class="eyebrow">GENTLECARE OPERATING SYSTEM</p><h1>MAVIK — Poste atelier</h1><p class="subtitle">Version test · vrai graphe de tâches · sauvegarde locale automatique</p></div>
       </div>
       <div class="header-controls">
+        <div data-mavik-session-slot></div>
         <nav class="workshop-links"><a href="../../planning.html">Planning atelier</a><a href="../../procedures.html">Procédures</a><a href="../../airtable.html">Airtable</a><a href="../../index.html">Accueil</a></nav>
         <label>Opérateur actif<select id="operatorSelect"></select></label>
         <span class="online-pill">● PRÊT À TESTER</span>
@@ -107,7 +109,7 @@
     </section>
 
     <div class="toast" id="toast" hidden></div>
-    <footer>MAVIK V1 Atelier · moteur Graph Workflow · référentiel procédures GentleCarE · 20/07/2026</footer>
+    <footer>MAVIK GCOS v0.36.0 · Poste atelier · moteur Graph Workflow · référentiel procédures GentleCarE · 21/07/2026</footer>
   </main>
   <script type="module" src="./workshop-app.js?v=3400"></script>
 </body>
