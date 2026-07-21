@@ -1,13 +1,13 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T07:30:00+02:00",
+  "releasedAt": "2026-07-21T10:15:00+02:00",
   "notes": [
-    "Logo officiel fourni par GentleCarE utilisé dans MAVIK, les devis et les rapports",
-    "Accès directs au poste atelier, au planning spécifique et à l’atelier du jour",
-    "Planning du lundi au vendredi avec capacité, expertise, dépôt et restitution",
-    "Navigation atelier harmonisée sur ordinateur, tablette et mobile",
-    "Synchronisation Airtable et mise à jour automatique conservées"
+    "Connexion par choix du compte et code personnel conservée",
+    "Signature sonore originale MAVIK après validation de la connexion",
+    "Horloge et date visibles en permanence en haut à droite",
+    "Menus actuels et futurs organisés dans la colonne de gauche",
+    "Logo officiel, atelier, planning, Airtable et mise à jour automatique conservés"
   ]
 }

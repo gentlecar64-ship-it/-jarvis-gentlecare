@@ -1,4 +1,4 @@
-const CACHE='jarvis-gentlecare-v3400';
+const CACHE='jarvis-gentlecare-v3500';
 const CORE=['./','./index.html','./planning.html','./employe.html','./admin.html','./gestion.html','./clients.html','./stock.html','./devis.html','./ordres.html','./vehicule.html','./direction.html','./procedures.html','./procedures-page.js','./airtable.html','./airtable-page.js','./data/workshop-procedures.json','./data/airtable-schema.json','./assets/brand/gentlecare-logo.png','./assets/brand/gentlecare-banner.jpg','./assets/brand/mavik-brand.css','./gcos-comms.js','./jarvis-core.js','./mavik-insights.js','./mavik-updater.js','./mavik-update-settings.js','./version.json','./icon.svg','./manifest.webmanifest','./storage.js','./install.js','./boot.js','./jarvis-responsive.css','./atelier-responsive.css','./alpha/workshop/','./alpha/workshop/index.html','./alpha/workshop/workshop.css','./alpha/workshop/workshop-v2.css','./alpha/workshop/workshop-app.js','./core/application/workshop-orchestrator.js','./core/reports/workshop-report.js','./core/events/event-bus.js','./core/workflow/graph-workflow-engine.js','./core/interventions/intervention-engine.js','./core/resources/resource-manager.js','./core/decision/decision-engine.js'];
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)).then(()=>self.skipWaiting()))});
@@ -27,7 +27,7 @@ self.addEventListener('fetch',event=>{
           .replace("['🚘','Véhicules','Dossiers et photos','clients.html']","['🚘','Véhicules 360°','Historique et diagnostic Jarvis','vehicule.html']")
           .replace("['🎓','Formation','Compétences','']","['📊','Direction','Rentabilité et prévisions','direction.html']");
       }
-      html=html.replace(/GCOS v1\.0/g,'MAVIK GCOS v0.34.0').replace(/MAVIK GCOS v0\.3[0-3]\.[0-9]+/g,'MAVIK GCOS v0.34.0');
+      html=html.replace(/GCOS v1\.0/g,'MAVIK GCOS v0.35.0').replace(/MAVIK GCOS v0\.3[0-4]\.[0-9]+/g,'MAVIK GCOS v0.35.0');
       if(!html.includes('mavik-insights.js'))html=html.replace('</body>','<script src="mavik-insights.js?v=301"></script></body>');
       if(!html.includes('gcos-comms.js'))html=html.replace('</body>','<script src="gcos-comms.js?v=301"></script></body>');
       if(!html.includes('jarvis-core.js'))html=html.replace('</body>','<script src="jarvis-core.js?v=301"></script></body>');

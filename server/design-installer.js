@@ -13,7 +13,7 @@ const PROFILE_TARGET = path.join(__dirname, 'public', 'profile.html');
 const JARVIS_TEMPLATE = path.join(__dirname, 'public', 'jarvis.template.html');
 const JARVIS_TARGET = path.join(__dirname, 'public', 'jarvis.html');
 const PARTS = path.join(__dirname, 'assets', 'logo');
-const DESIGN_VERSION = 'gentlecare-official-brand-v3';
+const DESIGN_VERSION = 'gentlecare-official-brand-v4';
 const HOME_UPDATE_TEST_BUTTON = '<button onclick="testUpdate()">Tester la mise à jour automatique</button>';
 let announced = false;
 
