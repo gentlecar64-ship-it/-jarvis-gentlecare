@@ -1,6 +1,5 @@
-const CACHE='jarvis-gentlecare-v3900';
-const FALLBACK='./index.html';
-const STABILITY='mavik-stability.js?v=3900';
+const CACHE='jarvis-gentlecare-v3910';
+const STABILITY='mavik-stability.js?v=3910';
 
 self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
 self.addEventListener('install',event=>{event.waitUntil(self.skipWaiting())});
@@ -11,11 +10,10 @@ async function withStability(response){
   const type=response.headers.get('content-type')||'';
   if(!type.includes('text/html'))return response;
   let html=await response.text();
-  if(!html.includes('mavik-stability.js')){
-    const src=new URL(STABILITY,self.registration.scope).href;
-    const tag=`<script src="${src}"></script>`;
-    html=html.includes('</body>')?html.replace('</body>',`${tag}</body>`):html+tag;
-  }
+  const src=new URL(STABILITY,self.registration.scope).href;
+  const tag=`<script src="${src}"></script>`;
+  if(/<script[^>]+mavik-stability\.js[^>]*><\/script>/i.test(html))html=html.replace(/<script[^>]+mavik-stability\.js[^>]*><\/script>/ig,tag);
+  else html=html.includes('</body>')?html.replace('</body>',`${tag}</body>`):html+tag;
   const headers=new Headers(response.headers);
   headers.set('Content-Type','text/html; charset=utf-8');
   headers.set('Cache-Control','no-store');
@@ -25,7 +23,7 @@ async function withStability(response){
 
 function fallbackHtml(){
   const base=self.registration.scope;
-  return new Response(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MAVIK secours</title><body style="font-family:system-ui;background:#031019;color:white;padding:24px"><h1>MAVIK GCOS</h1><h2>Interface de secours</h2><p>Le module demandé n’a pas pu être chargé. Vos données locales sont conservées.</p><p><a style="color:#8ff0aa" href="${base}index.html">Accueil</a> · <a style="color:#8fe7ff" href="${base}alpha/workshop/index.html">Atelier</a> · <a style="color:#8fe7ff" href="${base}planning.html">Planning</a> · <a style="color:#8fe7ff" href="${base}ameliorations.html">Améliorations</a> · <a style="color:#ffd277" href="${base}update.html">Mise à jour</a></p><script src="${base}${STABILITY}"></script></body></html>`,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+  return new Response(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MAVIK hors ligne</title><body style="font-family:system-ui;background:#031019;color:white;padding:24px"><h1>MAVIK GCOS</h1><h2>Connexion indisponible</h2><p>La page n’a pas pu être téléchargée. Les données locales sont conservées.</p><p><a style="color:#8ff0aa" href="${base}index.html">Accueil</a> · <a style="color:#8fe7ff" href="${base}alpha/workshop/index.html">Atelier</a> · <a style="color:#8fe7ff" href="${base}planning.html">Planning</a> · <a style="color:#8fe7ff" href="${base}ameliorations.html">Améliorations</a> · <a style="color:#ffd277" href="${base}update.html">Mise à jour</a></p><script src="${base}${STABILITY}"></script></body></html>`,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
 }
 
 self.addEventListener('fetch',event=>{
@@ -46,7 +44,7 @@ self.addEventListener('fetch',event=>{
     })());
     return;
   }
-  if(url.pathname.endsWith('/version.json')||url.pathname.endsWith('/health.json')){
+  if(url.pathname.endsWith('/version.json')||url.pathname.endsWith('/health.json')||url.pathname.endsWith('/mavik-stability.js')){
     event.respondWith(fetch(event.request,{cache:'no-store'}).catch(()=>caches.match(event.request)));
     return;
   }
