@@ -1,21 +1,18 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T12:45:00+02:00",
+  "releasedAt": "2026-07-21T14:10:00+02:00",
   "notes": [
-    "Poste atelier remplacé par une version autonome sans ancien moteur de session ni module ES bloquant",
-    "Planning spécifique remplacé par une version autonome avec prise en charge et intervention séparées",
-    "Gestion remplacée par un cockpit autonome pour clients, véhicules, devis, stock, rapports et facturation",
-    "Réglages remplacés par une page autonome pour profil, ressources, sauvegarde, vocal et traçabilité",
-    "Page Devis autonome implantée avec registre, ouverture, modification, aperçu, impression PDF, acompte et conditions GentleCarE",
-    "Jarvis vocal implanté sur les pages principales et chargé automatiquement sur les modules compatibles",
-    "Commandes vocales : navigation, nouveau dossier, nouveau devis, nouveau rendez-vous et dictée des champs",
-    "Mode vocal continu et réponses vocales configurables dans Réglages",
-    "Les demandes vocales non reconnues sont enregistrées pour analyse et ne déclenchent pas d’action sensible",
-    "Diagnostic visuel des pages ajouté en complément du contrôle HTTP",
-    "Workflow GitHub Pages renforcé par node --check sur les moteurs JavaScript",
-    "Cache PWA renouvelé sous jarvis-gentlecare-v4200",
-    "Les 24 modules et les 16 sections opérationnelles restent actifs"
+    "Nouveau Poste Atelier kiosque",
+    "Interface opérateur limitée",
+    "Caméra USB et photos par étape",
+    "Planning avec indicateur de l’heure réelle",
+    "Intervention courante et suivante",
+    "Rapport et stock en lecture",
+    "Commandes vocales Atelier",
+    "Notifications et file de synchronisation",
+    "Lanceur Windows plein écran",
+    "Migration vers MAVIK Core 0.42.0-core.3"
   ]
 }
