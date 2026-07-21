@@ -10,7 +10,7 @@
 
   window.JarvisInstall={
     async prompt(){
-      if(!deferredPrompt) return false;
+      if(!deferredPrompt)return false;
       deferredPrompt.prompt();
       const result=await deferredPrompt.userChoice;
       deferredPrompt=null;
@@ -19,21 +19,28 @@
     available(){return !!deferredPrompt;}
   };
 
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.addEventListener('controllerchange',()=>{
-      if(refreshing) return;
-      refreshing=true;
-      location.reload();
-    });
+  if(!('serviceWorker' in navigator))return;
 
-    window.addEventListener('load',async()=>{
-      try{
-        const registration=await navigator.serviceWorker.register('./service-worker.js?v=14');
-        await registration.update();
-        setInterval(()=>registration.update().catch(()=>{}),5*60*1000);
-      }catch(error){
-        console.error('Jarvis PWA:',error);
-      }
-    });
-  }
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(refreshing)return;
+    refreshing=true;
+    location.reload();
+  });
+
+  window.addEventListener('load',async()=>{
+    try{
+      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3710',{updateViaCache:'none'});
+      await registration.update();
+      if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
+      registration.addEventListener('updatefound',()=>{
+        const worker=registration.installing;
+        worker?.addEventListener('statechange',()=>{
+          if(worker.state==='installed'&&navigator.serviceWorker.controller)worker.postMessage({type:'SKIP_WAITING'});
+        });
+      });
+      setInterval(()=>registration.update().catch(()=>{}),2*60*1000);
+    }catch(error){
+      console.error('MAVIK PWA:',error);
+    }
+  });
 })();
