@@ -1,13 +1,17 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "channel": "stable",
-  "releasedAt": "2026-07-21T08:03:00+02:00",
+  "releasedAt": "2026-07-21T09:15:00+02:00",
   "notes": [
-    "Verrou de session commun ajouté au Planning et au Poste atelier",
-    "Ouverture directe d’un module renvoyée vers le choix du compte et le code personnel",
-    "Retour automatique vers le module demandé après connexion Direction",
-    "Profil, rôle, horloge et déconnexion visibles dans les modules Atelier et Planning",
-    "Cache PWA renouvelé pour forcer le déploiement de la version 0.36.0"
+    "Poste atelier simplifié autour de la liste des véhicules et de leur fiche d’intervention",
+    "Forfaits disponibles dans un menu déroulant avec tarifs GentleCarE préremplis lorsqu’ils sont validés",
+    "Saisie vocale Jarvis, téléphone et e-mail client, champs obligatoires signalés en rouge",
+    "Prise de photos repositionnée en étape 3 et préparation sous véhicule adaptée à la fosse atelier",
+    "Devis préparé selon les règles GentleCarE puis envoyé uniquement lorsque les conditions sont remplies",
+    "Détection de validation e-mail préparée pour déclencher automatiquement la planification",
+    "Dates distinctes pour la prise en charge et l’intervention, avec enlèvement ou rapatriement Naza",
+    "Boutons d’action ajoutés au Planning spécifique GentleCarE",
+    "Traçabilité, ressources et données de test déplacées dans Profil / réglages"
   ]
 }
