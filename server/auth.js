@@ -11,7 +11,7 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 const RECOVERY_WINDOW_MS = 15 * 60 * 1000;
 const MAX_RECOVERY_ATTEMPTS = 5;
-const DESIGN_LOCK = 'gentlecare-official-brand-v3';
+const DESIGN_LOCK = 'gentlecare-official-brand-v4';
 const sessions = new Map();
 const recoveryAttempts = new Map();
 
