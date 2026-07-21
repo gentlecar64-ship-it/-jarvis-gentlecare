@@ -3,8 +3,30 @@
   const root=new URL('./',script?.src||location.href);
   const loginUrl=new URL('index.html',root);
   const parse=(value,fallback)=>{try{return JSON.parse(value)||fallback}catch{return fallback}};
+
+  function recoveryLinks(){
+    return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:16px"><a href="${new URL('index.html',root).href}" style="padding:11px;border-radius:10px;background:#275f3d;color:white;text-decoration:none;text-align:center">Accueil</a><a href="${new URL('alpha/workshop/',root).href}" style="padding:11px;border-radius:10px;background:#0a2535;color:white;text-decoration:none;text-align:center">Poste atelier</a><a href="${new URL('planning.html',root).href}" style="padding:11px;border-radius:10px;background:#0a2535;color:white;text-decoration:none;text-align:center">Planning</a><a href="${new URL('profil.html',root).href}" style="padding:11px;border-radius:10px;background:#0a2535;color:white;text-decoration:none;text-align:center">Réglages</a></div>`;
+  }
+
+  function showRecovery(reason){
+    if(document.getElementById('mavikRecovery'))return;
+    const mount=()=>{
+      if(document.getElementById('mavikRecovery'))return;
+      const layer=document.createElement('div');
+      layer.id='mavikRecovery';
+      layer.style.cssText='position:fixed;inset:0;z-index:999999;background:radial-gradient(circle at 50% 0,#0b3345,#031019 55%);color:white;display:grid;place-items:center;padding:18px;font-family:Inter,system-ui,sans-serif';
+      layer.innerHTML=`<div style="width:min(620px,100%);padding:22px;border:1px solid #20536a;border-radius:20px;background:#071a27;box-shadow:0 25px 80px #0008"><h1 style="margin-top:0">MAVIK</h1><p style="color:#79d45d;font-weight:800">La page a rencontré une erreur, mais l’interface reste accessible.</p><p style="color:#a8c3ce">${String(reason||'Erreur de chargement').replace(/[<>&]/g,'')}</p>${recoveryLinks()}<button id="mavikReload" style="width:100%;margin-top:10px;padding:11px;border:1px solid #246079;border-radius:10px;background:#10242c;color:white;cursor:pointer">Actualiser cette page</button></div>`;
+      document.body.appendChild(layer);
+      layer.querySelector('#mavikReload')?.addEventListener('click',()=>location.reload());
+    };
+    document.body?mount():document.addEventListener('DOMContentLoaded',mount,{once:true});
+  }
+
+  window.addEventListener('error',event=>showRecovery(event.error?.message||event.message||'Erreur JavaScript'));
+  window.addEventListener('unhandledrejection',event=>showRecovery(event.reason?.message||event.reason||'Erreur de chargement du module'));
+
   const session=parse(sessionStorage.getItem('jarvis-session'),null);
-  const accounts=parse(localStorage.getItem('jarvis-accounts'),'');
+  const accounts=parse(localStorage.getItem('jarvis-accounts'),[]);
   const user=Array.isArray(accounts)?accounts.find(account=>account.id===session?.id):null;
 
   function relativeCurrentLocation(){
@@ -75,6 +97,6 @@
     document.dispatchEvent(new CustomEvent('mavik:session-ready',{detail:{user}}));
   }
 
-  window.MavikSession={user,root:root.href,logout};
+  window.MavikSession={user,root:root.href,logout,showRecovery};
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',mount,{once:true}):mount();
 })();
