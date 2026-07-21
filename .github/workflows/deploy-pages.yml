@@ -12,7 +12,7 @@ permissions:
 
 env:
   MAVIK_VERSION: "0.42.0"
-  MAVIK_CORE_VERSION: "0.42.0-core.1"
+  MAVIK_CORE_VERSION: "0.42.0-core.2"
 
 concurrency:
   group: mavik-pages
@@ -40,8 +40,8 @@ jobs:
       - name: Validate MAVIK instance metadata
         run: |
           node scripts/validate-instance.mjs
-          grep -q '"coreVersion": "0.42.0-core.1"' mavik.instance.json
-          grep -q '"mavikCoreVersion": "0.42.0-core.1"' client.config.json
+          grep -q '"coreVersion": "0.42.0-core.2"' mavik.instance.json
+          grep -q '"mavikCoreVersion": "0.42.0-core.2"' client.config.json
           ! grep -Eq '"pin"[[:space:]]*:[[:space:]]*"[0-9]{4}"' client.config.json
 
       - name: Assemble static site
@@ -74,7 +74,7 @@ jobs:
           grep -q 'data-page="profile"' dist/profil.html
           grep -q 'data-page="devis"' dist/devis.html
           grep -q '0.42.0' dist/version.json
-          grep -q '0.42.0-core.1' dist/mavik.instance.json
+          grep -q '0.42.0-core.2' dist/mavik.instance.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
