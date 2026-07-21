@@ -29,7 +29,7 @@
 
   window.addEventListener('load',async()=>{
     try{
-      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3710',{updateViaCache:'none'});
+      const registration=await navigator.serviceWorker.register('./service-worker.js?v=3800',{updateViaCache:'none'});
       await registration.update();
       if(registration.waiting)registration.waiting.postMessage({type:'SKIP_WAITING'});
       registration.addEventListener('updatefound',()=>{
