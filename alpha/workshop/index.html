@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#031019">
   <title>MAVIK — Poste atelier GentleCarE</title>
-  <link rel="stylesheet" href="./workshop.css?v=370">
-  <script src="../../mavik-session.js?v=2"></script>
+  <link rel="stylesheet" href="./workshop.css?v=380">
+  <script src="../../mavik-session.js?v=3711"></script>
 </head>
 <body>
   <main class="app">
@@ -23,6 +23,7 @@
         <div data-mavik-session-slot></div>
         <nav class="workshop-links">
           <a href="../../planning.html">Planning</a>
+          <a href="../../gestion.html#clients">Gestion</a>
           <a href="../../procedures.html">Procédures</a>
           <a href="../../profil.html">Profil / réglages</a>
           <a href="../../index.html">Accueil</a>
@@ -92,9 +93,7 @@
           <section class="form-section span-all">
             <h3>Demande et forfait</h3>
             <div class="form-grid">
-              <label>Forfait
-                <select id="servicePackage" data-required="quote"></select>
-              </label>
+              <label>Forfait<select id="servicePackage" data-required="quote"></select></label>
               <label>Tarif TTC retenu<input id="priceTtc" data-required="quote" type="number" min="0" step="0.01" inputmode="decimal"></label>
               <label class="span-2">Demande du client et résultat attendu<textarea id="clientRequest" data-required="quote" rows="4"></textarea></label>
               <label class="span-2">Notes Jarvis / réserves<textarea id="internalNotes" rows="3"></textarea></label>
@@ -105,39 +104,21 @@
           <section class="form-section span-all logistics-section">
             <h3>Prise en charge et intervention</h3>
             <div class="form-grid logistics-grid">
-              <label>Entrée du véhicule
-                <select id="intakeMode">
-                  <option value="client-dropoff">Déposé par le client</option>
-                  <option value="naza-pickup">Enlèvement par Naza</option>
-                </select>
-              </label>
-              <label>Restitution
-                <select id="returnMode">
-                  <option value="client-collection">Récupéré par le client</option>
-                  <option value="naza-return">Rapatriement par Naza</option>
-                </select>
-              </label>
+              <label>Entrée du véhicule<select id="intakeMode"><option value="client-dropoff">Déposé par le client</option><option value="naza-pickup">Enlèvement par Naza</option></select></label>
+              <label>Restitution<select id="returnMode"><option value="client-collection">Récupéré par le client</option><option value="naza-return">Rapatriement par Naza</option></select></label>
               <label>Date et heure de prise en charge<input id="intakeAt" type="datetime-local"></label>
               <label>Date et heure d’intervention<input id="interventionAt" type="datetime-local"></label>
               <label class="span-2">Adresse d’enlèvement / rapatriement<input id="transportAddress"></label>
               <label>Prix transport TTC<input id="transportPrice" type="number" min="0" step="0.01"></label>
-              <div class="naza-box" id="nazaBox">
-                <strong>Naza</strong>
-                <span id="nazaStatus">Aucun transport demandé</span>
-                <button class="button small" id="prepareNaza" type="button">Préparer la demande de prix</button>
-              </div>
+              <div class="naza-box" id="nazaBox"><strong>Naza</strong><span id="nazaStatus">Aucun transport demandé</span><button class="button small" id="prepareNaza" type="button">Préparer la demande de prix</button></div>
             </div>
           </section>
         </div>
-
         <section class="quote-panel" id="quotePanel"></section>
       </article>
 
       <article class="card workflow-card">
-        <div class="card-heading">
-          <div><p class="card-label">GRAPHE OPÉRATIONNEL</p><h2 id="workflowTitle">Parcours de l’intervention</h2></div>
-          <label class="operator-label">Opérateur actif<select id="operatorSelect"></select></label>
-        </div>
+        <div class="card-heading"><div><p class="card-label">GRAPHE OPÉRATIONNEL</p><h2 id="workflowTitle">Parcours de l’intervention</h2></div><label class="operator-label">Opérateur actif<select id="operatorSelect"></select></label></div>
         <p class="context-line" id="workflowContext"></p>
         <div class="task-board" id="taskBoard"></div>
         <input id="beforePhotosInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
@@ -167,8 +148,9 @@
     </div>
 
     <div class="toast" id="toast" hidden></div>
-    <footer>MAVIK GCOS v0.37.0 · Poste atelier GentleCarE</footer>
+    <footer>MAVIK GCOS v0.38.0 · Poste atelier GentleCarE</footer>
   </main>
-  <script type="module" src="./workshop-app.js?v=3700"></script>
+  <script type="module" src="./workshop-app.js?v=3800"></script>
+  <script src="./workshop-prefill.js?v=3800"></script>
 </body>
 </html>
