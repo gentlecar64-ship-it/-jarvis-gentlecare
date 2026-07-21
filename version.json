@@ -1,20 +1,17 @@
 {
   "name": "MAVIK GCOS",
-  "version": "0.41.0",
+  "version": "0.41.1",
   "channel": "stable",
-  "releasedAt": "2026-07-21T10:55:00+02:00",
+  "releasedAt": "2026-07-21T11:35:00+02:00",
   "notes": [
-    "Écran de connexion entièrement remplacé pour supprimer l’écran blanc après authentification",
-    "Le tableau de bord connecté s’affiche immédiatement sans attendre le son Jarvis ni un module secondaire",
-    "Procédure Code oublié implantée pour les profils Employé",
-    "Un employé ayant oublié son code reçoit un accès temporaire restreint de 8 heures afin de continuer son travail",
-    "La Direction reçoit une notification interne, une demande de réinitialisation et une inscription automatique dans Sécurité et accès",
-    "Les modules Direction, comptes, paiements, finances et données sensibles restent interdits pendant l’accès temporaire",
-    "Les comptes Direction ne reçoivent aucun contournement temporaire et doivent être réinitialisés par un autre compte Direction",
-    "David ou Bénédicte peuvent attribuer un nouveau code depuis les notifications du tableau de bord",
-    "Toutes les ouvertures temporaires, refus d’accès et réinitialisations sont inscrits dans le journal MAVIK",
-    "Expiration de la session temporaire vérifiée sur l’Accueil et sur toutes les pages métiers",
-    "Cache PWA renouvelé sous jarvis-gentlecare-v4100",
-    "Les 24 pages métiers et le dossier Améliorations restent actifs"
+    "Nouveau point d’entrée autonome mavik-0411.html sans service worker ni écran masqué au démarrage",
+    "Nouveau lanceur launch-0411.html supprimant les caches techniques avant ouverture de l’application autonome",
+    "Publication forcée sur main, master et gh-pages",
+    "Workflow de publication double : artefact GitHub Pages et branche gh-pages",
+    "Procédure Code oublié conservée avec accès Employé temporaire de 8 heures et notification Direction",
+    "16 nouvelles sections autonomes implantées dans la Suite opérationnelle",
+    "Sections ajoutées : rendez-vous, livraisons, photos, check-lists, SAV, garanties, glace carbonique, flotte, notifications, distribution Dinitrol, activité industrielle, commandes clients, contrats, rentabilité, objectifs et courriers",
+    "Les sections sensibles restent réservées à la Direction et ne chargent aucune donnée pour un profil Employé",
+    "Les 24 pages métiers, le Poste atelier, le Planning et le dossier Améliorations restent actifs"
   ]
 }
