@@ -1,61 +1,54 @@
-const CACHE='jarvis-gentlecare-v3800';
+const CACHE='jarvis-gentlecare-v3900';
 const FALLBACK='./index.html';
+const STABILITY='mavik-stability.js?v=3900';
 
-self.addEventListener('message',event=>{
-  if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
-});
+self.addEventListener('message',event=>{if(event.data?.type==='SKIP_WAITING')self.skipWaiting()});
+self.addEventListener('install',event=>{event.waitUntil(self.skipWaiting())});
+self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
 
-self.addEventListener('install',event=>{
-  event.waitUntil(self.skipWaiting());
-});
+async function withStability(response){
+  if(!response||!response.ok)return response;
+  const type=response.headers.get('content-type')||'';
+  if(!type.includes('text/html'))return response;
+  let html=await response.text();
+  if(!html.includes('mavik-stability.js')){
+    const src=new URL(STABILITY,self.registration.scope).href;
+    const tag=`<script src="${src}"></script>`;
+    html=html.includes('</body>')?html.replace('</body>',`${tag}</body>`):html+tag;
+  }
+  const headers=new Headers(response.headers);
+  headers.set('Content-Type','text/html; charset=utf-8');
+  headers.set('Cache-Control','no-store');
+  headers.delete('Content-Length');
+  return new Response(html,{status:response.status,statusText:response.statusText,headers});
+}
 
-self.addEventListener('activate',event=>{
-  event.waitUntil(
-    caches.keys()
-      .then(keys=>Promise.all(keys.filter(key=>key!==CACHE).map(key=>caches.delete(key))))
-      .then(()=>self.clients.claim())
-  );
-});
+function fallbackHtml(){
+  const base=self.registration.scope;
+  return new Response(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>MAVIK secours</title><body style="font-family:system-ui;background:#031019;color:white;padding:24px"><h1>MAVIK GCOS</h1><h2>Interface de secours</h2><p>Le module demandé n’a pas pu être chargé. Vos données locales sont conservées.</p><p><a style="color:#8ff0aa" href="${base}index.html">Accueil</a> · <a style="color:#8fe7ff" href="${base}alpha/workshop/index.html">Atelier</a> · <a style="color:#8fe7ff" href="${base}planning.html">Planning</a> · <a style="color:#8fe7ff" href="${base}ameliorations.html">Améliorations</a> · <a style="color:#ffd277" href="${base}update.html">Mise à jour</a></p><script src="${base}${STABILITY}"></script></body></html>`,{headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'}});
+}
 
 self.addEventListener('fetch',event=>{
   if(event.request.method!=='GET')return;
   const url=new URL(event.request.url);
-  const isNavigation=event.request.mode==='navigate'||event.request.destination==='document';
-
-  if(isNavigation){
-    event.respondWith(
-      fetch(event.request,{cache:'no-store'})
-        .then(response=>{
-          if(response&&response.ok){
-            const copy=response.clone();
-            caches.open(CACHE).then(cache=>cache.put(event.request,copy)).catch(()=>{});
-          }
-          return response;
-        })
-        .catch(async()=>{
-          const exact=await caches.match(event.request);
-          if(exact)return exact;
-          const fallback=await caches.match(FALLBACK);
-          return fallback||new Response('<!doctype html><html lang="fr"><meta charset="utf-8"><title>MAVIK indisponible</title><body style="font-family:system-ui;background:#031019;color:white;padding:32px"><h1>MAVIK</h1><p>La page n’a pas pu être chargée. Revenez à l’accueil puis actualisez.</p><a href="./index.html" style="color:#46e36d">Retour à l’accueil</a></body></html>',{headers:{'Content-Type':'text/html; charset=utf-8'}});
-        })
-    );
+  const navigation=event.request.mode==='navigate'||event.request.destination==='document';
+  if(navigation){
+    event.respondWith((async()=>{
+      try{
+        const network=await fetch(event.request,{cache:'no-store'});
+        const stable=await withStability(network);
+        if(stable?.ok)caches.open(CACHE).then(cache=>cache.put(event.request,stable.clone())).catch(()=>{});
+        return stable;
+      }catch{
+        const cached=await caches.match(event.request);
+        return cached||fallbackHtml();
+      }
+    })());
     return;
   }
-
   if(url.pathname.endsWith('/version.json')||url.pathname.endsWith('/health.json')){
-    event.respondWith(fetch(event.request,{cache:'no-store'}));
+    event.respondWith(fetch(event.request,{cache:'no-store'}).catch(()=>caches.match(event.request)));
     return;
   }
-
-  event.respondWith(
-    fetch(event.request)
-      .then(response=>{
-        if(response&&response.ok){
-          const copy=response.clone();
-          caches.open(CACHE).then(cache=>cache.put(event.request,copy)).catch(()=>{});
-        }
-        return response;
-      })
-      .catch(()=>caches.match(event.request))
-  );
+  event.respondWith(fetch(event.request).then(response=>{if(response?.ok)caches.open(CACHE).then(cache=>cache.put(event.request,response.clone())).catch(()=>{});return response}).catch(()=>caches.match(event.request)));
 });
