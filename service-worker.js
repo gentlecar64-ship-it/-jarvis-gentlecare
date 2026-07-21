@@ -1,4 +1,4 @@
-const CACHE='jarvis-gentlecare-v3710';
+const CACHE='jarvis-gentlecare-v3800';
 const FALLBACK='./index.html';
 
 self.addEventListener('message',event=>{
@@ -42,7 +42,7 @@ self.addEventListener('fetch',event=>{
     return;
   }
 
-  if(url.pathname.endsWith('/version.json')){
+  if(url.pathname.endsWith('/version.json')||url.pathname.endsWith('/health.json')){
     event.respondWith(fetch(event.request,{cache:'no-store'}));
     return;
   }
