@@ -1,4 +1,4 @@
-name: Deploy MAVIK to GitHub Pages
+name: Deploy MAVIK GCOS
 
 on:
   push:
@@ -6,34 +6,70 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
+env:
+  MAVIK_VERSION: "0.41.1"
+
 concurrency:
-  group: pages
+  group: mavik-pages
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
         uses: actions/checkout@v4
         with:
           ref: main
+          fetch-depth: 0
 
-      - name: Configure Pages
+      - name: Assemble static site
+        shell: bash
+        run: |
+          rm -rf dist
+          mkdir -p dist
+          rsync -a ./ dist/ \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'dist' \
+            --exclude 'docs'
+          touch dist/.nojekyll
+          printf '{"version":"%s","commit":"%s","builtAt":"%s"}\n' \
+            "$MAVIK_VERSION" "$GITHUB_SHA" "$(date -u +%FT%TZ)" > dist/deployment.json
+          test -f dist/index.html
+          test -f dist/modules.html
+          test -f dist/update.html
+          test -f dist/service-worker.js
+          grep -q '0.41.0' dist/index.html
+
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Upload complete static site
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
 
-      - name: Deploy MAVIK
+      - name: Publish branch fallback
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
+          force_orphan: true
+          enable_jekyll: false
+
+  deploy-actions:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy Pages artifact
         id: deployment
         uses: actions/deploy-pages@v4
