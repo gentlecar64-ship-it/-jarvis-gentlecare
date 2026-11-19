@@ -355,7 +355,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/system/backup') { auth.requirePermission(user, 'users.manage'); return json(res, 201, { path: backup.createBackup() }); }
     if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list() }); }
     if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); return json(res, result.duplicate ? 200 : 201, result); }
-    const partMatch = url.pathname.match(/^\\/api\\/pieces\\/([^/]+)$/);
+    const partMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
     if (partMatch && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); const item = partsIntake.one(decodeURIComponent(partMatch[1])); return item ? json(res, 200, { item }) : json(res, 404, { error: 'PART_NOT_FOUND' }); }
     if (partMatch && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { item: partsIntake.update(decodeURIComponent(partMatch[1]), await readBody(req), user) }); }
 
