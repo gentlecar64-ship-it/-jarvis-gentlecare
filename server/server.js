@@ -5,6 +5,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { URL } = require('node:url');
 const localStore = require('./local-store');
+const partsIntake = require('./parts-intake');
 const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
 const quoteStudio = require('./quote-studio-service');
@@ -197,7 +198,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req)); result.user = mergedUser(result.user); return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) }); }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() }); }
 
-    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable'];
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable', '/pieces'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
@@ -206,6 +207,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/pieces') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'pieces.html', 'Suivi des pièces introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
     if (req.method === 'GET' && url.pathname === '/quotes') return servePage(res, 'quotes.html', 'Atelier devis introuvable', true);
@@ -351,6 +353,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/jarvis/knowledge') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.knowledge); }
     if (req.method === 'POST' && url.pathname === '/api/jarvis/command') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.execute(localStore, { ...(await readBody(req)), user })); }
     if (req.method === 'POST' && url.pathname === '/api/system/backup') { auth.requirePermission(user, 'users.manage'); return json(res, 201, { path: backup.createBackup() }); }
+    if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list() }); }
+    if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); return json(res, result.duplicate ? 200 : 201, result); }
+    const partMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
+    if (partMatch && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); const item = partsIntake.one(decodeURIComponent(partMatch[1])); return item ? json(res, 200, { item }) : json(res, 404, { error: 'PART_NOT_FOUND' }); }
+    if (partMatch && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { item: partsIntake.update(decodeURIComponent(partMatch[1]), await readBody(req), user) }); }
+
     if (req.method === 'GET' && url.pathname === '/api/local/summary') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, localStore.summary()); }
 
     const localRecordMatch = url.pathname.match(/^\/api\/local\/([^/]+)\/([^/]+)$/);
