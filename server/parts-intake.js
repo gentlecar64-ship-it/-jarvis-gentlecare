@@ -5,7 +5,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-const FILE = path.join(__dirname, 'data', 'incoming-parts.json');
+const FILE = process.env.GCOS_PARTS_DATA_FILE || path.join(__dirname, 'data', 'incoming-parts.json');
 const STATUSES = new Set(['À traiter', 'Devis à préparer', 'En devis', 'En atelier', 'Archivée']);
 function fail(message, status = 400) { throw Object.assign(new Error(message), { status }); }
 function read() {
