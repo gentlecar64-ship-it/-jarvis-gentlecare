@@ -85,3 +85,12 @@ Tarifs de vente **proposés et non encore validés** pour lot de quatre : 350 �
 - Essai technique commun pour Workshop et GentleCarE sur magnésium, matière nouvelle pour l'atelier, avec tarif unique d'essai exceptionnel sur lot complet de 4 pièces ; ne pas créer de tarif catalogue standard à 270 € HT.
 - Préparation de 2 devis séparés possible : devis A lot carters 170 € HT, devis B deux pièces de turbine 100 € HT. Aucune facture n'est émise automatiquement.
 - Les règles de commande de glace mutualisée et délai indicatif de 7–15 jours continuent de s'appliquer pour travaux futurs.
+
+
+## Retour technique et justification commerciale Workshop — magnésium
+- **Prix exceptionnel de 270 € HT pour les 4 pièces** : geste commercial de découverte/essai dans l'objectif de construire une **collaboration régulière avec Workshop Arbonne**. Ce prix **n'est ni un tarif catalogue, ni une promesse de reconduction**, et ne doit pas être utilisé comme référence de prix normal sans décision explicite.
+- L'intervention est un **premier essai pour les deux parties** sur des carters en alliage de magnésium. Avant cette opération, GentleCarE ne connaissait pas précisément le rendu final ni le comportement de ces pièces sous nettoyage cryogénique.
+- **Observations rapportées à l'atelier, et non conclusions scientifiques validées** : au fil des passages, les zones très encrassées devenaient très froides, certains dépôts semblaient adhérer ou se figer; l'aspect paraissait encore « gelé » après arrêt de la projection. Des variations de couleur/aspect du carter ont été constatées.
+- La variation de couleur peut avoir plusieurs causes (condensation/givre, humidité résiduelle, contaminants, état de surface/oxydation, éclairage), et **ne permet pas à elle seule de conclure à une transformation du magnésium**. Éviter de prétendre que le froid modifie chimiquement la couleur du magnésium sans examen.
+- **État final inconnu à cette date** : le rendu après retour à température ambiante et séchage, et sa stabilité, sont à vérifier lors d'une inspection ultérieure avec photos au même éclairage. Ne pas présenter l'essai comme une restauration totale ou un résultat garanti.
+- Échanges clients/partenaire : expliquer le caractère expérimental de manière factuelle et positive, sans promettre de couleur, d'absence de variation visuelle ni de résultat définitif. Proposer un point de contrôle après stabilisation.
