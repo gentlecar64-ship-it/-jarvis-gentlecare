@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MAVIK — E-mails Jarvis</title>
+<style>:root{font-family:system-ui;color:#e8f3f8;background:#081720}*{box-sizing:border-box}body{max-width:850px;margin:0 auto;padding:22px}a{color:#a1d7ed}main{background:#142a35;padding:22px;border:1px solid #38535e;border-radius:16px}label{display:block;margin:16px 0}input,textarea{width:100%;background:#06131b;color:white;padding:12px;border:1px solid #56737e;border-radius:9px;font:inherit}textarea{min-height:210px}button{background:#b0d5e7;padding:13px 16px;border:0;border-radius:9px;font-weight:bold;cursor:pointer}button:disabled{opacity:.4}#status{margin:14px 0;padding:12px;border-radius:8px;background:#203c4a}.error{color:#ffc5ba}</style></head>
+<body><p><a href="/jarvis">← Retour à Jarvis</a></p><h1>Jarvis · Envoyer un e-mail</h1>
+<main><p id="status">Vérification de la connexion Gmail…</p><form id="compose">
+<label>À<input name="to" type="email" required autocomplete="off"></label>
+<label>Objet<input name="subject" required maxlength="200"></label>
+<label>Message<textarea name="body" required></textarea></label>
+<button id="send" disabled>Vérifier et envoyer</button></form>
+<p>Un message n'est envoyé qu'après validation explicite. Les erreurs de connexion sont affichées ; aucun envoi ne sera déclaré réussi sans identifiant Gmail.</p></main>
+<script>
+const status=document.getElementById('status'),send=document.getElementById('send'),form=document.getElementById('compose');
+async function check(){try{const r=await fetch('/api/mail/status');const data=await r.json();if(!r.ok)throw Error(data.error||r.status);if(!data.configured){status.textContent='Connexion Gmail non configurée dans MAVIK. Ajouter les paramètres OAuth dans server/.env avant tout envoi.';send.disabled=true;return;}status.textContent='Gmail prêt · expéditeur : '+data.from;send.disabled=false;}catch(e){status.textContent='Erreur de configuration : '+e.message;send.disabled=true;}}
+form.addEventListener('submit',async e=>{e.preventDefault();const f=new FormData(form),body={to:f.get('to'),subject:f.get('subject'),body:f.get('body')};if(!confirm('Envoyer réellement ce mail à '+body.to+' ?'))return;send.disabled=true;try{const r=await fetch('/api/mail/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...body,confirmed:true})});const data=await r.json();if(!r.ok||!data.sent||!data.messageId)throw Error(data.error||'Envoi non confirmé');status.textContent='Message envoyé, référence Gmail : '+data.messageId;form.reset();}catch(e){status.textContent='ÉCHEC : '+e.message;status.className='error';}finally{await check();}});
+check();
+</script></body></html>
