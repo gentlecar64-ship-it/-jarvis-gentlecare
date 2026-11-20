@@ -5,6 +5,7 @@ const path = require('node:path');
 const http = require('node:http');
 const { URL } = require('node:url');
 const localStore = require('./local-store');
+const treasury = require('./treasury-service');
 const partsIntake = require('./parts-intake');
 const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
@@ -198,7 +199,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req)); result.user = mergedUser(result.user); return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) }); }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() }); }
 
-    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable', '/pieces'];
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable', '/pieces', '/finance'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
@@ -214,6 +215,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/planning') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'planning.html', 'Planning introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/workshop') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'generated/workshop/index.html', 'Atelier introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/procedures') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'procedures.html', 'Bibliothèque de procédures introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/finance') { treasury.list(user); return servePage(res, 'finance.html', 'Trésorerie introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/airtable') { auth.requirePermission(user, 'dashboard.read'); return servePage(res, 'airtable.html', 'Cockpit Airtable introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/calendar/mavik.ics') return binary(res, 200, calendarBridge.buildIcs(localStore), 'text/calendar; charset=utf-8', { 'Content-Disposition': 'attachment; filename="MAVIK-GentleCarE.ics"' });
     if (req.method === 'GET' && url.pathname === '/api/auth/me') return json(res, 200, { user: mergedUser(user), device: context.type, deviceContext: context });
@@ -310,6 +312,12 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'PATCH' && url.pathname === '/api/calendar/settings') { const body = await readBody(req); return json(res, 200, calendarBridge.configure({ ...body, origin: requestOrigin(req) }, user)); }
     if (req.method === 'POST' && url.pathname === '/api/calendar/sync') { if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('CALENDAR_DIRECTION_REQUIRED'), { status: 403 }); return json(res, 200, await calendarBridge.sync(localStore)); }
 
+    if (req.method === 'GET' && url.pathname === '/api/finance/forecast') return json(res, 200, treasury.project(user));
+    if (req.method === 'GET' && url.pathname === '/api/finance/entries') return json(res, 200, treasury.list(user));
+    if (req.method === 'POST' && url.pathname === '/api/finance/settings') return json(res, 200, { settings: treasury.settings(user, await readBody(req)) });
+    if (req.method === 'POST' && url.pathname === '/api/finance/entries') return json(res, 201, { entry: treasury.entry(user, await readBody(req)) });
+    const financeDeleteRoute=url.pathname.match(/^\/api\/finance\/entries\/([^/]+)$/);
+    if (financeDeleteRoute && req.method === 'DELETE') return json(res, 200, treasury.drop(user, decodeURIComponent(financeDeleteRoute[1])));
     if (req.method === 'GET' && url.pathname === '/api/planning/overview') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, planning.overview(localStore, { from: url.searchParams.get('from'), days: url.searchParams.get('days') })); }
     if (req.method === 'POST' && url.pathname === '/api/planning/propose') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { proposal: planning.propose(localStore, await readBody(req)) }); }
     if (req.method === 'POST' && url.pathname === '/api/planning/schedule') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, planning.scheduleQuote(localStore, await readBody(req), user)); }

@@ -1,0 +1,67 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GentleCarE · Trésorerie prévisionnelle</title>
+<style>
+:root{font:15px system-ui,Segoe UI,sans-serif;color:#eaf7fa;background:#07151d}*{box-sizing:border-box}body{margin:0;padding:24px;background:linear-gradient(140deg,#102a34,#07151d 70%);min-height:100vh}main{max-width:1370px;margin:auto}.top{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}h1{font-size:clamp(23px,3vw,36px);margin:0}h2{font-size:19px;margin:0 0 12px}.muted{color:#a2bdc5}.panel{border:1px solid #335361;background:#0b2430dd;padding:20px;border-radius:18px;margin:16px 0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:12px}.card{background:#12303c;padding:18px;border-radius:15px;border:1px solid #345365}.value{font-size:26px;font-weight:800;margin:6px 0;color:#c6ec8a}.danger{color:#ffc3b9}.cols{display:grid;grid-template-columns:1.7fr 1fr;gap:16px}.formgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}label{display:block;color:#b5d0d9;font-weight:650}input,select,button{font:inherit}input,select{display:block;width:100%;padding:11px;background:#081c25;border:1px solid #54727c;border-radius:9px;color:#eaf7fa;margin-top:5px}button,.link{background:#2d5d6d;color:white;padding:11px 15px;border:1px solid #4e8491;border-radius:9px;cursor:pointer;text-decoration:none;font-weight:650}button.primary{background:#577e35;border-color:#81a958}button.secondary{background:transparent}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}svg{width:100%;height:auto;display:block;background:#081923;border-radius:12px}table{width:100%;border-collapse:collapse}td,th{padding:9px;border-bottom:1px solid #294755;text-align:left}th{color:#b0d6df}td:last-child,th:last-child{text-align:right}.table-scroll{overflow-x:auto}.notice{border-left:4px solid #d8ab5e;padding:12px;background:#3a2c163a;border-radius:5px}#feedback{min-height:20px}.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px}.key{display:inline-block;width:22px;height:4px;vertical-align:middle;margin-right:8px}#chartDesc{margin-top:8px}@media(max-width:800px){body{padding:12px}.cols{grid-template-columns:1fr}.formgrid{grid-template-columns:1fr}}
+</style></head><body><main>
+<header class="top"><div><div class="muted">GentleCarE · MAVIK / Jarvis · Administratif</div><h1>Trésorerie prévisionnelle · 3 mois</h1></div><a href="/alpha" class="link">← Tableau de bord</a></header>
+<div class="panel notice"><strong>Prévision, pas relevé bancaire.</strong> Les écritures ci-dessous sont saisies manuellement ; sans solde de départ vérifié, aucun compte courant fiable ne peut être affiché. Les devis non signés, acomptes non encaissés et promesses commerciales ne sont pas des recettes certaines. Montants de trésorerie TTC lorsque la somme transite réellement sur le compte.</div>
+<section class="panel"><h2>Situation de trésorerie</h2><div class="cards">
+<div class="card"><span class="muted">Solde bancaire initial</span><div class="value" id="opening">Non renseigné</div><span class="muted" id="balanceDate">—</span></div>
+<div class="card"><span class="muted">Encaissements inscrits (90 j)</span><div class="value" id="receipts">—</div></div>
+<div class="card"><span class="muted">Décaissements inscrits (90 j)</span><div class="value" id="outgoing">—</div></div>
+<div class="card"><span class="muted">Solde prévu à J+90 (central)</span><div class="value" id="ending">—</div></div></div></section>
+<div class="cols"><section class="panel"><h2>Évolution quotidienne du compte courant</h2>
+<svg id="curve" viewBox="0 0 800 360" role="img" aria-label="Courbes de trésorerie prévisionnelles sur 90 jours"><text x="32" y="50" fill="#a2bdc5">Renseigner le solde bancaire initial pour afficher les courbes</text></svg>
+<div class="legend"><span><i class="key" style="background:#ffac7b"></i>Prudent</span><span><i class="key" style="background:#a9d9ff"></i>Central</span><span><i class="key" style="background:#b3e38b"></i>Optimiste</span></div>
+<div id="chartDesc" class="muted">Le scénario prudent compte toutes les sorties et uniquement les entrées confirmées. Le central ajoute les flux prévus. L’optimiste ajoute les entrées hypothétiques et uniquement les sorties confirmées.</div>
+<div class="actions"><button id="exportCsv" class="secondary" type="button">Exporter le prévisionnel CSV</button></div></section>
+<section class="panel"><h2>Solde bancaire de référence</h2>
+<form id="balanceForm"><label>Solde bancaire actuel (€)<input id="balanceInput" type="number" step="0.01" required placeholder="Ex. 4500"></label>
+<label>Date du solde<input id="balanceAt" type="date" required></label>
+<div class="actions"><button type="submit" class="primary">Valider le solde</button></div></form>
+<p class="muted">À mettre à jour après rapprochement du relevé ou de PennyLane. Ne saisissez pas ici des montants provenant d'un simple devis.</p>
+<h2>Alertes de trésorerie</h2><p id="cashAlert" class="notice">En attente de solde.</p></section></div>
+<div class="cols"><section class="panel"><h2>Entrées et sorties programmées</h2><div class="table-scroll"><table><thead><tr><th>Date</th><th>Type</th><th>Libellé</th><th>Statut</th><th>Fréquence</th><th>Montant TTC</th></tr></thead><tbody id="entries"><tr><td colspan="6">Chargement…</td></tr></tbody></table></div></section>
+<section class="panel"><h2>Ajouter une échéance</h2><form id="entryForm"><div class="formgrid">
+<label>Nature<select id="kind"><option value="entrée">Encaissement</option><option value="sortie">Décaissement</option></select></label>
+<label>Montant (€ TTC)<input id="amount" type="number" step=".01" min=".01" required></label>
+<label>Échéance<input id="date" type="date" required></label>
+<label>Fiabilité<select id="status"><option value="confirmé">Confirmé</option><option value="prévu" selected>Prévu</option><option value="hypothèse">Hypothèse</option></select></label>
+<label>Fréquence<select id="frequency"><option value="unique">Unique</option><option value="mensuel">Chaque mois</option></select></label>
+<label>Catégorie<select id="category"><option>Clients / acomptes</option><option>Clients / factures</option><option>Glace carbonique</option><option>Carburant / énergie</option><option>Produits et fournitures</option><option>Salaires / cotisations</option><option>Loyer / charges</option><option>Assurances</option><option>Prêts / crédits</option><option>TVA / impôts</option><option>Investissements</option><option>Apports / financement</option><option>Autre</option></select></label></div>
+<label>Libellé<input id="label" required maxlength="180" placeholder="Ex. Facture Geladoc, échéance loyer…"></label><label>Référence justificative<input id="reference" maxlength="120" placeholder="Facture ou devis…"></label>
+<div class="actions"><button class="primary" type="submit">Enregistrer et recalculer</button></div></form><p id="feedback" class="muted" role="status"></p></section></div>
+</main><script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),eur=n=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(n/100),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),iso=()=>new Date().toISOString().slice(0,10);
+let current=null;
+async function api(path,opts={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json'},...opts});const data=await r.json().catch(()=>({}));if(!r.ok)throw Error(data.error||'Erreur '+r.status);return data;}
+function chart(points){const svg=$('curve');if(!points.length||points[0].central===null){svg.innerHTML='<text x="30" y="45" fill="#a2bdc5">Solde de départ obligatoire pour afficher les projections</text>';return;}
+const vals=points.flatMap(p=>[p.prudent,p.central,p.optimiste]),min=Math.min(0,...vals),max=Math.max(0,...vals),span=max-min||100;
+const x=i=>64+i*(714/(points.length-1||1)),y=v=>300-(v-min)/span*245;
+let out='<rect width="800" height="360" fill="#081923" rx="12"/>';
+for(let i=0;i<5;i++){const v=min+(max-min)*i/4,Y=y(v);out+='<line x1="64" y1="'+Y+'" x2="778" y2="'+Y+'" stroke="#37515e" stroke-dasharray="3 6"/><text x="5" y="'+(Y+4)+'" fill="#a2bdc5" font-size="12">'+Math.round(v/100).toLocaleString('fr-FR')+' €</text>';}
+out+='<line x1="64" x2="778" y1="'+y(0)+'" y2="'+y(0)+'" stroke="#dc7f6e" opacity=".8"/>';
+for(const [key,col] of [['prudent','#ffac7b'],['central','#a9d9ff'],['optimiste','#b3e38b']]){const p=points.map((v,i)=>(i?'L':'M')+x(i).toFixed(1)+' '+y(v[key]).toFixed(1)).join(' ');out+='<path d="'+p+'" fill="none" stroke="'+col+'" stroke-width="'+(key==='central'?3.5:2)+'"/>';}
+[0,Math.floor((points.length-1)/2),points.length-1].forEach(i=>out+='<text x="'+x(i)+'" y="340" fill="#a2bdc5" font-size="13" text-anchor="middle">'+points[i].date.split('-').reverse().join('/')+'</text>');
+svg.innerHTML=out;
+}
+function render(data){current=data;const s=data.summary,st=data.settings;
+$('opening').textContent=s.openingBalanceCents===null?'Non renseigné':eur(s.openingBalanceCents);
+$('balanceDate').textContent='Au '+st.openingDate;
+$('receipts').textContent=eur(s.expectedInCents);$('outgoing').textContent=eur(s.expectedOutCents);
+$('ending').textContent=s.endBalances.central===null?'Non calculable':eur(s.endBalances.central);
+$('balanceAt').value=st.openingDate;$('date').value=$('date').value||iso();
+if(s.openingBalanceCents!==null){$('balanceInput').value=(s.openingBalanceCents/100).toFixed(2);}
+chart(data.points);
+$('cashAlert').textContent=s.openingBalanceCents===null?'Renseigner le solde bancaire vérifié pour établir une prévision.':
+s.lowestPrudentCents<0?'Attention : trésorerie négative possible dans le scénario prudent, minimum '+eur(s.lowestPrudentCents)+'.':
+'Minimum du scénario prudent sur la période : '+eur(s.lowestPrudentCents)+'.';
+$('entries').innerHTML=data.entries.length?data.entries.slice().sort((a,b)=>a.date.localeCompare(b.date)).map(e=>'<tr><td>'+esc(e.date)+'</td><td>'+esc(e.kind)+'</td><td>'+esc(e.label)+'</td><td>'+esc(e.status)+'</td><td>'+esc(e.frequency)+'</td><td>'+eur((e.kind==='entrée'?1:-1)*e.amountCents)+'</td></tr>').join(''):'<tr><td colspan="6">Aucune échéance. Ajoutez les encaissements, charges et remboursements réels/prévus.</td></tr>';
+}
+async function refresh(){try{render(await api('/api/finance/forecast'));$('feedback').textContent='';}catch(e){$('feedback').textContent='Erreur : '+e.message;}}
+$('balanceForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/finance/settings',{method:'POST',body:JSON.stringify({openingBalance:$('balanceInput').value,openingDate:$('balanceAt').value})});await refresh();}catch(err){$('feedback').textContent=err.message;}});
+$('entryForm').addEventListener('submit',async e=>{e.preventDefault();try{const row={kind:$('kind').value,amount:$('amount').value,date:$('date').value,status:$('status').value,frequency:$('frequency').value,category:$('category').value,label:$('label').value,reference:$('reference').value};await api('/api/finance/entries',{method:'POST',body:JSON.stringify(row)});$('entryForm').reset();$('date').value=iso();await refresh();}catch(err){$('feedback').textContent=err.message;}});
+$('exportCsv').onclick=()=>{if(!current)return;const rows=[['Date','Prudent EUR','Central EUR','Optimiste EUR'],...current.points.map(p=>[p.date,...['prudent','central','optimiste'].map(k=>p[k]===null?'':(p[k]/100).toFixed(2).replace('.',','))])];const blob=new Blob(['\ufeff'+rows.map(r=>r.join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'});const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='GentleCarE_tresorerie_90j.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),500);};
+refresh();
+})();
+</script></body></html>
