@@ -273,7 +273,7 @@ const server = http.createServer(async (req, res) => {
       if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('WORKSHOP_DIRECTION_VALIDATION_REQUIRED'), { status: 403 });
       return json(res, 200, interventionReport.validate(localStore, reference, { ...body, managerValidation: body.managerValidation || user.name }, user));
     }
-    const finishRoute = url.pathname.match(/^\\/api\\/workshop\\/interventions\\/([^/]+)\\/(finish-stage|finish-schedule|showroom)$/);
+    const finishRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/(finish-stage|finish-schedule|showroom)$/);
     if (finishRoute && req.method === 'POST') {
       auth.requirePermission(user, 'interventions.write');
       const reference = decodeURIComponent(finishRoute[1]);
