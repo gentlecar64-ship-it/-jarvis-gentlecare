@@ -32,10 +32,10 @@ function cleanPhotos(value) {
     const data = typeof photo === 'string' ? photo : photo?.data;
     if (typeof data !== 'string' || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(data)) fail('PARTS_INVALID_PHOTO');
     if (data.length > 2_500_000) fail('PARTS_PHOTO_TOO_LARGE', 413);
-    return { data, name: cleanText(photo?.name || 'Photo', 100) };
+    return { data, name: cleanText(photo?.name || 'Photo', 100), role: ['Avant','Après','Autre'].includes(photo?.role) ? photo.role : 'Autre' };
   });
 }
-function list() { return read().map((item) => ({ ...item, photoCount: item.photos.length, photos: item.photos.map(({ name }) => ({ name })) })); }
+function list() { return read().map((item) => ({ ...item, photoCount: item.photos.length, photos: item.photos.map(({ name, role }) => ({ name, role })) })); }
 function one(id) { return read().find((item) => item.id === id) || null; }
 function receive(payload = {}, user = {}) {
   const clientId = cleanText(payload.clientRecordId, 140);
