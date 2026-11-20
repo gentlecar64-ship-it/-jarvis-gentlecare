@@ -79,10 +79,9 @@ Référence terrain lot 4 pièces Workshop : 2 carters magnésium + 2 composants
 Tarifs de vente **proposés et non encore validés** pour lot de quatre : 350 € HT professionnel / 550 € TTC particulier, à personnaliser selon taille/état. Distinguer CA HT et coût HT, coûts directs vs complet ; ne pas présenter cette proposition comme tarif contractuel existant.
 
 
-## Décision tarifaire Workshop Arbonne — 20 novembre 2026 (remplace propositions pour ce client)
-- **Lot de deux carters en magnésium Porsche : 270 € HT**, tarif **exceptionnel d'essai**, décidé pour Workshop. La proposition antérieure de 220 € HT pour les carters est annulée pour ce dossier. **Ne pas intégrer 270 € HT comme prix catalogue standard ni le reproduire automatiquement** : il est réservé à cette intervention et devra être identifié comme remise / prix exceptionnel.
-- Justification à communiquer : **essai technique sur une matière encore inconnue dans notre pratique, pour Workshop comme pour GentleCarE**, sans promettre un résultat de restauration/mise à neuf.
-- **Turbine pièce 1 : 65 € HT** ; **turbine pièce 2 : 65 € HT**, suivant proposition précédente, à confirmer avant facturation définitive.
-- **Total indicatif quatre pièces : 400 € HT, soit 480 € TTC si TVA à 20 %**, sous réserve de validation des deux lignes turbine.
-- Si devis distincts : devis A carters 270 € HT / 324 € TTC ; devis B turbines 130 € HT / 156 € TTC.
-- Production standard à mutualiser avec livraison de glace pour véhicule, attente indicative 7 à 15 jours, hors commande urgente dédiée.
+## Décision tarifaire Workshop Arbonne — 20 novembre 2026 (rectification expresse)
+- **Prix exceptionnel validé : 270 € HT POUR LES QUATRE PIÈCES AU TOTAL**, soit 324 € TTC à TVA 20 %. Le précédent enregistrement de 270 € HT pour les seuls carters et 400 € HT total était erroné et **est annulé**.
+- Décomposition de travail pour deux devis ou lignes séparées, **allocation proposée à confirmer par direction**, fondée sur la proportion initialement suggérée (220/65/65) : **lot 2 carters magnésium Porsche 170 € HT** (204 € TTC), **turbine pièce 1 50 € HT** (60 € TTC), **turbine pièce 2 50 € HT** (60 € TTC). Total **270 € HT / 324 € TTC**. Ne pas considérer la répartition 170/50/50 comme acceptée par le client avant validation.
+- Essai technique commun pour Workshop et GentleCarE sur magnésium, matière nouvelle pour l'atelier, avec tarif unique d'essai exceptionnel sur lot complet de 4 pièces ; ne pas créer de tarif catalogue standard à 270 € HT.
+- Préparation de 2 devis séparés possible : devis A lot carters 170 € HT, devis B deux pièces de turbine 100 € HT. Aucune facture n'est émise automatiquement.
+- Les règles de commande de glace mutualisée et délai indicatif de 7–15 jours continuent de s'appliquer pour travaux futurs.
