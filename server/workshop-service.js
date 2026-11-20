@@ -192,7 +192,14 @@ function updateStep(store, reference, stepReference, input = {}, user = {}) {
     completedAt: complete ? now() : '',
     completedByUserId: complete ? (user.id || '') : '', completedByName: complete ? (user.name || user.username || '') : ''
   };
-  intervention = store.update('interventions', intervention.id, { procedureSteps: steps, procedureProgress: progress(steps), lastProcedureActionAt: now(), lastProcedureActionByName: user.name || '' });
+  const reports = [...(intervention.stepReports || [])];
+  if (complete) {
+    const snapshot = { stepId: steps[index].id, label: steps[index].label, completedAt: steps[index].completedAt, validatedBy: steps[index].completedByName, notes: steps[index].note, evidence: steps[index].evidence || [], stage: steps[index].stage || '' };
+    reports.push({ ...snapshot, revision: 1 + reports.filter(r => r.stepId === snapshot.stepId).length });
+  } else if (current.status === 'Terminée') {
+    reports.push({ stepId: current.id, event: 'reopened', at: now(), by: user.name || user.username || '' });
+  }
+  intervention = store.update('interventions', intervention.id, { procedureSteps: steps, stepReports: reports, procedureProgress: progress(steps), lastProcedureActionAt: now(), lastProcedureActionByName: user.name || '' });
   return enrich(store, intervention);
 }
 function saveEvidence(store, reference, stepReference, input = {}, user = {}) {
