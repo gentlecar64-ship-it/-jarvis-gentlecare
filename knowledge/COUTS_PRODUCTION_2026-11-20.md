@@ -46,3 +46,14 @@ Décision de direction : 20 novembre 2026. Applicable jusqu'à modification expl
 6. 1 h d'application antirouille si requise, plus quantité et prix du traitement (cire, noir, corps creux distincts).
 7. Temps effectif de main-d'œuvre, maintenance, amortissement, charges et marge : ne pas utiliser le taux **de vente** de 180 € HT/h comme coût salarial.
 8. Toute valeur de durée/consommation issue uniquement des photos est une hypothèse, à confirmer par inspection.
+
+
+## Retour atelier du 19 novembre 2026 — lot de pièces Workshop
+- Lot : **2 carters en magnésium + 2 pièces de turbine** (4 pièces au total).
+- Glace commandée : **40 kg**. Quantité estimée à destination : **35 kg** (estimation, non pesée certifiée).
+- Débit de projection majoritairement affiché : **80 kg/h**.
+- Durée de travail cryo déclarée : **environ 30 minutes**.
+- **Durée de planification validée pour le lot : 1 heure** (incluant les manipulations).
+- 80 kg/h × 0,5 h = 40 kg théoriques, supérieur à la quantité estimée reçue de 35 kg : débit moyen réel, durée effective ou quantité arrivée sont approximatifs. **Ne pas compter automatiquement 40 kg consommés** ; valeur maximale de référence du lot ~35 kg si aucune glace ne restait.
+- À 3,80 €/kg et avec 7 L/h de carburant × 2,50 €/L, les coûts directs maximaux estimés pour 35 kg et 30 minutes de compresseur sont **133,00 € glace + 8,75 € carburant = 141,75 €**, hors livraison, manutention, main-d'œuvre et amortissement.
+- **Règle de devis : séparer heure de poste atelier (planning) et minutes de projection effectives (consommation)** ; ne pas généraliser 1 h à toute pièce seule ou à tout autre lot.
