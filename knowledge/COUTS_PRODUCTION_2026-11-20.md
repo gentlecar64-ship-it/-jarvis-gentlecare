@@ -57,3 +57,23 @@ Décision de direction : 20 novembre 2026. Applicable jusqu'à modification expl
 - 80 kg/h × 0,5 h = 40 kg théoriques, supérieur à la quantité estimée reçue de 35 kg : débit moyen réel, durée effective ou quantité arrivée sont approximatifs. **Ne pas compter automatiquement 40 kg consommés** ; valeur maximale de référence du lot ~35 kg si aucune glace ne restait.
 - À 3,80 €/kg et avec 7 L/h de carburant × 2,50 €/L, les coûts directs maximaux estimés pour 35 kg et 30 minutes de compresseur sont **133,00 € glace + 8,75 € carburant = 141,75 €**, hors livraison, manutention, main-d'œuvre et amortissement.
 - **Règle de devis : séparer heure de poste atelier (planning) et minutes de projection effectives (consommation)** ; ne pas généraliser 1 h à toute pièce seule ou à tout autre lot.
+
+
+## Politique pièces démontées et mutualisation des frais Geladoc — 20/11/2026
+### Facture fournisseur vérifiée
+Facture Geladoc FA/2026/01764 du 31/10/2026, pour 120 kg (BL 27/10/2026), HT : 120 × 1,28 €/kg = 153,60 € de glace, 3 caisses à 18,80 € = 56,40 €, transport palette 111,80 € ; total 321,80 € HT = 2,6817 €/kg commandé, hors pertes. **Ne pas remplacer le prix facturé par 3,80 €/kg en devis internes** sans raison.
+### Simulation fournisseur pour autres volumes
+Hypothèses à confirmer auprès du fournisseur : prix 1,28 €/kg conservé, 1 caisse de 18,80 €/40 kg, un seul transport forfaitaire de 111,80 €, absence de supplément de livraison et pas de remise de quantité :
+- 40 kg : 181,80 € HT, 4,545 €/kg ;
+- 80 kg : 251,80 € HT, 3,1475 €/kg ;
+- 120 kg : 321,80 € HT, 2,6817 €/kg (facturé) ;
+- 160 kg : 391,80 € HT, 2,4488 €/kg ;
+- 200 kg : 461,80 € HT, 2,309 €/kg ;
+- 240 kg : 531,80 € HT, 2,2158 €/kg.
+**La commande de 40 kg du 19/11 n'a pas de facture vérifiée** ; 35 kg estimés arrivés, perte apparente 5 kg = 12,5 % (estimation non certifiée). Prévoir correction de coût à l'utilisation selon pertes et facture réelle.
+### Politique commerciale B2B pièces séparées
+**Par défaut, aucune commande de glace spécifique pour pièces isolées.** Acceptation de pièces déposées (Workshop, garagistes, particuliers) avec attente de **7 à 15 jours indicatifs**, regroupement des pièces avec une intervention véhicule déjà planifiée ; délai et faisabilité à confirmer suivant disponibilité des commandes de glace et planning. Planning de production en lots, rendez-vous d'enlèvement après finitions ; estimation photo/inspection avant devis. Les exceptions urgentes doivent être explicitement chiffrées comme **livraison dédiée** avec forfait express frais de port et pertes et accord préalable, pas absorbées par le tarif pro standard.
+### Règle d'imputation
+Pour commande mutualisée : prix d'achat théorique rendu atelier par kg = (glace + emballages + livraison) / kg commandés ; répartir au prorata des kg consommés par chaque lot, puis comptabiliser les pertes de sublimation effectives en charge de la commande (ou multiplier par facteur kg commandés/kg utilisables), pour ne pas transférer tout le transport au véhicule ni ignorer les pertes. Le véhicule ne doit pas absorber seul tout le port si des pièces sont également traitées.
+Référence terrain lot 4 pièces Workshop : 2 carters magnésium + 2 composants de turbine, 1 h planning / ~0,5 h de projection / jusqu'à 35 kg disponibles. Coût direct calculé à 35 kg : (35 × 4,545 + 8,75) = 167,83 € si 40 kg commandés et 35 kg de la commande consommés avec port *proratisé*; le **coût de la commande complète** si aucune glace résiduelle et perte 5 kg : 181,80 € + 8,75 € = **190,55 €**. Avec 240 kg mutualisés sans perte : 35 × 2,2158 + 8,75 ≈ **86,30 €**. Sans observation des pertes des 240 kg, ce dernier chiffre est optimiste.
+Tarifs de vente **proposés et non encore validés** pour lot de quatre : 350 € HT professionnel / 550 € TTC particulier, à personnaliser selon taille/état. Distinguer CA HT et coût HT, coûts directs vs complet ; ne pas présenter cette proposition comme tarif contractuel existant.
