@@ -6,6 +6,7 @@ const http = require('node:http');
 const { URL } = require('node:url');
 const localStore = require('./local-store');
 const partsIntake = require('./parts-intake');
+const partsAirtable = require('./parts-airtable');
 const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
 const quoteStudio = require('./quote-studio-service');
@@ -368,8 +369,8 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/system/backup') { auth.requirePermission(user, 'users.manage'); return json(res, 201, { path: backup.createBackup() }); }
     if (req.method === 'GET' && url.pathname === '/api/mail/status') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, mailService.status()); }
     if (req.method === 'POST' && url.pathname === '/api/mail/send') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, await mailService.send(await readBody(req), user)); }
-    if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list() }); }
-    if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); return json(res, result.duplicate ? 200 : 201, result); }
+    if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list().map(item => ({ ...item, airtableSync: partsAirtable.state(item.id) })), airtableConfigured: partsAirtable.enabled() }); }
+    if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); const syncQueued = partsAirtable.enqueue(result.item); return json(res, result.duplicate ? 200 : 201, { ...result, syncQueued }); }
     const partMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
     if (partMatch && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); const item = partsIntake.one(decodeURIComponent(partMatch[1])); return item ? json(res, 200, { item }) : json(res, 404, { error: 'PART_NOT_FOUND' }); }
     if (partMatch && req.method === 'PATCH') {
@@ -377,6 +378,7 @@ const server = http.createServer(async (req, res) => {
       const id = decodeURIComponent(partMatch[1]), payload = await readBody(req);
       const before = partsIntake.one(id);
       const item = partsIntake.update(id, payload, user);
+      const syncQueued = partsAirtable.enqueue(item);
       let notificationSent = false, notificationError = '';
       if (payload.status === 'À facturer' && before?.status !== 'À facturer') {
         const recipient = internalMessaging.directory(user).find((person) => /b[eé]n[eé]dicte/i.test(person.name || ''));
@@ -387,7 +389,7 @@ const server = http.createServer(async (req, res) => {
           } catch (error) { notificationError = String(error.message || error); }
         } else notificationError = 'COMPTE_BENEDICTE_NON_TROUVE';
       }
-      return json(res, 200, { item, notificationSent, notificationError });
+      return json(res, 200, { item, notificationSent, notificationError, syncQueued });
     }
 
     if (req.method === 'GET' && url.pathname === '/api/local/summary') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, localStore.summary()); }
@@ -415,6 +417,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 backup.startAutomaticBackups();
+partsAirtable.start(partsIntake);
 updater.startAutomaticChecks();
 diagnostics.startAutomaticChecks(diagnosticDependencies);
 server.listen(PORT, HOST, () => {
