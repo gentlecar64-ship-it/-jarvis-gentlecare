@@ -5,6 +5,7 @@ const path = require('node:path');
 
 const DATA_FILE = path.join(__dirname, 'data', 'gcos-local.json');
 const BACKUP_DIR = path.join(__dirname, 'backups');
+const EXTRA_FILES = ['incoming-parts.json', 'outgoing-mail-log.json', 'internal-messages.json', 'parts-airtable-sync.json'];
 
 function backupName(date = new Date()) {
   const stamp = date.toISOString().replace(/[:.]/g, '-');
@@ -13,20 +14,31 @@ function backupName(date = new Date()) {
 
 function cleanup(maxBackups = 30) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
-  const files = fs.readdirSync(BACKUP_DIR)
-    .filter((name) => name.startsWith('gcos-') && name.endsWith('.json'))
-    .map((name) => ({ name, time: fs.statSync(path.join(BACKUP_DIR, name)).mtimeMs }))
-    .sort((a, b) => b.time - a.time);
-  for (const file of files.slice(maxBackups)) fs.unlinkSync(path.join(BACKUP_DIR, file.name));
+  for (const prefix of ['gcos-', 'parts-', 'mail-', 'messages-', 'parts-sync-']) {
+    const files = fs.readdirSync(BACKUP_DIR)
+      .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
+      .map((name) => ({ name, time: fs.statSync(path.join(BACKUP_DIR, name)).mtimeMs }))
+      .sort((a, b) => b.time - a.time);
+    for (const file of files.slice(Math.max(1, maxBackups))) fs.unlinkSync(path.join(BACKUP_DIR, file.name));
+  }
 }
-
 function createBackup() {
-  if (!fs.existsSync(DATA_FILE)) return null;
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
-  const target = path.join(BACKUP_DIR, backupName());
-  fs.copyFileSync(DATA_FILE, target);
+  let mainTarget = null;
+  if (fs.existsSync(DATA_FILE)) {
+    mainTarget = path.join(BACKUP_DIR, 'gcos-' + stamp + '.json');
+    fs.copyFileSync(DATA_FILE, mainTarget);
+  }
+  for (const [index, name] of EXTRA_FILES.entries()) {
+    const source = path.join(__dirname, 'data', name);
+    if (!fs.existsSync(source)) continue;
+    const target = path.join(BACKUP_DIR, (['parts-', 'mail-', 'messages-', 'parts-sync-'][index]) + stamp + '.json');
+    fs.copyFileSync(source, target);
+    if (!mainTarget) mainTarget = target;
+  }
   cleanup(Number(process.env.GCOS_BACKUP_RETENTION || 30));
-  return target;
+  return mainTarget;
 }
 
 function startAutomaticBackups() {

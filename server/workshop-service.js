@@ -192,7 +192,14 @@ function updateStep(store, reference, stepReference, input = {}, user = {}) {
     completedAt: complete ? now() : '',
     completedByUserId: complete ? (user.id || '') : '', completedByName: complete ? (user.name || user.username || '') : ''
   };
-  intervention = store.update('interventions', intervention.id, { procedureSteps: steps, procedureProgress: progress(steps), lastProcedureActionAt: now(), lastProcedureActionByName: user.name || '' });
+  const reports = [...(intervention.stepReports || [])];
+  if (complete) {
+    const snapshot = { stepId: steps[index].id, label: steps[index].label, completedAt: steps[index].completedAt, validatedBy: steps[index].completedByName, notes: steps[index].note, evidence: steps[index].evidence || [], stage: steps[index].stage || '' };
+    reports.push({ ...snapshot, revision: 1 + reports.filter(r => r.stepId === snapshot.stepId).length });
+  } else if (current.status === 'Terminée') {
+    reports.push({ stepId: current.id, event: 'reopened', at: now(), by: user.name || user.username || '' });
+  }
+  intervention = store.update('interventions', intervention.id, { procedureSteps: steps, stepReports: reports, procedureProgress: progress(steps), lastProcedureActionAt: now(), lastProcedureActionByName: user.name || '' });
   return enrich(store, intervention);
 }
 function saveEvidence(store, reference, stepReference, input = {}, user = {}) {
@@ -213,7 +220,9 @@ function saveEvidence(store, reference, stepReference, input = {}, user = {}) {
   const evidence = { id: crypto.randomUUID(), url, title: text(input.title || input.fileName || 'Photo atelier'), note: text(input.note), createdAt: now(), createdByUserId: user.id || '', createdByName: user.name || '' };
   steps[index] = { ...steps[index], evidence: [...(steps[index].evidence || []), evidence] };
   store.create('photos', { title: `${intervention.number} — ${steps[index].id}`, url, category: 'Preuve atelier', interventionId: intervention.id, vehicleId: intervention.vehicleId, quoteId: intervention.quoteId, stepId: steps[index].id, createdBy: user.id || '', createdByName: user.name || '' });
-  intervention = store.update('interventions', intervention.id, { procedureSteps: steps, lastProcedureActionAt: now(), lastProcedureActionByName: user.name || '' });
+  const stepReports = [...(intervention.stepReports || [])];
+  if (steps[index].status === 'Terminée') stepReports.push({ stepId: steps[index].id, event: 'evidence-added', at: now(), by: user.name || user.username || '', evidenceId: evidence.id, evidenceUrl: evidence.url });
+  intervention = store.update('interventions', intervention.id, { procedureSteps: steps, stepReports, lastProcedureActionAt: now(), lastProcedureActionByName: user.name || '' });
   return { intervention: enrich(store, intervention), evidence };
 }
 function validateStart(store, reference, user = {}) {
@@ -237,7 +246,7 @@ function requestFinalValidation(store, reference, input = {}, user = {}) {
   if (missingEvidence.length) throw Object.assign(new Error('WORKSHOP_EVIDENCE_REQUIRED'), { status: 409, missingFields: missingEvidence.map((step) => `${step.id} — ajouter une preuve ou une note de traçabilité`) });
   intervention = store.update('interventions', intervention.id, {
     procedureStatus: 'Contrôle final à valider', finalValidationRequestedAt: now(), finalValidationRequestedByUserId: user.id || '', finalValidationRequestedByName: user.name || '',
-    finalNotes: text(input.finalNotes), workStatus: 'En attente', status: 'Contrôle final à valider', workstationReleased: true
+    finalNotes: text(input.finalNotes), workStatus: 'En attente de contrôle', status: 'Contrôle final à valider', workstationReleased: false
   });
   const existing = safeList(store, 'tasks').find((task) => task.interventionId === intervention.id && /contrôle final atelier/i.test(task.title || '') && task.status !== 'Terminée');
   if (!existing) store.create('tasks', { title: `Valider le contrôle final atelier — ${intervention.number}`, status: 'À faire', priority: 'Haute', assignee: 'David / Bénédicte', interventionId: intervention.id, quoteId: intervention.quoteId, clientId: intervention.clientId, vehicleId: intervention.vehicleId, instructions: 'Contrôler la procédure, les preuves, les réserves et autoriser la génération du rapport.' });
@@ -248,7 +257,7 @@ function approveFinal(store, reference, input = {}, user = {}) {
   let intervention = detail(store, reference, user);
   if (intervention.procedureStatus !== 'Contrôle final à valider') throw Object.assign(new Error('WORKSHOP_FINAL_VALIDATION_NOT_REQUESTED'), { status: 409 });
   intervention = store.update('interventions', intervention.id, {
-    procedureStatus: 'Validée par la direction', finalApprovedAt: now(), finalApprovedByUserId: user.id || '', finalApprovedByName: user.name || user.username || '', finalApprovalNote: text(input.note)
+    procedureStatus: 'Validée par la direction', status: 'Finition extérieure à réaliser', workStatus: 'Finition à réaliser', workstationReleased: false, finalApprovedAt: now(), finalApprovedByUserId: user.id || '', finalApprovedByName: user.name || user.username || '', finalApprovalNote: text(input.note)
   });
   for (const task of safeList(store, 'tasks').filter((item) => item.interventionId === intervention.id && /contrôle final atelier/i.test(item.title || '') && item.status !== 'Terminée')) store.update('tasks', task.id, { status: 'Terminée', completedAt: now(), result: `Validé par ${user.name || user.username || 'Direction'}.` });
   return enrich(store, intervention);

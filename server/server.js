@@ -6,6 +6,7 @@ const http = require('node:http');
 const { URL } = require('node:url');
 const localStore = require('./local-store');
 const partsIntake = require('./parts-intake');
+const partsAirtable = require('./parts-airtable');
 const jarvis = require('./jarvis-extended');
 const quoteWorkflow = require('./quote-workflow');
 const quoteStudio = require('./quote-studio-service');
@@ -13,6 +14,8 @@ const quoteRequests = require('./quote-requests');
 const tariffCatalog = require('./tariff-catalog');
 const workshopProcedures = require('./workshop-procedures');
 const workshopService = require('./workshop-service');
+const vehicleFinalization = require('./vehicle-finalization');
+const mailService = require('./mail-service');
 const interventionReport = require('./intervention-report');
 const planning = require('./planning-service');
 const calendarBridge = require('./calendar-bridge');
@@ -198,7 +201,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req)); result.user = mergedUser(result.user); return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) }); }
     if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() }); }
 
-    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable', '/pieces'];
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable', '/pieces', '/mail'];
     if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
     const user = requireUser(req);
     const context = auth.deviceContextFromRequest(req);
@@ -207,6 +210,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
 
     if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/mail') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'mail.html', 'Messagerie Jarvis introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/pieces') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'pieces.html', 'Suivi des pièces introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable', true); }
     if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
@@ -271,6 +275,16 @@ const server = http.createServer(async (req, res) => {
       if (action === 'report') return json(res, 201, interventionReport.generate(localStore, reference, body, user));
       if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('WORKSHOP_DIRECTION_VALIDATION_REQUIRED'), { status: 403 });
       return json(res, 200, interventionReport.validate(localStore, reference, { ...body, managerValidation: body.managerValidation || user.name }, user));
+    }
+    const finishRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/(finish-stage|finish-schedule|showroom)$/);
+    if (finishRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'interventions.write');
+      const reference = decodeURIComponent(finishRoute[1]);
+      const action = finishRoute[2];
+      const body = await readBody(req);
+      if (action === 'finish-stage') return json(res, 200, vehicleFinalization.mark(localStore, reference, body, user));
+      if (action === 'finish-schedule') return json(res, 201, vehicleFinalization.schedule(localStore, reference, body, user));
+      return json(res, 200, vehicleFinalization.showroom(localStore, reference, user));
     }
     const workshopStepRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/steps\/([^/]+)$/);
     if (workshopStepRoute && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, workshopService.updateStep(localStore, decodeURIComponent(workshopStepRoute[1]), decodeURIComponent(workshopStepRoute[2]), await readBody(req), user)); }
@@ -353,11 +367,30 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && url.pathname === '/api/jarvis/knowledge') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.knowledge); }
     if (req.method === 'POST' && url.pathname === '/api/jarvis/command') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.execute(localStore, { ...(await readBody(req)), user })); }
     if (req.method === 'POST' && url.pathname === '/api/system/backup') { auth.requirePermission(user, 'users.manage'); return json(res, 201, { path: backup.createBackup() }); }
-    if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list() }); }
-    if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); return json(res, result.duplicate ? 200 : 201, result); }
+    if (req.method === 'GET' && url.pathname === '/api/mail/status') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, mailService.status()); }
+    if (req.method === 'POST' && url.pathname === '/api/mail/send') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, await mailService.send(await readBody(req), user)); }
+    if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list().map(item => ({ ...item, airtableSync: partsAirtable.state(item.id) })), airtableConfigured: partsAirtable.enabled() }); }
+    if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); const syncQueued = partsAirtable.enqueue(result.item); return json(res, result.duplicate ? 200 : 201, { ...result, syncQueued }); }
     const partMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
     if (partMatch && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); const item = partsIntake.one(decodeURIComponent(partMatch[1])); return item ? json(res, 200, { item }) : json(res, 404, { error: 'PART_NOT_FOUND' }); }
-    if (partMatch && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { item: partsIntake.update(decodeURIComponent(partMatch[1]), await readBody(req), user) }); }
+    if (partMatch && req.method === 'PATCH') {
+      auth.requirePermission(user, 'interventions.write');
+      const id = decodeURIComponent(partMatch[1]), payload = await readBody(req);
+      const before = partsIntake.one(id);
+      const item = partsIntake.update(id, payload, user);
+      const syncQueued = partsAirtable.enqueue(item);
+      let notificationSent = false, notificationError = '';
+      if (payload.status === 'À facturer' && before?.status !== 'À facturer') {
+        const recipient = internalMessaging.directory(user).find((person) => /b[eé]n[eé]dicte/i.test(person.name || ''));
+        if (recipient) {
+          try {
+            internalMessaging.send(user, { toUserId: recipient.id, subject: 'Pièce prête à facturer — ' + (item.name || item.kind), body: 'Pièce ' + item.kind + ' — ' + (item.name || '') + '. Dossier : ' + (item.dossierId || item.clientId || 'à relier') + '. Ouvrir MAVIK > Pièces détachées > À facturer pour contrôler les photographies et finaliser la facturation.', priority: 'normal' });
+            notificationSent = true;
+          } catch (error) { notificationError = String(error.message || error); }
+        } else notificationError = 'COMPTE_BENEDICTE_NON_TROUVE';
+      }
+      return json(res, 200, { item, notificationSent, notificationError, syncQueued });
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/local/summary') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, localStore.summary()); }
 
@@ -384,6 +417,7 @@ const server = http.createServer(async (req, res) => {
 });
 
 backup.startAutomaticBackups();
+partsAirtable.start(partsIntake);
 updater.startAutomaticChecks();
 diagnostics.startAutomaticChecks(diagnosticDependencies);
 server.listen(PORT, HOST, () => {
