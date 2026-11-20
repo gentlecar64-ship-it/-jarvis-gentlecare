@@ -34,6 +34,13 @@ function schedule(store, reference, input = {}, user = {}) {
   const existing = blocks.find(b => b.interventionId === intervention.id && b.finishStage === type && b.status !== 'Annulée');
   const record = { title: title + ' — ' + (intervention.number || intervention.id), type: title, finishStage: type, interventionId: intervention.id, clientId: intervention.clientId, vehicleId: intervention.vehicleId, startDate: date, endDate: date, startTime: time, endTime: time, status: 'Active', blocksWorkshop: false, notes: String(input.notes || '').slice(0, 1000), createdBy: user.id || '', createdByName: user.name || '' };
   const block = existing ? store.update('planningBlocks', existing.id, record) : store.create('planningBlocks', record);
+  if (type === 'pickup') {
+    const showroomBlock = store.list('planningBlocks').find(b => b.interventionId === intervention.id && b.finishStage === 'showroom' && b.status !== 'Annulée');
+    if (showroomBlock) {
+      if (date < showroomBlock.startDate) invalid('PICKUP_BEFORE_SHOWROOM', 409);
+      store.update('planningBlocks', showroomBlock.id, { endDate: date });
+    }
+  }
   store.update('interventions', intervention.id, type === 'pickup' ? { pickupDate: date, pickupTime: time, pickupScheduledAt: now() } : { [type + 'PlannedDate']: date, [type + 'PlannedTime']: time });
   return { block, interventionId: intervention.id };
 }
@@ -44,6 +51,8 @@ function showroom(store, reference, user = {}) {
   if (!intervention.completionChecks?.presentation?.completedAt) invalid('PRESENTATION_REQUIRED');
   if (intervention.showroomAt) return { intervention, alreadyDone: true };
   const updated = store.update('interventions', intervention.id, { showroomAt: now(), showroomBy: user.name || user.username || '', status: 'En showroom — attente restitution', workStatus: 'Terminée', workstationReleased: true });
+  const date = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  store.create('planningBlocks', { title: 'Showroom — attente récupération ' + (intervention.number || intervention.id), type: 'Showroom', finishStage: 'showroom', interventionId: intervention.id, clientId: intervention.clientId, vehicleId: intervention.vehicleId, startDate: date, endDate: date, startTime: '09:00', endTime: '17:00', status: 'Active', blocksWorkshop: false, createdBy: user.id || '', createdByName: user.name || '', notes: 'Véhicule terminé en attente de récupération par le client' });
   return { intervention: updated, alreadyDone: false };
 }
 module.exports = { mark, schedule, showroom };
