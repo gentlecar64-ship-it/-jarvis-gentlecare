@@ -64,7 +64,8 @@ async function pushNow(item) {
       if (!match) throw new Error('AIRTABLE_PART_PHOTO_INVALID');
       const ext=match[1].toLowerCase().replace('jpeg','jpg');
       const mime=ext==='jpg'?'image/jpeg':'image/'+ext;
-      const filename='mavik-'+item.id+'-'+hashes[i].slice(0,12)+'.'+ext;
+      const role=['Avant','Après','Autre'].includes(photo.role)?photo.role.toLowerCase():'autre';
+      const filename='mavik-'+item.id+'-'+role+'-'+hashes[i].slice(0,12)+'.'+ext;
       await request('https://content.airtable.com/v0/'+BASE+'/'+recordId+'/'+ATTACHMENTS+'/uploadAttachment',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({filename,contentType:mime,file:match[2]})
