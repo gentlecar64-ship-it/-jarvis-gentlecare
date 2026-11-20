@@ -51,6 +51,7 @@ function receive(payload = {}, user = {}) {
     kind, name: cleanText(payload.name, 160), category: cleanText(payload.category, 60),
     description: cleanText(payload.description, 4000),
     reference: cleanText(payload.reference, 100),
+    clientName: cleanText(payload.clientName, 160), dossierLabel: cleanText(payload.dossierLabel, 160),
     clientId: cleanText(payload.clientId, 150),
     vehicleId: cleanText(payload.vehicleId, 150),
     dossierId: cleanText(payload.dossierId, 150),
@@ -71,7 +72,7 @@ function update(id, payload = {}, user = {}) {
   if (i < 0) fail('PART_NOT_FOUND', 404);
   const item = items[i];
   const patch = {};
-  for (const field of ['name', 'description', 'reference', 'clientId', 'vehicleId', 'dossierId', 'category']) {
+  for (const field of ['name', 'description', 'reference', 'clientId', 'vehicleId', 'dossierId', 'clientName', 'dossierLabel', 'category']) {
     if (Object.hasOwn(payload, field)) patch[field] = cleanText(payload[field], field === 'description' ? 4000 : 160);
   }
   if (Object.hasOwn(payload, 'status')) {
@@ -92,7 +93,7 @@ function update(id, payload = {}, user = {}) {
   }
   if (payload.status === 'À facturer' && item.status !== 'À facturer') {
     if (!(patch.photos || item.photos || []).length) fail('PARTS_PHOTOS_REQUIRED_FOR_HANDOFF', 409);
-    if (!(patch.clientId || item.clientId || patch.dossierId || item.dossierId)) fail('PARTS_CLIENT_OR_DOSSIER_REQUIRED', 409);
+    if (!(patch.clientId || item.clientId || patch.dossierId || item.dossierId || patch.clientName || item.clientName)) fail('PARTS_CLIENT_OR_DOSSIER_REQUIRED', 409);
     patch.handoffAt = new Date().toISOString();
     patch.handoffBy = cleanText(user.name || user.username, 120);
   }
