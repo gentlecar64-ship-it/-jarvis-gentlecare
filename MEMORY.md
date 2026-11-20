@@ -190,3 +190,13 @@ Cette instruction fonctionne pour David, Bénédicte et tout futur collaborateur
 - Les procédures détaillées, décisions techniques et historiques restent dans `knowledge/`.
 - En cas de contradiction, la décision la plus récente, datée et validée prévaut.
 - Ne jamais supprimer une règle importante sans laisser une trace dans un ADR ou dans l’historique Git.
+
+## Décision du 20/11/2026 — MAVIK 0.40.105 : pièces, facturation et restitution
+
+- Source de détail : [`docs/RELEASE_0.40.105.md`](./docs/RELEASE_0.40.105.md).
+- Les pièces démontées doivent être reprises par client/dossier depuis le PC et l'iPhone. Photos Avant/Après, temps, glace et prix sont conservés. L'envoi « À facturer » vise le bureau de Bénédicte et ne doit pas être confondu avec l'émission effective de la facture.
+- Les fiches pièces sont stockées localement sur le serveur et répliquées vers la table Airtable **Pièces détachées**, lorsque le jeton est opérationnel. Ne pas annoncer une synchronisation réussie sans accusé de l'API.
+- Le véhicule n'est **fini** qu'après cryogénie, protection, lavage extérieur, mise en valeur et validation des étapes. Il passe ensuite en showroom, en attente d'une récupération planifiée séparément.
+- Le rapport de chaque étape validée reste traçable ; le rapport client final exige le contrôle Direction.
+- Jarvis dispose d'une interface pour envoyer des e-mails via Gmail OAuth ; sans identifiants privés configurés sur le serveur, l'envoi est désactivé et ne doit jamais être indiqué comme effectué.
+- Toute mise à jour réelle du poste `C:\Mavik-GCOS` exige sauvegarde préalable de `server/data`, `server/.env` et des médias `server/public/generated`. Une publication GitHub ne confirme pas l'installation sur le PC.
