@@ -13,6 +13,7 @@ const quoteRequests = require('./quote-requests');
 const tariffCatalog = require('./tariff-catalog');
 const workshopProcedures = require('./workshop-procedures');
 const workshopService = require('./workshop-service');
+const vehicleFinalization = require('./vehicle-finalization');
 const interventionReport = require('./intervention-report');
 const planning = require('./planning-service');
 const calendarBridge = require('./calendar-bridge');
@@ -271,6 +272,16 @@ const server = http.createServer(async (req, res) => {
       if (action === 'report') return json(res, 201, interventionReport.generate(localStore, reference, body, user));
       if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('WORKSHOP_DIRECTION_VALIDATION_REQUIRED'), { status: 403 });
       return json(res, 200, interventionReport.validate(localStore, reference, { ...body, managerValidation: body.managerValidation || user.name }, user));
+    }
+    const finishRoute = url.pathname.match(/^\\/api\\/workshop\\/interventions\\/([^/]+)\\/(finish-stage|finish-schedule|showroom)$/);
+    if (finishRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'interventions.write');
+      const reference = decodeURIComponent(finishRoute[1]);
+      const action = finishRoute[2];
+      const body = await readBody(req);
+      if (action === 'finish-stage') return json(res, 200, vehicleFinalization.mark(localStore, reference, body, user));
+      if (action === 'finish-schedule') return json(res, 201, vehicleFinalization.schedule(localStore, reference, body, user));
+      return json(res, 200, vehicleFinalization.showroom(localStore, reference, user));
     }
     const workshopStepRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/steps\/([^/]+)$/);
     if (workshopStepRoute && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, workshopService.updateStep(localStore, decodeURIComponent(workshopStepRoute[1]), decodeURIComponent(workshopStepRoute[2]), await readBody(req), user)); }
