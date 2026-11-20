@@ -5,7 +5,7 @@ const path = require('node:path');
 
 const DATA_FILE = path.join(__dirname, 'data', 'gcos-local.json');
 const BACKUP_DIR = path.join(__dirname, 'backups');
-const EXTRA_FILES = ['incoming-parts.json', 'outgoing-mail-log.json'];
+const EXTRA_FILES = ['incoming-parts.json', 'outgoing-mail-log.json', 'internal-messages.json', 'parts-airtable-sync.json'];
 
 function backupName(date = new Date()) {
   const stamp = date.toISOString().replace(/[:.]/g, '-');
@@ -14,7 +14,7 @@ function backupName(date = new Date()) {
 
 function cleanup(maxBackups = 30) {
   fs.mkdirSync(BACKUP_DIR, { recursive: true });
-  for (const prefix of ['gcos-', 'parts-', 'mail-']) {
+  for (const prefix of ['gcos-', 'parts-', 'mail-', 'messages-', 'parts-sync-']) {
     const files = fs.readdirSync(BACKUP_DIR)
       .filter((name) => name.startsWith(prefix) && name.endsWith('.json'))
       .map((name) => ({ name, time: fs.statSync(path.join(BACKUP_DIR, name)).mtimeMs }))
@@ -33,7 +33,7 @@ function createBackup() {
   for (const [index, name] of EXTRA_FILES.entries()) {
     const source = path.join(__dirname, 'data', name);
     if (!fs.existsSync(source)) continue;
-    const target = path.join(BACKUP_DIR, (index === 0 ? 'parts-' : 'mail-') + stamp + '.json');
+    const target = path.join(BACKUP_DIR, (['parts-', 'mail-', 'messages-', 'parts-sync-'][index]) + stamp + '.json');
     fs.copyFileSync(source, target);
     if (!mainTarget) mainTarget = target;
   }
