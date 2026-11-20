@@ -1,0 +1,54 @@
+{
+  "id": "automotive-workshop",
+  "name": "Poste Atelier automobile GentleCarE",
+  "version": "1.1.0",
+  "requiresCore": ">=0.42.0-core.2",
+  "clientOnly": true,
+  "entryPoint": "alpha/workshop/index.html",
+  "permissions": [
+    "dashboard.read",
+    "planning.read",
+    "records.read.assigned",
+    "records.write.assigned",
+    "photos.read.assigned",
+    "photos.write.assigned",
+    "reports.read.assigned",
+    "reports.write.assigned",
+    "stock.read",
+    "voice.use",
+    "notifications.read",
+    "calls.internal"
+  ],
+  "forbiddenCapabilities": [
+    "administration",
+    "settings.system",
+    "billing",
+    "banking",
+    "users.manage",
+    "development",
+    "github",
+    "system.configure"
+  ],
+  "hardware": [
+    "usb-camera-1080p",
+    "microphone",
+    "speakers",
+    "ethernet"
+  ],
+  "voiceCommands": [
+    "start-current-intervention",
+    "capture-before-photo",
+    "capture-during-photo",
+    "capture-after-photo",
+    "complete-current-intervention",
+    "announce-next-intervention",
+    "open-current-vehicle",
+    "call-direction-contact"
+  ],
+  "migrations": [
+    "add-workshop-station-profile",
+    "add-camera-capture",
+    "add-live-time-indicator",
+    "add-startup-announcement"
+  ]
+}
