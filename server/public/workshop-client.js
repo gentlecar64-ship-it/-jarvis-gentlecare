@@ -105,6 +105,19 @@
       <section class="final"><h3>Clôture de la procédure</h3><p class="meta">Toutes les étapes obligatoires et leurs preuves doivent être terminées. L’employé demande ensuite le contrôle final. La direction valide avant que le rapport puisse être remis.</p><div class="field"><label>Notes finales</label><textarea id="finalNotes" placeholder="Résultat, réserves restantes, recommandations…">${esc(record.finalNotes || '')}</textarea></div><div class="actions"><button id="requestFinal" type="button" ${record.canComplete ? '' : 'disabled'}>Demander le contrôle final</button>${direction && record.procedureStatus === 'Contrôle final à valider' ? '<button class="primary" id="approveFinal" type="button">Valider le contrôle et préparer le rapport</button>' : ''}</div></section>
       <section class="final"><h3>Rapport d’intervention</h3><p class="meta">Statut : <strong>${esc(report.status || 'Non généré')}</strong>${report.version ? ` · version ${Number(report.version)}.0` : ''}. Le brouillon est généré après le contrôle de direction ; la remise client exige un rapport complet et une validation humaine.</p>${reportMissing.length ? `<div class="lock">À compléter : ${reportMissing.slice(0, 8).map(esc).join(' · ')}</div>` : '<div class="lock ok">Aucun manque documentaire actuellement détecté.</div>'}<div class="actions">${report.url ? `<a class="button primary" href="${esc(report.url)}" target="_blank" rel="noopener">Ouvrir le rapport</a>` : ''}${report.canGenerate && !report.url ? '<button id="generateReport" type="button">Générer le brouillon</button>' : ''}${direction && report.url ? `<button id="validateReport" type="button" ${report.canValidate ? '' : 'disabled'}>Valider pour remise client</button>` : ''}</div></section>`;
 
+    if (record.procedureStatus === 'Validée par la direction') {
+      const checks = record.completionChecks || {};
+      const done = phase => Boolean(checks[phase]?.completedAt);
+      const inShowroom = Boolean(record.showroomAt);
+      const planned = (phase, label) => '<div class="field"><label>' + label + ' · date <input type="date" id="date-' + phase + '" value="' + esc(record[phase + 'PlannedDate'] || '') + '"></label><label>Heure <input type="time" id="time-' + phase + '" value="' + esc(record[phase + 'PlannedTime'] || '16:00') + '"></label><button type="button" id="schedule-' + phase + '">Ajouter au planning</button></div>';
+      $('detail').insertAdjacentHTML('beforeend', '<section class="final"><h3>Finition et restitution</h3><p class="meta">Le nettoyage cryogénique et la protection ne suffisent pas : valider aussi le lavage extérieur et la mise en valeur avant « Véhicule fini ».</p>' +
+        (inShowroom ? '<div class="lock ok">Véhicule fini · en showroom depuis ' + esc(record.showroomAt) + '</div>' :
+          planned('wash','Lavage extérieur') + '<button id="markWash" ' + (done('wash')?'disabled':'') + '>' + (done('wash')?'✓ Lavage validé':'Valider lavage extérieur') + '</button>' +
+          planned('presentation','Mise en valeur') + '<button id="markPresentation" ' + (done('presentation')?'disabled':'') + '>' + (done('presentation')?'✓ Mise en valeur validée':'Valider mise en valeur') + '</button>' +
+          '<div class="actions"><button class="primary" id="vehicleFinished" ' + (done('wash')&&done('presentation')?'':'disabled') + '>Véhicule fini → Showroom</button></div>') +
+        (inShowroom ? '<div class="field"><label>Récupération client · date<input type="date" id="date-pickup" value="' + esc(record.pickupDate||'') + '"></label><label>Heure<input type="time" id="time-pickup" value="' + esc(record.pickupTime||'16:30') + '"></label><button id="schedule-pickup">Organiser la récupération client</button></div>' : '<p class="meta">Le rendez-vous de récupération sera disponible dès le passage en showroom.</p>') + '</section>');
+    }
+
     bindDetail(record);
   }
   function bindDetail(record) {
@@ -132,6 +145,12 @@
       mutate(`/api/workshop/interventions/${encodeURIComponent(record.id)}/approve-final`, { note: $('finalNotes').value });
     });
     $('generateReport')?.addEventListener('click', () => mutate(`/api/workshop/interventions/${encodeURIComponent(record.id)}/report`, {}));
+    for (const phase of ['wash','presentation','pickup']) {
+      $('schedule-'+phase)?.addEventListener('click', () => mutate('/api/workshop/interventions/'+encodeURIComponent(record.id)+'/finish-schedule', { type: phase, date: $('date-'+phase).value, time: $('time-'+phase).value }));
+    }
+    $('markWash')?.addEventListener('click', () => mutate('/api/workshop/interventions/'+encodeURIComponent(record.id)+'/finish-stage', { phase:'wash' }));
+    $('markPresentation')?.addEventListener('click', () => mutate('/api/workshop/interventions/'+encodeURIComponent(record.id)+'/finish-stage', { phase:'presentation' }));
+    $('vehicleFinished')?.addEventListener('click', () => { if (confirm('Confirmer : cryogénie, protection, lavage extérieur et mise en valeur réalisés ? Le véhicule passe en showroom en attente du client.')) mutate('/api/workshop/interventions/'+encodeURIComponent(record.id)+'/showroom', {}); });
     $('validateReport')?.addEventListener('click', () => {
       if (!confirm('Valider cette version complète pour remise au client ? Une nouvelle version horodatée sera conservée.')) return;
       mutate(`/api/workshop/interventions/${encodeURIComponent(record.id)}/report-validate`, { managerValidation: state.user?.name });
