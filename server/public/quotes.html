@@ -27,10 +27,84 @@
 <section class="panel full"><h2>8. CGV, communications et autorisations</h2><p class="muted">Les autorisations sont indépendantes. Le refus d’une utilisation commerciale des images n’empêche pas la réalisation des photographies techniques nécessaires lorsque celles-ci sont autorisées.</p><div class="legal-grid"><label class="consent"><input id="termsAccepted" type="checkbox"><span><strong>CGV acceptées</strong><br>La date, l’identité déclarée et le lien consulté sont conservés dans le dossier.</span></label><div><label>Acceptées par</label><input id="termsAcceptedBy" placeholder="Nom du client ou représentant"></div><label class="consent"><input id="technicalMediaAuthorized" type="checkbox"><span><strong>Photos et vidéos techniques</strong><br>État d’entrée, intervention, avant/après et rapport client.</span></label><label class="consent"><input id="expertTransmissionAuthorized" type="checkbox"><span><strong>Transmission à un expert</strong><br>Dossier, constats et médias transmis à un professionnel indépendant si nécessaire.</span></label><label class="consent"><input id="commercialMediaAuthorized" type="checkbox"><span><strong>Utilisation commerciale</strong><br>Site, réseaux sociaux, présentation ou communication GentleCarE.</span></label><label class="consent"><input id="identifiableMediaAuthorized" type="checkbox"><span><strong>Éléments identifiables</strong><br>Personne, plaque, nom ou autre élément permettant l’identification.</span></label><label class="consent"><input id="emailAllowed" type="checkbox"><span><strong>Contact par e-mail</strong><br>Devis, suivi, documents et informations liées au dossier.</span></label><label class="consent"><input id="smsAllowed" type="checkbox"><span><strong>Contact par SMS</strong><br>Rendez-vous, avancement et restitution.</span></label></div><div><label>Précisions ou restrictions</label><textarea id="consentNotes" placeholder="Ex. plaque à masquer, aucune publication avant restitution…"></textarea></div><div class="legal-links"><a href="https://www.gentlecare.fr/conditionsgenerales" target="_blank" rel="noopener">Lire les CGV</a><a href="https://www.gentlecare.fr/about-1" target="_blank" rel="noopener">Mentions légales</a><a href="https://www.gentlecare.fr/politiquedeconfidentialit%C3%A9" target="_blank" rel="noopener">Politique de confidentialité</a><a href="/generated/legal/index.html" target="_blank">Page légale MAVIK</a></div><div id="legalStatus" class="status">CGV non acceptées — le devis peut être préparé mais l’acceptation reste à recueillir.</div></section>
 <section class="panel full"><h2>9. Modèle imagé du devis</h2><p class="muted">Ce modèle se met à jour pendant la saisie. Il sert à contrôler visuellement le rendu avant de créer le document définitif.</p><div id="visualQuotePreview" class="visual-model"><div class="muted">Chargement du modèle imagé…</div></div></section>
 <section class="panel full"><h2>10. Proposition Jarvis et validation humaine</h2><div id="previewWarnings"></div><pre id="quotePreview" class="preview">Jarvis commence par demander la nature de la demande.</pre><div id="priceCheck" class="price-check direction-only"><h3>Le prix proposé est-il correct ?</h3><p id="priceCheckText"></p><div class="actions"><button class="primary" id="priceYes" type="button">Oui, prix correct</button><button class="warn" id="priceNo" type="button">Non, rechercher le bon tarif</button></div></div><div class="actions"><button id="saveDraftButton" type="button">Enregistrer sans envoyer</button><button class="primary" id="submitRequestButton" type="button">Envoyer la demande de devis</button><button class="direction-only" id="previewButton" type="button">Prévisualiser le devis</button><button class="primary direction-only" id="createButton" type="button" disabled>Créer le devis, le texte et le visuel</button></div><div id="creationResult"></div></section>
+
+<section class="panel full direction-only" id="iceCostSimulator" aria-labelledby="iceCostTitle">
+  <h2 id="iceCostTitle">Coût glace carbonique — simulateur de devis</h2>
+  <p class="muted">Déplacez le curseur : le coût au kg varie selon les quantités commandées. Référence : Geladoc FA/2026/01764 du 31/10/2026. Simulation HT, hors sublimation. Les prix fournisseur sont modifiables ; les changements doivent être justifiés par une nouvelle facture ou offre.</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px">
+    <label>Quantité commandée <strong id="iceOrderLabel">240 kg</strong><input type="range" id="iceOrderKg" min="40" max="400" step="40" value="240" style="width:100%;accent-color:#91bc5b"></label>
+    <label>Glace affectée à la prestation (kg)<input id="iceJobKg" type="number" min="0" max="400" step="1" value="35"></label>
+    <label>Durée de compresseur (min)<input id="iceCompressorMinutes" type="number" min="0" max="2400" step="5" value="30"></label>
+    <label>Glace HT (€/kg)<input id="iceUnitPrice" type="number" min="0" step="0.01" value="1.28"></label>
+    <label>Transport HT par livraison (€)<input id="iceShipping" type="number" min="0" step="0.01" value="111.80"></label>
+    <label>Prix d'une caisse HT (€)<input id="iceBoxPrice" type="number" min="0" step="0.01" value="18.80"></label>
+    <label>Capacité moyenne par caisse (kg)<input id="iceBoxCapacity" type="number" min="1" step="1" value="40"></label>
+    <label>Pertes de glace sur commande (%)<input id="iceLossPct" type="number" min="0" max="90" step="0.5" value="0"></label>
+  </div>
+  <div class="summary-grid" style="margin-top:16px">
+    <div class="metric"><b id="iceLandedKg">—</b><span>Glace livrée HT/kg commandé</span></div>
+    <div class="metric"><b id="iceUsefulKg">—</b><span>Prix HT/kg utilisable avec pertes</span></div>
+    <div class="metric"><b id="iceOrderTotal">—</b><span>Commande complète HT</span></div>
+    <div class="metric"><b id="iceJobDirect">—</b><span>Coût glace + carburant du devis HT</span></div>
+  </div>
+  <div id="iceCostWarning" class="muted" role="status" style="margin-top:10px"></div>
+  <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:12px;text-align:right"><thead><tr><th style="text-align:left">Commande</th><th>Facture simulation HT</th><th>€/kg livré</th><th>€/kg utilisable</th><th>Coût prestation glace + carburant</th></tr></thead><tbody id="iceCostRows"></tbody></table></div>
+  <div class="actions"><button type="button" id="iceSaveParameters">Enregistrer les prix fournisseur sur cet appareil</button><button type="button" id="iceResetParameters">Revenir à la facture Geladoc du 31/10/2026</button></div>
+  <p class="muted" id="icePriceSource">Source : facture Geladoc FA/2026/01764 — 1,28 €/kg, caisse 18,80 €, port 111,80 € HT. Ajustez sur nouvelle facture.</p>
+  <p class="muted">Pour les pièces mécaniques déposées : livraison mutualisée avec les véhicules, délai indicatif 7 à 15 jours. Une urgence avec livraison dédiée nécessite un devis complémentaire. Le coût affiché est un <strong>coût interne</strong> : il ne remplace jamais le prix de vente du devis.</p>
+</section>
 <section class="panel full"><h2>Demandes de devis</h2><p class="muted">Une demande peut être chargée et modifiée. La direction peut la supprimer après confirmation.</p><div id="quoteRequests" class="quote-list"><div class="muted">Chargement…</div></div></section>
 <section class="panel full direction-only"><h2>Devis créés récemment</h2><div id="recentQuotes" class="quote-list"><div class="muted">Chargement…</div></div></section>
 </section>
 </main>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+const ids=['iceOrderKg','iceJobKg','iceCompressorMinutes','iceUnitPrice','iceShipping','iceBoxPrice','iceBoxCapacity','iceLossPct'];
+const money=value=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(value);
+const fmt=value=>new Intl.NumberFormat('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)+' €/kg';
+const initial={iceOrderKg:240,iceJobKg:35,iceCompressorMinutes:30,iceUnitPrice:1.28,iceShipping:111.80,iceBoxPrice:18.80,iceBoxCapacity:40,iceLossPct:0};
+function loadSaved(){try{const saved=JSON.parse(localStorage.getItem('gcos_ice_cost_config_v1')||'null');if(saved&&typeof saved==='object'){ids.forEach(id=>{if(Number.isFinite(Number(saved[id])))$(id).value=saved[id]});$('icePriceSource').textContent='Tarifs enregistrés sur cet appareil (à vérifier avec la dernière facture Geladoc).';}}catch{}}
+function number(id,fallback=0){const value=Number($(id).value);return Number.isFinite(value)?value:fallback;}
+function metrics(quantity){
+ const unit=Math.max(0,number('iceUnitPrice')),ship=Math.max(0,number('iceShipping')),box=Math.max(0,number('iceBoxPrice'));
+ const cap=Math.max(1,number('iceBoxCapacity',40)),loss=Math.min(90,Math.max(0,number('iceLossPct')));
+ const boxes=Math.ceil(quantity/cap),total=quantity*unit+boxes*box+ship,usable=quantity*(1-loss/100);
+ const costKg=total/usable;
+ const job=Math.max(0,number('iceJobKg')),minutes=Math.max(0,number('iceCompressorMinutes'));
+ const fuel=minutes/60*17.5;
+ return {total,landed:total/quantity,costKg,jobDirect:job*costKg+fuel,job,usable,loss,quantity};
+}
+function refresh(){
+ const qty=number('iceOrderKg',240),m=metrics(qty);
+ $('iceOrderLabel').textContent=qty+' kg';
+ $('iceLandedKg').textContent=fmt(m.landed);
+ $('iceUsefulKg').textContent=fmt(m.costKg);
+ $('iceOrderTotal').textContent=money(m.total);
+ $('iceJobDirect').textContent=money(m.jobDirect);
+ $('iceCostWarning').textContent=m.job>m.usable
+ ? 'Attention : les '+m.job+' kg de la prestation dépassent les '+m.usable.toFixed(1)+' kg théoriquement utilisables pour cette commande.'
+ : 'Carburant compresseur : 7 L/h à 2,50 €/L, soit 17,50 €/h. Livraison répartie sur toute la glace utilisable. Frais de main-d’œuvre et charges non inclus.';
+ $('iceCostRows').innerHTML=[40,80,120,160,200,240,320,400].map(q=>{
+ const v=metrics(q),selected=q===qty;
+ return '<tr style="'+(selected?'background:rgba(145,188,91,.15);':'')+'"><td style="text-align:left;padding:8px;border-bottom:1px solid rgba(218,241,249,.12)">'+q+' kg</td><td style="padding:8px;border-bottom:1px solid rgba(218,241,249,.12)">'+money(v.total)+'</td><td style="padding:8px;border-bottom:1px solid rgba(218,241,249,.12)">'+fmt(v.landed)+'</td><td style="padding:8px;border-bottom:1px solid rgba(218,241,249,.12)">'+fmt(v.costKg)+'</td><td style="padding:8px;border-bottom:1px solid rgba(218,241,249,.12)">'+money(v.jobDirect)+'</td></tr>';
+ }).join('');
+}
+ids.forEach(id=>$(id).addEventListener('input',refresh));
+$('iceSaveParameters').addEventListener('click',()=>{
+ const cfg={};ids.forEach(id=>cfg[id]=number(id,initial[id]));
+ localStorage.setItem('gcos_ice_cost_config_v1',JSON.stringify(cfg));
+ $('icePriceSource').textContent='Tarifs enregistrés sur cet appareil le '+new Date().toLocaleDateString('fr-FR')+' (source documentaire à vérifier).';refresh();
+});
+$('iceResetParameters').addEventListener('click',()=>{
+ ids.forEach(id=>$(id).value=initial[id]);localStorage.removeItem('gcos_ice_cost_config_v1');
+ $('icePriceSource').textContent='Source : facture Geladoc FA/2026/01764 du 31/10/2026 — prix fournisseur vérifiés.';refresh();
+});
+loadSaved();refresh();
+})();
+</script>
 <script src="/assets/quote-studio-client.js"></script>
 <script src="/generated/quote-visual-preview.js"></script>
 </body>
