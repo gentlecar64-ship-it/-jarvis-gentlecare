@@ -8,7 +8,7 @@ const BASE = process.env.AIRTABLE_BASE_ID || 'app6i45G4WG2nmQff';
 const TABLE = 'tblI4DlxK2dcrbY0q';
 const ATTACHMENTS = 'fldnKjoUxlZm3p2t4';
 const SYNC_FILE = path.join(__dirname, 'data', 'parts-airtable-sync.json');
-const F = Object.freeze({name:'fldlHhPMQKQGggrZI',id:'fldLTqOawC4wRoARY',type:'fldzsLZn3mhXLXV3R',reference:'fldz9Fw4zgNUSOaHM',category:'fldqnTrRKgFMOQCn9',status:'fldLr2st3GrtGdy8D',client:'fldwpKGwrQVUngKKM',dossier:'fldnQqH0u04rn9Hrd',description:'fldIWzaCTM9B5KLsj',ice:'fldr8uVO7eLEH2ePe',minutes:'fldqmOiVFa3fNie1N',price:'flddxlircV3fXgepy',handoff:'fldVXFoJNRXhO50WE'});
+const F = Object.freeze({name:'fldlHhPMQKQGggrZI',id:'fldLTqOawC4wRoARY',type:'fldzsLZn3mhXLXV3R',reference:'fldz9Fw4zgNUSOaHM',category:'fldqnTrRKgFMOQCn9',status:'fldLr2st3GrtGdy8D',client:'fldwpKGwrQVUngKKM',dossier:'fldnQqH0u04rn9Hrd',description:'fldIWzaCTM9B5KLsj',clientName:'fld0CTQOXoEp8Xpxt',dossierLabel:'fld34x8rI4beQZMQM',ice:'fldr8uVO7eLEH2ePe',minutes:'fldqmOiVFa3fNie1N',price:'flddxlircV3fXgepy',handoff:'fldVXFoJNRXhO50WE'});
 const inFlight = new Map();
 const token = () => String(process.env.AIRTABLE_TOKEN || '').trim();
 const enabled = () => Boolean(token() && process.env.GCOS_PARTS_AIRTABLE_SYNC !== 'false');
@@ -17,7 +17,7 @@ function save(state) { fs.mkdirSync(path.dirname(SYNC_FILE),{recursive:true});co
 function state(id) { return load()[id] || { status:enabled()?'En attente':'Non configurée' }; }
 function fields(item) {
   const x = {
-    [F.name]: [item.kind,item.name].filter(Boolean).join(' — ') || item.id,
+    [F.name]: [item.clientName,item.kind,item.name].filter(Boolean).join(' — ') || item.id,
     [F.id]: item.id,
     [F.type]: String(item.kind||''),
     [F.reference]: String(item.reference||''),
@@ -25,6 +25,8 @@ function fields(item) {
     [F.client]: String(item.clientId||''),
     [F.dossier]: String(item.dossierId||''),
     [F.description]: String(item.description||'').slice(0,4000),
+    [F.clientName]: String(item.clientName||''),
+    [F.dossierLabel]: String(item.dossierLabel||''),
     [F.ice]: Number(item.dryIceKg||0),
     [F.minutes]: Number(item.workMinutes||0),
     [F.price]: Number(item.amountHt||0)
