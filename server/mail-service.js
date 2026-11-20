@@ -46,7 +46,9 @@ async function send(input={},user={}) {
   if (!result.ok) err('GMAIL_SEND_FAILED_'+result.status,502);
   const data=await result.json();
   if (!data.id) err('GMAIL_SEND_UNCONFIRMED',502);
-  log({id:data.id,threadId:data.threadId||'',to,subject,at:new Date().toISOString(),by:user.id||user.name||'',relatedId:String(input.relatedId||'').slice(0,140)});
-  return {sent:true,messageId:data.id,threadId:data.threadId||'',to,subject};
+  let auditSaved = true;
+  try { log({id:data.id,threadId:data.threadId||'',to,subject,at:new Date().toISOString(),by:user.id||user.name||'',relatedId:String(input.relatedId||'').slice(0,140)}); }
+  catch (error) { auditSaved = false; console.error('[MAIL AUDIT]', String(error.message || error)); }
+  return {sent:true,messageId:data.id,threadId:data.threadId||'',to,subject,auditSaved};
 }
 module.exports={status,send};
