@@ -92,6 +92,7 @@ function update(id, payload = {}, user = {}) {
   }
   if (payload.status === 'À facturer' && item.status !== 'À facturer') {
     if (!(patch.photos || item.photos || []).length) fail('PARTS_PHOTOS_REQUIRED_FOR_HANDOFF', 409);
+    if (!(patch.clientId || item.clientId || patch.dossierId || item.dossierId)) fail('PARTS_CLIENT_OR_DOSSIER_REQUIRED', 409);
     patch.handoffAt = new Date().toISOString();
     patch.handoffBy = cleanText(user.name || user.username, 120);
   }
