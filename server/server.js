@@ -372,7 +372,23 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); return json(res, result.duplicate ? 200 : 201, result); }
     const partMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
     if (partMatch && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); const item = partsIntake.one(decodeURIComponent(partMatch[1])); return item ? json(res, 200, { item }) : json(res, 404, { error: 'PART_NOT_FOUND' }); }
-    if (partMatch && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { item: partsIntake.update(decodeURIComponent(partMatch[1]), await readBody(req), user) }); }
+    if (partMatch && req.method === 'PATCH') {
+      auth.requirePermission(user, 'interventions.write');
+      const id = decodeURIComponent(partMatch[1]), payload = await readBody(req);
+      const before = partsIntake.one(id);
+      const item = partsIntake.update(id, payload, user);
+      let notificationSent = false, notificationError = '';
+      if (payload.status === 'À facturer' && before?.status !== 'À facturer') {
+        const recipient = internalMessaging.directory(user).find((person) => /b[eé]n[eé]dicte/i.test(person.name || ''));
+        if (recipient) {
+          try {
+            internalMessaging.send(user, { toUserId: recipient.id, subject: 'Pièce prête à facturer — ' + (item.name || item.kind), body: 'Pièce ' + item.kind + ' — ' + (item.name || '') + '. Dossier : ' + (item.dossierId || item.clientId || 'à relier') + '. Ouvrir MAVIK > Pièces détachées > À facturer pour contrôler les photographies et finaliser la facturation.', priority: 'normal' });
+            notificationSent = true;
+          } catch (error) { notificationError = String(error.message || error); }
+        } else notificationError = 'COMPTE_BENEDICTE_NON_TROUVE';
+      }
+      return json(res, 200, { item, notificationSent, notificationError });
+    }
 
     if (req.method === 'GET' && url.pathname === '/api/local/summary') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, localStore.summary()); }
 
