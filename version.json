@@ -1,0 +1,18 @@
+{
+  "name": "MAVIK GCOS",
+  "version": "0.43.0",
+  "channel": "stable",
+  "releasedAt": "2026-07-21T14:10:00+02:00",
+  "notes": [
+    "Nouveau Poste Atelier kiosque",
+    "Interface opérateur limitée",
+    "Caméra USB et photos par étape",
+    "Planning avec indicateur de l’heure réelle",
+    "Intervention courante et suivante",
+    "Rapport et stock en lecture",
+    "Commandes vocales Atelier",
+    "Notifications et file de synchronisation",
+    "Lanceur Windows plein écran",
+    "Migration vers MAVIK Core 0.42.0-core.3"
+  ]
+}

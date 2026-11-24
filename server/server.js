@@ -1,0 +1,458 @@
+'use strict';
+
+const fs = require('node:fs');
+const path = require('node:path');
+const http = require('node:http');
+const { URL } = require('node:url');
+const localStore = require('./local-store');
+const partsIntake = require('./parts-intake');
+const partsAirtable = require('./parts-airtable');
+const jarvis = require('./jarvis-extended');
+const quoteWorkflow = require('./quote-workflow');
+const quoteStudio = require('./quote-studio-service');
+const quoteRequests = require('./quote-requests');
+const tariffCatalog = require('./tariff-catalog');
+const workshopProcedures = require('./workshop-procedures');
+const workshopService = require('./workshop-service');
+const vehicleFinalization = require('./vehicle-finalization');
+const mailService = require('./mail-service');
+const interventionReport = require('./intervention-report');
+const planning = require('./planning-service');
+const calendarBridge = require('./calendar-bridge');
+const emergencyAlert = require('./emergency-alert');
+const employeeFlow = require('./employee-flow');
+const leavePlanning = require('./leave-planning');
+const morale = require('./jarvis-morale');
+const clientIntake = require('./client-intake');
+const reputation = require('./reputation');
+const internalMessaging = require('./internal-messaging');
+const backup = require('./backup');
+const auth = require('./auth');
+const updater = require('./updater');
+const airtableSync = require('./airtable-sync');
+const insightsStore = require('./insights-store');
+const diagnostics = require('./diagnostics');
+
+function loadEnv(filePath) {
+  if (!fs.existsSync(filePath)) return;
+  const content = fs.readFileSync(filePath, 'utf8');
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+    const separator = line.indexOf('=');
+    if (separator < 1) continue;
+    const key = line.slice(0, separator).trim();
+    let value = line.slice(separator + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
+    if (!(key in process.env)) process.env[key] = value;
+  }
+}
+
+loadEnv(path.join(__dirname, '.env'));
+
+const PORT = Number(process.env.GCOS_PORT || 4782);
+const HOST = process.env.GCOS_HOST || '0.0.0.0';
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID || 'app6i45G4WG2nmQff';
+const AIRTABLE_TOKEN = process.env.AIRTABLE_TOKEN || '';
+const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN || '*';
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const LOGO_DIR = path.join(__dirname, 'assets', 'logo');
+const BRAND_DIR = path.resolve(__dirname, '..', 'assets', 'brand');
+const LOCAL_COLLECTIONS = new Set(['clients', 'vehicles', 'interventions', 'observations', 'communications', 'tasks', 'stockItems', 'quotes', 'quoteRequests', 'documents', 'photos', 'planningBlocks', 'workSessions', 'leaveRequests', 'externalCalendarEvents']);
+const diagnosticDependencies = { localStore, airtableSync, updater, backup };
+const HOME_PAGES = new Set(['dashboard', 'jarvis', 'quotes', 'planning', 'profile']);
+
+function commonHeaders(contentType) {
+  return {
+    'Content-Type': contentType,
+    'Access-Control-Allow-Origin': ALLOWED_ORIGIN,
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-GCOS-Session, X-GCOS-Client, X-GCOS-Device-ID',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    Pragma: 'no-cache',
+    Expires: '0',
+    Vary: 'User-Agent, X-GCOS-Client, X-GCOS-Device-ID',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'SAMEORIGIN',
+    'Referrer-Policy': 'no-referrer'
+  };
+}
+function json(res, status, body, extraHeaders = {}) { res.writeHead(status, { ...commonHeaders('application/json; charset=utf-8'), ...extraHeaders }); res.end(JSON.stringify(body)); }
+function html(res, status, body) { res.writeHead(status, commonHeaders('text/html; charset=utf-8')); res.end(body); }
+function redirect(res, location) { res.writeHead(302, { Location: location, ...commonHeaders('text/plain; charset=utf-8') }); res.end(); }
+function binary(res, status, content, type, extraHeaders = {}) { res.writeHead(status, { ...commonHeaders(type), ...extraHeaders }); res.end(content); }
+function sessionCookie(token) { return `gcos_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(auth.SESSION_TTL_MS / 1000)}`; }
+function clearSessionCookie() { return 'gcos_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0'; }
+function requestOrigin(req) {
+  const proto = String(req.headers['x-forwarded-proto'] || '').split(',')[0].trim() || (req.socket.encrypted ? 'https' : 'http');
+  return `${proto}://${req.headers.host || `${HOST}:${PORT}`}`;
+}
+function contentType(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ({ '.svg': 'image/svg+xml; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.ics': 'text/calendar; charset=utf-8' })[ext] || 'application/octet-stream';
+}
+function servePublicAsset(res, relativePath) {
+  let clean;
+  try { clean = decodeURIComponent(String(relativePath || '')).replace(/^\/+/, ''); }
+  catch { return json(res, 400, { error: 'ASSET_PATH_INVALID' }); }
+  const target = path.resolve(PUBLIC_DIR, clean);
+  const root = `${path.resolve(PUBLIC_DIR)}${path.sep}`;
+  if (!target.startsWith(root) || !fs.existsSync(target) || !fs.statSync(target).isFile()) return json(res, 404, { error: 'ASSET_NOT_FOUND' });
+  return binary(res, 200, fs.readFileSync(target), contentType(target));
+}
+function officialLogoBuffer() {
+  const officialFile = path.join(BRAND_DIR, 'gentlecare-logo.png');
+  if (fs.existsSync(officialFile)) return fs.readFileSync(officialFile);
+  const parts = fs.readdirSync(LOGO_DIR).filter((name) => /^\d+\.txt$/.test(name)).sort();
+  if (!parts.length) throw Object.assign(new Error('OFFICIAL_LOGO_MISSING'), { status: 404 });
+  const base64 = parts.map((name) => fs.readFileSync(path.join(LOGO_DIR, name), 'utf8').trim()).join('');
+  return Buffer.from(base64, 'base64');
+}
+async function readBody(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 10_000_000) throw Object.assign(new Error('GCOS_BODY_TOO_LARGE'), { status: 413 });
+    chunks.push(chunk);
+  }
+  if (!chunks.length) return {};
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+  catch { throw Object.assign(new Error('GCOS_INVALID_JSON'), { status: 400 }); }
+}
+function requireAirtable(res) {
+  if (airtableSync.configured()) return true;
+  json(res, 503, { error: 'AIRTABLE_NOT_CONFIGURED' });
+  return false;
+}
+async function airtableRequest(table, options = {}) {
+  const recordSuffix = options.recordId ? `/${encodeURIComponent(options.recordId)}` : '';
+  const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(table)}${recordSuffix}`);
+  Object.entries(options.query || {}).forEach(([key, value]) => { if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value)); });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, { method: options.method || 'GET', headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' }, body: options.body ? JSON.stringify(options.body) : undefined, signal: controller.signal });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) { const error = new Error(payload?.error?.message || `AIRTABLE_${response.status}`); error.status = response.status; throw error; }
+    return payload;
+  } finally { clearTimeout(timer); }
+}
+
+const AUTH_BOOTSTRAP = `<script>(function(){const device=/iPhone|iPad|iPod/i.test(navigator.userAgent)?'iphone':'pc';let deviceId=localStorage.getItem('gcos_device_id');if(!deviceId){deviceId=(window.crypto&&window.crypto.randomUUID?window.crypto.randomUUID():'dev-'+Date.now()+'-'+Math.random().toString(16).slice(2));localStorage.setItem('gcos_device_id',deviceId);}const token=localStorage.getItem('gcos_session');const login=()=>location.replace('/login?next='+encodeURIComponent(location.pathname));const original=window.fetch;window.fetch=function(input,init){init=init||{};const headers=new Headers(init.headers||{});if(token)headers.set('Authorization','Bearer '+token);headers.set('X-GCOS-Client',device);headers.set('X-GCOS-Device-ID',deviceId);return original(input,{...init,cache:'no-store',headers,credentials:'same-origin'}).then(function(r){if(r.status===401){localStorage.removeItem('gcos_session');login();}return r;});};})();</script>`;
+function servePage(res, fileName, missingMessage, protect = false) {
+  const filePath = path.join(PUBLIC_DIR, fileName);
+  if (!fs.existsSync(filePath)) return html(res, 404, `<h1>${missingMessage}</h1>`);
+  let content = fs.readFileSync(filePath, 'utf8');
+  if (protect) content = content.replace('<head>', `<head>${AUTH_BOOTSTRAP}`);
+  if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-quote.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (fileName === 'jarvis.html') content = content.replace('</body>', `<script src="/assets/jarvis-workshop-context.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  if (protect) content = content.replace('</body>', `<script src="/assets/reputation-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/navigation-enhancer.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/command-dock.js?v=${encodeURIComponent(updater.currentVersion())}"></script><script src="/assets/morale-client.js?v=${encodeURIComponent(updater.currentVersion())}"></script></body>`);
+  return html(res, 200, content);
+}
+function requireUser(req) {
+  const user = auth.authenticate(req);
+  if (!user) throw Object.assign(new Error('AUTH_REQUIRED'), { status: 401 });
+  return user;
+}
+function requireAnyPermission(user, permissions) {
+  if (!permissions.some((permission) => auth.can(user, permission))) throw Object.assign(new Error('FORBIDDEN'), { status: 403 });
+}
+function mergedUser(user) {
+  const settings = reputation.getUserSettings(user);
+  const preferredHome = HOME_PAGES.has(settings.preferredHome) ? settings.preferredHome : (HOME_PAGES.has(user.preferences?.preferredHome) ? user.preferences.preferredHome : 'dashboard');
+  return { ...user, preferences: { ...(user.preferences || {}), preferredHome } };
+}
+function profileUpdate(user, input, context) {
+  const preferences = { ...(input.preferences || {}) };
+  const preferredHome = preferences.preferredHome;
+  delete preferences.preferredHome;
+  const updated = auth.updateMyProfile(user, { ...input, preferences }, context);
+  if (preferredHome !== undefined) {
+    if (!HOME_PAGES.has(preferredHome)) throw Object.assign(new Error('PREFERRED_HOME_INVALID'), { status: 400 });
+    reputation.saveUserSettings(updated, { preferredHome });
+  }
+  return mergedUser(updated);
+}
+
+const server = http.createServer(async (req, res) => {
+  if (req.method === 'OPTIONS') return json(res, 204, {});
+  const url = new URL(req.url, `http://${req.headers.host || `${HOST}:${PORT}`}`);
+  try {
+    if (req.method === 'GET' && url.pathname === '/login') return servePage(res, 'login.html', 'Connexion introuvable');
+    if (req.method === 'GET' && url.pathname === '/assets/official-logo.png') return binary(res, 200, officialLogoBuffer(), 'image/png');
+    if (req.method === 'GET' && url.pathname === '/assets/gentlecare-banner.jpg') {
+      const banner = path.join(BRAND_DIR, 'gentlecare-banner.jpg');
+      if (!fs.existsSync(banner)) return json(res, 404, { error: 'BRAND_BANNER_NOT_FOUND' });
+      return binary(res, 200, fs.readFileSync(banner), 'image/jpeg');
+    }
+    if (req.method === 'GET' && url.pathname === '/calendar/mavik.ics' && calendarBridge.tokenValid(url.searchParams.get('token'))) {
+      return binary(res, 200, calendarBridge.buildIcs(localStore), 'text/calendar; charset=utf-8', { 'Content-Disposition': 'inline; filename="MAVIK-GentleCarE.ics"' });
+    }
+    if (req.method === 'GET' && url.pathname === '/health') return json(res, 200, {
+      service: 'MAVIK GCOS', version: updater.currentVersion(), multiUser: true, device: auth.deviceFromRequest(req), setupRequired: auth.setupRequired(),
+      airtableConfigured: airtableSync.configured(), airtableSync: airtableSync.status(), insights: insightsStore.status(), updater: updater.state(), diagnostics: diagnostics.readLastReport(),
+      quoteWorkflow: { enabled: true, depositRate: quoteWorkflow.DEPOSIT_RATE }, quoteStudio: { enabled: true, highValueThreshold: quoteStudio.HIGH_VALUE_THRESHOLD, tariffCatalog: true, motorcycle: true }, quoteRequests: { enabled: true, directionValidation: true },
+      planning: { enabled: true, capacity: planning.WORKSHOP_CAPACITY, employeeEarlyStart: true, employeeDelay: false, saturdayClosed: true, sundayClosed: true, calendarBridge: true },
+      emergencyAlert: { enabled: true, synchronized: true }, employeeFlow: { enabled: true }, leavePlanning: { enabled: true, principleThenValidation: true }, morale: { enabled: true }, reputation: { enabled: true }, internalMessaging: { enabled: true, multipleRecipients: true }, continuousVoice: { enabled: true }, host: HOST, uptimeSeconds: Math.round(process.uptime()), time: new Date().toISOString()
+    });
+    if (req.method === 'GET' && url.pathname === '/api/auth/status') return json(res, 200, { setupRequired: auth.setupRequired(), device: auth.deviceFromRequest(req), user: auth.authenticate(req) });
+    if (req.method === 'POST' && url.pathname === '/api/auth/setup') { const body = await readBody(req); const context = auth.deviceContextFromRequest(req); return json(res, 201, { user: auth.createInitialAdmin(body, context), device: context.type }); }
+    if (req.method === 'POST' && url.pathname === '/api/auth/login') { const body = await readBody(req); const result = auth.login(body.username, body.password, auth.deviceContextFromRequest(req)); result.user = mergedUser(result.user); return json(res, 200, result, { 'Set-Cookie': sessionCookie(result.token) }); }
+    if (req.method === 'POST' && url.pathname === '/api/auth/logout') { auth.logout(auth.tokenFromRequest(req)); return json(res, 200, { ok: true }, { 'Set-Cookie': clearSessionCookie() }); }
+
+    const protectedPages = ['/', '/alpha', '/iphone', '/jarvis', '/profile', '/quotes', '/planning', '/workshop', '/procedures', '/airtable', '/pieces', '/mail'];
+    if (req.method === 'GET' && protectedPages.includes(url.pathname) && !auth.authenticate(req)) return redirect(res, `/login?next=${encodeURIComponent(url.pathname === '/' ? (auth.deviceFromRequest(req) === 'iphone' ? '/iphone' : '/alpha') : url.pathname)}`);
+    const user = requireUser(req);
+    const context = auth.deviceContextFromRequest(req);
+
+    for (const asset of ['jarvis-quote.js', 'jarvis-workshop-context.js', 'reputation-client.js', 'command-dock.js', 'navigation-enhancer.js', 'quote-studio-client.js', 'planning-client.js', 'workshop-client.js', 'profile-owner.js', 'morale-client.js', 'airtable-client.js', 'procedures-client.js', 'brand-shell.css']) if (req.method === 'GET' && url.pathname === `/assets/${asset}`) return servePublicAsset(res, asset);
+    if (req.method === 'GET' && url.pathname.startsWith('/generated/')) return servePublicAsset(res, url.pathname);
+
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/alpha' || url.pathname === '/iphone')) return servePage(res, 'alpha.html', 'MAVIK GCOS introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/mail') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'mail.html', 'Messagerie Jarvis introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/pieces') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'pieces.html', 'Suivi des pièces introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/jarvis') { auth.requirePermission(user, 'jarvis.use'); return servePage(res, 'jarvis.html', 'Jarvis introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/profile') return servePage(res, 'profile.html', 'Profil MAVIK introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/quotes') return servePage(res, 'quotes.html', 'Atelier devis introuvable', true);
+    if (req.method === 'GET' && url.pathname === '/planning') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'planning.html', 'Planning introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/workshop') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'generated/workshop/index.html', 'Atelier introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/procedures') { auth.requirePermission(user, 'interventions.read'); return servePage(res, 'procedures.html', 'Bibliothèque de procédures introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/airtable') { auth.requirePermission(user, 'dashboard.read'); return servePage(res, 'airtable.html', 'Cockpit Airtable introuvable', true); }
+    if (req.method === 'GET' && url.pathname === '/calendar/mavik.ics') return binary(res, 200, calendarBridge.buildIcs(localStore), 'text/calendar; charset=utf-8', { 'Content-Disposition': 'attachment; filename="MAVIK-GentleCarE.ics"' });
+    if (req.method === 'GET' && url.pathname === '/api/auth/me') return json(res, 200, { user: mergedUser(user), device: context.type, deviceContext: context });
+
+    if (req.method === 'GET' && url.pathname === '/api/profile') return json(res, 200, { user: mergedUser(user), design: { locked: true, version: auth.DESIGN_LOCK } });
+    if (req.method === 'PATCH' && url.pathname === '/api/profile') return json(res, 200, { user: profileUpdate(user, await readBody(req), context) });
+    if (req.method === 'POST' && (url.pathname === '/api/profile/pin' || url.pathname === '/api/auth/pin')) { const result = auth.changeMyPin(user, await readBody(req)); return json(res, 200, result, { 'Set-Cookie': clearSessionCookie() }); }
+    if (req.method === 'POST' && url.pathname === '/api/profile/devices/revoke') { const body = await readBody(req); return json(res, 200, { user: auth.revokeTrustedDevice(user, body.deviceId, context) }); }
+    if (req.method === 'GET' && url.pathname === '/api/system/owner') return json(res, 200, auth.ownerSettings(user));
+    if (req.method === 'PATCH' && url.pathname === '/api/system/owner') { const body = await readBody(req); return json(res, 200, auth.setSystemOwner(user, body.userId)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/emergency/status') return json(res, 200, emergencyAlert.status(user));
+    if (req.method === 'POST' && url.pathname === '/api/emergency/activate') return json(res, 201, emergencyAlert.activate(await readBody(req), user));
+    if (req.method === 'POST' && url.pathname === '/api/emergency/acknowledge') return json(res, 200, emergencyAlert.acknowledge(user));
+    if (req.method === 'POST' && url.pathname === '/api/emergency/stop') return json(res, 200, emergencyAlert.stop(await readBody(req), user));
+
+    if (req.method === 'GET' && url.pathname === '/api/reputation/preferences') return json(res, 200, { settings: reputation.getUserSettings(user) });
+    if (req.method === 'PATCH' && url.pathname === '/api/reputation/preferences') return json(res, 200, { settings: reputation.saveUserSettings(user, await readBody(req)) });
+    if (req.method === 'GET' && url.pathname === '/api/reputation/prompt') return json(res, 200, reputation.buildPrompt(user, { force: url.searchParams.get('force') === '1' }));
+    if (req.method === 'POST' && url.pathname === '/api/reputation/respond') return json(res, 200, reputation.respond(user, await readBody(req)));
+
+    if (req.method === 'GET' && url.pathname === '/api/internal/directory') return json(res, 200, { records: internalMessaging.directory(user) });
+    if (req.method === 'GET' && url.pathname === '/api/internal/messages') return json(res, 200, internalMessaging.list(user, { limit: url.searchParams.get('limit') }));
+    if (req.method === 'POST' && url.pathname === '/api/internal/messages') return json(res, 201, { message: internalMessaging.send(user, await readBody(req)) });
+    const internalReadRoute = url.pathname.match(/^\/api\/internal\/messages\/([^/]+)\/read$/);
+    if (internalReadRoute && req.method === 'PATCH') return json(res, 200, { message: internalMessaging.markRead(user, decodeURIComponent(internalReadRoute[1])) });
+
+    if (req.method === 'GET' && url.pathname === '/api/clients/lookup') { auth.requirePermission(user, 'clients.read'); return json(res, 200, clientIntake.lookup(localStore, url.searchParams.get('q') || '')); }
+    if (req.method === 'GET' && url.pathname === '/api/users') return json(res, 200, { users: auth.listUsers(user), roles: auth.ROLE_PERMISSIONS });
+    if (req.method === 'POST' && url.pathname === '/api/users') return json(res, 201, { user: auth.createUser(user, await readBody(req)) });
+
+    if (req.method === 'GET' && url.pathname === '/api/tariffs') return json(res, 200, { records: tariffCatalog.list({ includeInactive: url.searchParams.get('all') === '1' }) });
+    if ((req.method === 'POST' || req.method === 'PATCH') && url.pathname === '/api/tariffs') return json(res, req.method === 'POST' ? 201 : 200, { tariff: tariffCatalog.save(await readBody(req), user) });
+    if (req.method === 'GET' && url.pathname === '/api/workshop/procedures') return json(res, 200, { records: workshopProcedures.list() });
+    if (req.method === 'GET' && url.pathname === '/api/workshop/overview') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, workshopService.overview(localStore, user)); }
+    if (req.method === 'POST' && url.pathname === '/api/workshop/restore') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, workshopService.restoreAcceptedQuotes(localStore, user)); }
+    const workshopDetailRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)$/);
+    if (workshopDetailRoute && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, workshopService.detail(localStore, decodeURIComponent(workshopDetailRoute[1]), user)); }
+    const workshopActionRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/(assign|reception|work-action|request-final|approve-final|report|report-validate)$/);
+    if (workshopActionRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'interventions.write');
+      const reference = decodeURIComponent(workshopActionRoute[1]);
+      const action = workshopActionRoute[2];
+      const body = await readBody(req);
+      if (action === 'assign') return json(res, 200, workshopService.assign(localStore, reference, body, user));
+      if (action === 'reception') return json(res, 200, workshopService.reception(localStore, reference, body, user));
+      if (action === 'work-action') return json(res, 200, workshopService.workAction(localStore, reference, body, user));
+      if (action === 'request-final') return json(res, 200, workshopService.requestFinalValidation(localStore, reference, body, user));
+      if (action === 'approve-final') {
+        const approved = workshopService.approveFinal(localStore, reference, body, user);
+        const report = interventionReport.generate(localStore, approved.id, { managerValidation: user.name, finalChecklist: { procedureComplete: true, directionApproved: true } }, user);
+        return json(res, 200, { intervention: workshopService.detail(localStore, approved.id, user), report });
+      }
+      workshopService.assertCompletable(localStore, reference, user);
+      if (action === 'report') return json(res, 201, interventionReport.generate(localStore, reference, body, user));
+      if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('WORKSHOP_DIRECTION_VALIDATION_REQUIRED'), { status: 403 });
+      return json(res, 200, interventionReport.validate(localStore, reference, { ...body, managerValidation: body.managerValidation || user.name }, user));
+    }
+    const finishRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/(finish-stage|finish-schedule|showroom)$/);
+    if (finishRoute && req.method === 'POST') {
+      auth.requirePermission(user, 'interventions.write');
+      const reference = decodeURIComponent(finishRoute[1]);
+      const action = finishRoute[2];
+      const body = await readBody(req);
+      if (action === 'finish-stage') return json(res, 200, vehicleFinalization.mark(localStore, reference, body, user));
+      if (action === 'finish-schedule') return json(res, 201, vehicleFinalization.schedule(localStore, reference, body, user));
+      return json(res, 200, vehicleFinalization.showroom(localStore, reference, user));
+    }
+    const workshopStepRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/steps\/([^/]+)$/);
+    if (workshopStepRoute && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, workshopService.updateStep(localStore, decodeURIComponent(workshopStepRoute[1]), decodeURIComponent(workshopStepRoute[2]), await readBody(req), user)); }
+    const workshopEvidenceRoute = url.pathname.match(/^\/api\/workshop\/interventions\/([^/]+)\/steps\/([^/]+)\/evidence$/);
+    if (workshopEvidenceRoute && req.method === 'POST') { auth.requirePermission(user, 'interventions.write'); return json(res, 201, workshopService.saveEvidence(localStore, decodeURIComponent(workshopEvidenceRoute[1]), decodeURIComponent(workshopEvidenceRoute[2]), await readBody(req), user)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/quote-requests') return json(res, 200, { records: quoteRequests.list(localStore, user) });
+    if (req.method === 'POST' && url.pathname === '/api/quote-requests/draft') return json(res, 201, quoteRequests.saveDraft(localStore, await readBody(req), user));
+    if (req.method === 'POST' && url.pathname === '/api/quote-requests/submit') return json(res, 201, quoteRequests.submit(localStore, await readBody(req), user));
+    const quoteRequestRoute = url.pathname.match(/^\/api\/quote-requests\/([^/]+)$/);
+    if (quoteRequestRoute && req.method === 'GET') {
+      const request = quoteRequests.resolve(localStore, decodeURIComponent(quoteRequestRoute[1]));
+      if (!request) return json(res, 404, { error: 'QUOTE_REQUEST_NOT_FOUND' });
+      if (request.requestedByUserId !== user.id && !['admin', 'associate'].includes(user.role)) return json(res, 403, { error: 'QUOTE_REQUEST_FORBIDDEN' });
+      return json(res, 200, { request });
+    }
+    const quoteRequestDecisionRoute = url.pathname.match(/^\/api\/quote-requests\/([^/]+)\/decision$/);
+    if (quoteRequestDecisionRoute && req.method === 'POST') return json(res, 200, { request: quoteRequests.markDecision(localStore, decodeURIComponent(quoteRequestDecisionRoute[1]), await readBody(req), user) });
+
+    if (req.method === 'GET' && url.pathname === '/api/quote-studio/packages') return json(res, 200, { records: quoteStudio.packages() });
+    if (req.method === 'GET' && url.pathname === '/api/quote-studio/lookup') { auth.requirePermission(user, 'clients.read'); return json(res, 200, quoteStudio.lookup(localStore, url.searchParams.get('q') || '')); }
+    if (req.method === 'GET' && url.pathname === '/api/quote-studio/quotes') { auth.requirePermission(user, 'quotes.read'); return json(res, 200, { records: quoteStudio.listQuotes(localStore) }); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/parse') return json(res, 200, { parsed: quoteStudio.parseSpeech(await readBody(req)) });
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/infer') { const body = await readBody(req); return json(res, 200, { inference: quoteStudio.inferPackage(body.targetPrice, body.context) }); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/preview') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.preview(localStore, await readBody(req), user)); }
+    if (req.method === 'POST' && url.pathname === '/api/quote-studio/confirm') { auth.requirePermission(user, 'quotes.write'); return json(res, 201, quoteStudio.confirm(localStore, await readBody(req), user)); }
+    const studioRepricePreviewRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/reprice-preview$/);
+    if (studioRepricePreviewRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.repricePreview(localStore, decodeURIComponent(studioRepricePreviewRoute[1]), await readBody(req))); }
+    const studioRepriceRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/reprice$/);
+    if (studioRepriceRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.applyReprice(localStore, decodeURIComponent(studioRepriceRoute[1]), await readBody(req), user)); }
+    const studioExpertRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/expert-contact$/);
+    if (studioExpertRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 201, quoteStudio.contactExpert(localStore, decodeURIComponent(studioExpertRoute[1]), await readBody(req), user)); }
+    const studioExpertApproveRoute = url.pathname.match(/^\/api\/quote-studio\/([^/]+)\/expert-approve$/);
+    if (studioExpertApproveRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteStudio.approveExpert(localStore, decodeURIComponent(studioExpertApproveRoute[1]), await readBody(req), user)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/calendar/settings') return json(res, 200, calendarBridge.settings(requestOrigin(req)));
+    if (req.method === 'PATCH' && url.pathname === '/api/calendar/settings') { const body = await readBody(req); return json(res, 200, calendarBridge.configure({ ...body, origin: requestOrigin(req) }, user)); }
+    if (req.method === 'POST' && url.pathname === '/api/calendar/sync') { if (!['admin', 'associate'].includes(user.role)) throw Object.assign(new Error('CALENDAR_DIRECTION_REQUIRED'), { status: 403 }); return json(res, 200, await calendarBridge.sync(localStore)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/planning/overview') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, planning.overview(localStore, { from: url.searchParams.get('from'), days: url.searchParams.get('days') })); }
+    if (req.method === 'POST' && url.pathname === '/api/planning/propose') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, { proposal: planning.propose(localStore, await readBody(req)) }); }
+    if (req.method === 'POST' && url.pathname === '/api/planning/schedule') { auth.requirePermission(user, 'interventions.write'); return json(res, 200, planning.scheduleQuote(localStore, await readBody(req), user)); }
+    if (req.method === 'POST' && url.pathname === '/api/planning/blocks') { auth.requirePermission(user, 'interventions.write'); return json(res, 201, { block: planning.createBlock(localStore, await readBody(req), user) }); }
+
+    if (req.method === 'GET' && url.pathname === '/api/employee-flow/queue') { requireAnyPermission(user, ['interventions.read', 'tasks.read']); return json(res, 200, employeeFlow.queue(localStore, user)); }
+    if (req.method === 'POST' && url.pathname === '/api/employee-flow/action') { requireAnyPermission(user, ['interventions.write', 'tasks.write']); return json(res, 200, employeeFlow.act(localStore, await readBody(req), user)); }
+    if (req.method === 'GET' && url.pathname === '/api/leave/overview') return json(res, 200, leavePlanning.overview(localStore, user));
+    if (req.method === 'POST' && url.pathname === '/api/leave/advice') return json(res, 200, { advice: leavePlanning.advice(localStore, await readBody(req), user) });
+    if (req.method === 'POST' && url.pathname === '/api/leave/requests') return json(res, 201, leavePlanning.submit(localStore, await readBody(req), user));
+    const leaveDecisionRoute = url.pathname.match(/^\/api\/leave\/requests\/([^/]+)\/decision$/);
+    if (leaveDecisionRoute && req.method === 'POST') return json(res, 200, leavePlanning.decide(localStore, decodeURIComponent(leaveDecisionRoute[1]), await readBody(req), user));
+    if (req.method === 'GET' && url.pathname === '/api/jarvis/morale') return json(res, 200, { morale: morale.pick(user, { force: url.searchParams.get('force') === '1' && user.role === 'admin' }) });
+
+    if (req.method === 'POST' && url.pathname === '/api/quotes/intake') { auth.requirePermission(user, 'quotes.write'); return json(res, 201, quoteWorkflow.startIntake(localStore, { ...(await readBody(req)), user })); }
+    const quoteRoute = url.pathname.match(/^\/api\/quotes\/([^/]+)$/);
+    if (quoteRoute && req.method === 'GET') { auth.requirePermission(user, 'quotes.read'); const quote = quoteWorkflow.resolveQuote(localStore, decodeURIComponent(quoteRoute[1])); if (!quote) return json(res, 404, { error: 'QUOTE_NOT_FOUND' }); return json(res, 200, { quote }); }
+    const quoteRegenerateRoute = url.pathname.match(/^\/api\/quotes\/([^/]+)\/regenerate$/);
+    if (quoteRegenerateRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); return json(res, 200, quoteWorkflow.regenerate(localStore, decodeURIComponent(quoteRegenerateRoute[1]), await readBody(req), user)); }
+    const quoteTransitionRoute = url.pathname.match(/^\/api\/quotes\/([^/]+)\/transition$/);
+    if (quoteTransitionRoute && req.method === 'POST') { auth.requirePermission(user, 'quotes.write'); const body = await readBody(req); const result = quoteWorkflow.transition(localStore, decodeURIComponent(quoteTransitionRoute[1]), body.action, body, user); if (body.action === 'close') result.data.reputation = reputation.scheduleClientReview(localStore, result.data.quote, user); return json(res, 200, result); }
+
+    if (req.method === 'GET' && url.pathname === '/api/system/diagnostics') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, diagnostics.readLastReport() || await diagnostics.run(diagnosticDependencies)); }
+    if (req.method === 'POST' && url.pathname === '/api/system/diagnostics/repair') { auth.requirePermission(user, 'users.manage'); const report = await diagnostics.run(diagnosticDependencies, { repair: true }); json(res, 200, report); setTimeout(() => updater.automaticCycle().catch((error) => diagnostics.recordCrash(error, 'AUTO_UPDATE_TEST')), 1200).unref(); return; }
+    if (req.method === 'GET' && url.pathname === '/api/system/update') { auth.requirePermission(user, 'users.manage'); return json(res, 200, updater.state()); }
+    if (req.method === 'POST' && url.pathname === '/api/system/update/check') { auth.requirePermission(user, 'users.manage'); return json(res, 200, await updater.check()); }
+    if (req.method === 'POST' && url.pathname === '/api/system/update/download') { auth.requirePermission(user, 'users.manage'); backup.createBackup(); return json(res, 200, await updater.download()); }
+    if (req.method === 'POST' && url.pathname === '/api/system/update/cancel') { auth.requirePermission(user, 'users.manage'); return json(res, 200, updater.clearPending()); }
+    if (req.method === 'GET' && url.pathname === '/api/insights/status') { auth.requirePermission(user, 'users.manage'); return json(res, 200, insightsStore.status()); }
+    if (req.method === 'POST' && url.pathname === '/api/insights/events') { auth.requirePermission(user, 'jarvis.use'); const result = insightsStore.appendBatch((await readBody(req)).events, user); return json(res, 202, { ...result, stored: insightsStore.status().storedEvents }); }
+    if (req.method === 'GET' && url.pathname === '/api/sync/status') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, airtableSync.status()); }
+    if (req.method === 'POST' && url.pathname === '/api/sync/test') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, await airtableSync.testConnection()); }
+    if (req.method === 'GET' && url.pathname === '/api/sync/schema') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, await airtableSync.schemaStatus()); }
+    if (req.method === 'POST' && url.pathname === '/api/sync/pull-all') { auth.requirePermission(user, 'users.manage'); const body = await readBody(req); return json(res, 200, await airtableSync.pullAll(localStore, Array.isArray(body.collections) ? body.collections : undefined)); }
+    if (req.method === 'POST' && url.pathname === '/api/sync/push-all') { auth.requirePermission(user, 'users.manage'); const body = await readBody(req); return json(res, 200, await airtableSync.pushAll(localStore, Array.isArray(body.collections) ? body.collections : undefined)); }
+    if (req.method === 'POST' && url.pathname === '/api/sync/run') { auth.requirePermission(user, 'users.manage'); const body = await readBody(req); return json(res, 200, await airtableSync.syncAll(localStore, Array.isArray(body.collections) ? body.collections : undefined)); }
+    const syncRecordMatch = url.pathname.match(/^\/api\/sync\/([^/]+)\/([^/]+)$/);
+    if (syncRecordMatch && req.method === 'POST') { const collection = decodeURIComponent(syncRecordMatch[1]); const id = decodeURIComponent(syncRecordMatch[2]); auth.requirePermission(user, auth.collectionPermission(collection, 'PATCH')); const record = localStore.list(collection).find((item) => item.id === id); if (!record) return json(res, 404, { error: 'GCOS_RECORD_NOT_FOUND' }); return json(res, 200, await airtableSync.push(collection, record, localStore)); }
+
+    if (req.method === 'GET' && url.pathname === '/api/jarvis/brief') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.brief(localStore, user)); }
+    if (req.method === 'GET' && url.pathname === '/api/jarvis/knowledge') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.knowledge); }
+    if (req.method === 'POST' && url.pathname === '/api/jarvis/command') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, jarvis.execute(localStore, { ...(await readBody(req)), user })); }
+    if (req.method === 'POST' && url.pathname === '/api/system/backup') { auth.requirePermission(user, 'users.manage'); return json(res, 201, { path: backup.createBackup() }); }
+    if (req.method === 'GET' && url.pathname === '/api/mail/status') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, mailService.status()); }
+    if (req.method === 'POST' && url.pathname === '/api/mail/send') { auth.requirePermission(user, 'jarvis.use'); return json(res, 200, await mailService.send(await readBody(req), user)); }
+    if (req.method === 'GET' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.read'); return json(res, 200, { records: partsIntake.list().map(item => ({ ...item, airtableSync: partsAirtable.state(item.id) })), airtableConfigured: partsAirtable.enabled() }); }
+    if (req.method === 'POST' && url.pathname === '/api/pieces') { auth.requirePermission(user, 'interventions.write'); const result = partsIntake.receive(await readBody(req), user); const syncQueued = partsAirtable.enqueue(result.item); return json(res, result.duplicate ? 200 : 201, { ...result, syncQueued }); }
+    const partMatch = url.pathname.match(/^\/api\/pieces\/([^/]+)$/);
+    if (partMatch && req.method === 'GET') { auth.requirePermission(user, 'interventions.read'); const item = partsIntake.one(decodeURIComponent(partMatch[1])); return item ? json(res, 200, { item }) : json(res, 404, { error: 'PART_NOT_FOUND' }); }
+    if (partMatch && req.method === 'PATCH') {
+      auth.requirePermission(user, 'interventions.write');
+      const id = decodeURIComponent(partMatch[1]), payload = await readBody(req);
+      const before = partsIntake.one(id);
+      const item = partsIntake.update(id, payload, user);
+      const syncQueued = partsAirtable.enqueue(item);
+      let notificationSent = false, notificationError = '';
+      if (payload.status === 'À facturer' && before?.status !== 'À facturer') {
+        const recipient = internalMessaging.directory(user).find((person) => /b[eé]n[eé]dicte/i.test(person.name || ''));
+        if (recipient) {
+          try {
+            internalMessaging.send(user, { toUserId: recipient.id, subject: 'Pièce prête à facturer — ' + (item.name || item.kind), body: 'Pièce ' + item.kind + ' — ' + (item.name || '') + '. Dossier : ' + (item.dossierId || item.clientId || 'à relier') + '. Ouvrir MAVIK > Pièces détachées > À facturer pour contrôler les photographies et finaliser la facturation.', priority: 'normal' });
+            notificationSent = true;
+          } catch (error) { notificationError = String(error.message || error); }
+        } else notificationError = 'COMPTE_BENEDICTE_NON_TROUVE';
+      }
+      return json(res, 200, { item, notificationSent, notificationError, syncQueued });
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/local/summary') { auth.requirePermission(user, 'dashboard.read'); return json(res, 200, localStore.summary()); }
+
+    const localRecordMatch = url.pathname.match(/^\/api\/local\/([^/]+)\/([^/]+)$/);
+    if (localRecordMatch && req.method === 'PATCH') { const collection = decodeURIComponent(localRecordMatch[1]); if (!LOCAL_COLLECTIONS.has(collection)) return json(res, 404, { error: 'GCOS_COLLECTION_NOT_FOUND' }); auth.requirePermission(user, auth.collectionPermission(collection, req.method)); return json(res, 200, localStore.update(collection, decodeURIComponent(localRecordMatch[2]), { ...(await readBody(req)), updatedBy: user.id, updatedByName: user.name })); }
+    const localCollectionMatch = url.pathname.match(/^\/api\/local\/([^/]+)$/);
+    if (localCollectionMatch) { const collection = decodeURIComponent(localCollectionMatch[1]); if (!LOCAL_COLLECTIONS.has(collection)) return json(res, 404, { error: 'GCOS_COLLECTION_NOT_FOUND' }); auth.requirePermission(user, auth.collectionPermission(collection, req.method)); if (req.method === 'GET') return json(res, 200, { records: localStore.list(collection) }); if (req.method === 'POST') return json(res, 201, localStore.create(collection, { ...(await readBody(req)), createdBy: user.id, createdByName: user.name })); }
+
+    const recordMatch = url.pathname.match(/^\/api\/airtable\/tables\/([^/]+)\/([^/]+)$/);
+    if (recordMatch && req.method === 'PATCH') { auth.requirePermission(user, 'interventions.write'); if (!requireAirtable(res)) return; return json(res, 200, await airtableRequest(decodeURIComponent(recordMatch[1]), { method: 'PATCH', recordId: decodeURIComponent(recordMatch[2]), body: await readBody(req) })); }
+    const tableMatch = url.pathname.match(/^\/api\/airtable\/tables\/([^/]+)$/);
+    if (tableMatch && req.method === 'GET') { auth.requirePermission(user, 'dashboard.read'); if (!requireAirtable(res)) return; return json(res, 200, await airtableRequest(decodeURIComponent(tableMatch[1]), { query: { maxRecords: url.searchParams.get('maxRecords') || 50, view: url.searchParams.get('view') || undefined, filterByFormula: url.searchParams.get('filterByFormula') || undefined } })); }
+    if (tableMatch && req.method === 'POST') { auth.requirePermission(user, 'interventions.write'); if (!requireAirtable(res)) return; return json(res, 201, await airtableRequest(decodeURIComponent(tableMatch[1]), { method: 'POST', body: await readBody(req) })); }
+
+    return json(res, 404, { error: 'GCOS_ROUTE_NOT_FOUND' });
+  } catch (error) {
+    diagnostics.recordCrash(error, 'REQUEST');
+    console.error('[GCOS]', error);
+    const details = {};
+    if (Array.isArray(error.conflicts)) details.conflicts = error.conflicts;
+    if (Array.isArray(error.missingFields)) details.missingFields = error.missingFields;
+    return json(res, error.status || 500, { error: error.message || 'GCOS_INTERNAL_ERROR', ...details });
+  }
+});
+
+backup.startAutomaticBackups();
+partsAirtable.start(partsIntake);
+updater.startAutomaticChecks();
+diagnostics.startAutomaticChecks(diagnosticDependencies);
+server.listen(PORT, HOST, () => {
+  console.log(`MAVIK GCOS ${updater.currentVersion()} started on http://${HOST}:${PORT}`);
+  console.log('Multi-user authentication: one PIN per user on all trusted devices');
+  console.log('Quote requests: acquired data are saved before direction validation');
+  console.log('Tariffs: automobile and motorcycle, particulier and professional, with direction-approved special offers');
+  console.log('Workshop procedures: separate automobile and motorcycle checklists enabled');
+  console.log(`Workshop planning: Monday to Friday only, capacity ${planning.WORKSHOP_CAPACITY}, calendar bridge enabled`);
+  console.log('Emergency alert: synchronized screens, synthesized siren and explicit stop confirmation enabled');
+  console.log('Employee workflow: pause, switch, resume and early start enabled; employee delays blocked');
+  console.log('Leave planning: principle advice followed by manager validation enabled');
+  console.log('Jarvis morale and continuous conversation enabled');
+  console.log('Internal messaging: multiple recipients enabled');
+  console.log(`Airtable synchronization: ${airtableSync.configured() ? 'enabled' : 'disabled'}`);
+  console.log(`Mavik Insights: enabled (${insightsStore.status().storedEvents} local events)`);
+  console.log(`Automatic updates: ${updater.state().enabled ? 'enabled' : 'disabled'}`);
+  console.log('Automatic diagnostics: enabled');
+  console.log(`Initial setup required: ${auth.setupRequired() ? 'yes' : 'no'}`);
+});
+
+server.on('error', (error) => {
+  if (error?.code === 'EADDRINUSE') { console.log(`MAVIK fonctionne déjà sur le port ${PORT}. Aucun second serveur ne sera lancé.`); process.exit(0); }
+  diagnostics.recordCrash(error, 'SERVER_LISTEN');
+  throw error;
+});
+let stopping = false;
+function shutdown(signal, exitCode = 0) {
+  if (stopping) return;
+  stopping = true;
+  console.log(`\n${signal} received. Stopping MAVIK GCOS...`);
+  server.close(() => process.exit(exitCode));
+  setTimeout(() => process.exit(exitCode || 1), 5000).unref();
+}
+process.on('SIGINT', () => shutdown('SIGINT', 0));
+process.on('SIGTERM', () => shutdown('SIGTERM', 0));
+process.on('uncaughtException', (error) => { diagnostics.recordCrash(error, 'UNCAUGHT_EXCEPTION'); console.error('[MAVIK CRASH]', error); shutdown('UNCAUGHT_EXCEPTION', 1); });
+process.on('unhandledRejection', (error) => { diagnostics.recordCrash(error, 'UNHANDLED_REJECTION'); console.error('[MAVIK REJECTION]', error); shutdown('UNHANDLED_REJECTION', 1); });

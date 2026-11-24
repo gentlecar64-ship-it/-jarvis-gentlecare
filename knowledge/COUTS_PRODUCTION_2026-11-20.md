@@ -1,0 +1,112 @@
+# GentleCarE — Référentiel des coûts de production
+Décision de direction : 20 novembre 2026. Applicable jusqu'à modification explicite.
+
+## Compresseur
+- Consommation carburant : **7 L/h**.
+- Coût carburant budgétaire : **2,50 €/L**, même si le prix constaté à ce jour est 2 €/L.
+- Coût compresseur carburant : **17,50 €/h**.
+- Maintenance, huile, amortissement et main-d'œuvre restent des postes additionnels à documenter.
+
+## Glace carbonique
+- Cas normal : **40 kg/h**.
+- Encrassement fort, gros éléments ou difficulté d'accès : **60 kg/h**.
+- Cas extrême, travaux très lourds, dépôts particulièrement difficiles : **80 kg/h**.
+- Coût = débit (kg/h) × durée réelle estimée (h) × prix d'achat effectif (€/kg).
+- Les devis doivent répartir les frais de livraison de glace (et pertes éventuelles) sans les omettre.
+- Prix repères déjà connus, à contrôler selon fournisseur et volumes : 3,80 €/kg; 2,50 €/kg pour palier de volume. Attention : ne pas confondre prix de glace 2,50 €/kg et carburant 2,50 €/L.
+- Coûts directs glace + carburant (hors livraison et autres postes) au tarif glace 3,80 €/kg :
+  - 40 kg/h : 169,50 €/h ;
+  - 60 kg/h : 245,50 €/h ;
+  - 80 kg/h : 321,50 €/h.
+- Au tarif glace 2,50 €/kg :
+  - 40 kg/h : 117,50 €/h ;
+  - 60 kg/h : 167,50 €/h ;
+  - 80 kg/h : 217,50 €/h.
+
+## Antirouille
+- Temps d'application de référence : **1 heure** par intervention retenue, à ajuster si surface/complexité accrue.
+- Observation mesurée sur la voiture de Bénédicte : **environ 10 % d'une bouteille d'un litre, soit 0,10 L**, pour traitement localisé du pont, de l'arbre de transmission et de multiples petits points.
+- Cette mesure ne représente pas une consommation d'un véhicule entier : conserver une estimation séparée pour traitement complet, châssis et corps creux.
+- Coût = litres du produit réellement estimés × prix d'achat au litre, à différencier selon produits et applications.
+
+## Préparation/masquage
+- Protection au scotch des échappements, autres zones sensibles : temps théorique 30 minutes, **temps standard retenu et facturable pour coûts : 1 heure**.
+- Papier aluminium : **50 m pour 3 voitures**, soit **16,67 m/voiture** en moyenne.
+- Enregistrer les prix d'achat des rouleaux de scotch, d'aluminium et le métrage utilisé pour calculer chaque quote-part.
+- Ajouter un film plastique de masquage **à adhérence électrostatique**, dédié carrosserie (ne pas le confondre avec la propriété antistatique ESD et vérifier l'usage exact).
+- Calcul film = longueur utilisée / longueur du rouleau × prix d'achat du rouleau ; mesurer les mètres réels à l'atelier.
+- Produit de film à sélectionner et valider avant mise en stock.
+
+## Décomposition d'un coût par prestation
+1. Durée cryogénie estimée à partir des photos et de l'inspection.
+2. Débit de glace prévu : 40, 60 ou 80 kg/h selon scénario, avec marge d'incertitude explicitée.
+3. Coût glace + transport réparti + pertes / sublimation.
+4. Carburant compresseur 17,50 €/h de fonctionnement.
+5. 1 h de préparation et masquage si requise, plus scotch, alu, film.
+6. 1 h d'application antirouille si requise, plus quantité et prix du traitement (cire, noir, corps creux distincts).
+7. Temps effectif de main-d'œuvre, maintenance, amortissement, charges et marge : ne pas utiliser le taux **de vente** de 180 € HT/h comme coût salarial.
+8. Toute valeur de durée/consommation issue uniquement des photos est une hypothèse, à confirmer par inspection.
+
+
+## Retour atelier du 19 novembre 2026 — lot de pièces Workshop
+- Lot : **2 carters en magnésium + 2 pièces de turbine** (4 pièces au total).
+- Glace commandée : **40 kg**. Quantité estimée à destination : **35 kg** (estimation, non pesée certifiée).
+- Débit de projection majoritairement affiché : **80 kg/h**.
+- Durée de travail cryo déclarée : **environ 30 minutes**.
+- **Durée de planification validée pour le lot : 1 heure** (incluant les manipulations).
+- 80 kg/h × 0,5 h = 40 kg théoriques, supérieur à la quantité estimée reçue de 35 kg : débit moyen réel, durée effective ou quantité arrivée sont approximatifs. **Ne pas compter automatiquement 40 kg consommés** ; valeur maximale de référence du lot ~35 kg si aucune glace ne restait.
+- À 3,80 €/kg et avec 7 L/h de carburant × 2,50 €/L, les coûts directs maximaux estimés pour 35 kg et 30 minutes de compresseur sont **133,00 € glace + 8,75 € carburant = 141,75 €**, hors livraison, manutention, main-d'œuvre et amortissement.
+- **Règle de devis : séparer heure de poste atelier (planning) et minutes de projection effectives (consommation)** ; ne pas généraliser 1 h à toute pièce seule ou à tout autre lot.
+
+
+## Politique pièces démontées et mutualisation des frais Geladoc — 20/11/2026
+### Facture fournisseur vérifiée
+Facture Geladoc FA/2026/01764 du 31/10/2026, pour 120 kg (BL 27/10/2026), HT : 120 × 1,28 €/kg = 153,60 € de glace, 3 caisses à 18,80 € = 56,40 €, transport palette 111,80 € ; total 321,80 € HT = 2,6817 €/kg commandé, hors pertes. **Ne pas remplacer le prix facturé par 3,80 €/kg en devis internes** sans raison.
+### Simulation fournisseur pour autres volumes
+Hypothèses à confirmer auprès du fournisseur : prix 1,28 €/kg conservé, 1 caisse de 18,80 €/40 kg, un seul transport forfaitaire de 111,80 €, absence de supplément de livraison et pas de remise de quantité :
+- 40 kg : 181,80 € HT, 4,545 €/kg ;
+- 80 kg : 251,80 € HT, 3,1475 €/kg ;
+- 120 kg : 321,80 € HT, 2,6817 €/kg (facturé) ;
+- 160 kg : 391,80 € HT, 2,4488 €/kg ;
+- 200 kg : 461,80 € HT, 2,309 €/kg ;
+- 240 kg : 531,80 € HT, 2,2158 €/kg.
+**La commande de 40 kg du 19/11 est désormais vérifiée (voir actualisation du 24/11)** ; 35 kg estimés arrivés, perte apparente 5 kg = 12,5 % (estimation non certifiée). Prévoir correction de coût à l'utilisation selon pertes et facture réelle.
+### Politique commerciale B2B pièces séparées
+**Par défaut, aucune commande de glace spécifique pour pièces isolées.** Acceptation de pièces déposées (Workshop, garagistes, particuliers) avec attente de **7 à 15 jours indicatifs**, regroupement des pièces avec une intervention véhicule déjà planifiée ; délai et faisabilité à confirmer suivant disponibilité des commandes de glace et planning. Planning de production en lots, rendez-vous d'enlèvement après finitions ; estimation photo/inspection avant devis. Les exceptions urgentes doivent être explicitement chiffrées comme **livraison dédiée** avec forfait express frais de port et pertes et accord préalable, pas absorbées par le tarif pro standard.
+### Règle d'imputation
+Pour commande mutualisée : prix d'achat théorique rendu atelier par kg = (glace + emballages + livraison) / kg commandés ; répartir au prorata des kg consommés par chaque lot, puis comptabiliser les pertes de sublimation effectives en charge de la commande (ou multiplier par facteur kg commandés/kg utilisables), pour ne pas transférer tout le transport au véhicule ni ignorer les pertes. Le véhicule ne doit pas absorber seul tout le port si des pièces sont également traitées.
+Référence terrain lot 4 pièces Workshop : 2 carters magnésium + 2 composants de turbine, 1 h planning / ~0,5 h de projection / jusqu'à 35 kg disponibles. Coût direct calculé à 35 kg : (35 × 4,545 + 8,75) = 167,83 € si 40 kg commandés et 35 kg de la commande consommés avec port *proratisé*; le **coût de la commande complète** si aucune glace résiduelle et perte 5 kg : 181,80 € + 8,75 € = **190,55 €**. Avec 240 kg mutualisés sans perte : 35 × 2,2158 + 8,75 ≈ **86,30 €**. Sans observation des pertes des 240 kg, ce dernier chiffre est optimiste.
+Tarifs de vente **proposés et non encore validés** pour lot de quatre : 350 € HT professionnel / 550 € TTC particulier, à personnaliser selon taille/état. Distinguer CA HT et coût HT, coûts directs vs complet ; ne pas présenter cette proposition comme tarif contractuel existant.
+
+
+## Décision tarifaire Workshop Arbonne — 20 novembre 2026 (rectification expresse)
+- **Prix exceptionnel validé : 270 € HT POUR LES QUATRE PIÈCES AU TOTAL**, soit 324 € TTC à TVA 20 %. Le précédent enregistrement de 270 € HT pour les seuls carters et 400 € HT total était erroné et **est annulé**.
+- Décomposition de travail pour deux devis ou lignes séparées, **allocation proposée à confirmer par direction**, fondée sur la proportion initialement suggérée (220/65/65) : **lot 2 carters magnésium Porsche 170 € HT** (204 € TTC), **turbine pièce 1 50 € HT** (60 € TTC), **turbine pièce 2 50 € HT** (60 € TTC). Total **270 € HT / 324 € TTC**. Ne pas considérer la répartition 170/50/50 comme acceptée par le client avant validation.
+- Essai technique commun pour Workshop et GentleCarE sur magnésium, matière nouvelle pour l'atelier, avec tarif unique d'essai exceptionnel sur lot complet de 4 pièces ; ne pas créer de tarif catalogue standard à 270 € HT.
+- Préparation de 2 devis séparés possible : devis A lot carters 170 € HT, devis B deux pièces de turbine 100 € HT. Aucune facture n'est émise automatiquement.
+- Les règles de commande de glace mutualisée et délai indicatif de 7–15 jours continuent de s'appliquer pour travaux futurs.
+
+
+## Retour technique et justification commerciale Workshop — magnésium
+- **Prix exceptionnel de 270 € HT pour les 4 pièces** : geste commercial de découverte/essai dans l'objectif de construire une **collaboration régulière avec Workshop Arbonne**. Ce prix **n'est ni un tarif catalogue, ni une promesse de reconduction**, et ne doit pas être utilisé comme référence de prix normal sans décision explicite.
+- L'intervention est un **premier essai pour les deux parties** sur des carters en alliage de magnésium. Avant cette opération, GentleCarE ne connaissait pas précisément le rendu final ni le comportement de ces pièces sous nettoyage cryogénique.
+- **Observations rapportées à l'atelier, et non conclusions scientifiques validées** : au fil des passages, les zones très encrassées devenaient très froides, certains dépôts semblaient adhérer ou se figer; l'aspect paraissait encore « gelé » après arrêt de la projection. Des variations de couleur/aspect du carter ont été constatées.
+- La variation de couleur peut avoir plusieurs causes (condensation/givre, humidité résiduelle, contaminants, état de surface/oxydation, éclairage), et **ne permet pas à elle seule de conclure à une transformation du magnésium**. Éviter de prétendre que le froid modifie chimiquement la couleur du magnésium sans examen.
+- **État final inconnu à cette date** : le rendu après retour à température ambiante et séchage, et sa stabilité, sont à vérifier lors d'une inspection ultérieure avec photos au même éclairage. Ne pas présenter l'essai comme une restauration totale ou un résultat garanti.
+- Échanges clients/partenaire : expliquer le caractère expérimental de manière factuelle et positive, sans promettre de couleur, d'absence de variation visuelle ni de résultat définitif. Proposer un point de contrôle après stabilisation.
+
+
+## Actualisation Geladoc — 24/11/2026 (prioritaire sur les simulations antérieures)
+Facture FA/2026/01850 du 20/11/2026, reçue le 23/11, BL WH/BL/20396 du 19/11 : 40 kg à 1,28 €/kg, une caisse BT50 à 18,80 €, transport TRPAL 83,20 €, total 153,20 € HT. Transport en baisse de 28,60 € (-25,58 %) par rapport à FA/2026/01764 ; glace et caisse inchangées. Le transport de 83,20 € est confirmé pour cette commande uniquement, pas comme forfait contractuel tous volumes. Source : facture fournisseur reçue par Gmail.
+Simulation HT avec une caisse par 40 kg et une palette à 83,20 €, hors pertes (40 kg facturé, autres volumes non confirmés). Lot = 35 kg au coût livré proratisé + 8,75 € de carburant.
+
+| kg commandés | Total HT € | €/kg livré | Lot HT € |
+|---:|---:|---:|---:|
+| 40 | 153.20 | 3.8300 | 142.80 |
+| 80 | 223.20 | 2.7900 | 106.40 |
+| 120 | 293.20 | 2.4433 | 94.27 |
+| 160 | 363.20 | 2.2700 | 88.20 |
+| 200 | 433.20 | 2.1660 | 84.56 |
+| 240 | 503.20 | 2.0967 | 82.13 |
+
+Si 35 kg seulement utilisables sur les 40 kg facturés, coût réel du lot entier = 153,20 + 8,75 = 161,95 € HT ; coût glace utilisable 4,3771 €/kg. Hors main-d'œuvre, maintenance, amortissement. Conserver 111,80 € comme scénario prudent tant que le nouveau port n'est pas confirmé pour les volumes supérieurs.

@@ -1,0 +1,16 @@
+{
+  "product": "Jarvis — GentleCarE",
+  "platform": "Mavik",
+  "channel": "web-pwa",
+  "version": "0.5.0",
+  "status": "deployment-ready",
+  "updatedAt": "2026-07-18T21:00:00+02:00",
+  "capabilities": {
+    "webDemo": true,
+    "pwaInstallable": true,
+    "offlineShell": true,
+    "indexedDbStorage": true,
+    "airtableSync": false,
+    "serverSync": false
+  }
+}
