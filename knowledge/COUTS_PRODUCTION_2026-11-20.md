@@ -70,7 +70,7 @@ Hypothèses à confirmer auprès du fournisseur : prix 1,28 €/kg conservé, 1 
 - 160 kg : 391,80 € HT, 2,4488 €/kg ;
 - 200 kg : 461,80 € HT, 2,309 €/kg ;
 - 240 kg : 531,80 € HT, 2,2158 €/kg.
-**La commande de 40 kg du 19/11 n'a pas de facture vérifiée** ; 35 kg estimés arrivés, perte apparente 5 kg = 12,5 % (estimation non certifiée). Prévoir correction de coût à l'utilisation selon pertes et facture réelle.
+**La commande de 40 kg du 19/11 est désormais vérifiée (voir actualisation du 24/11)** ; 35 kg estimés arrivés, perte apparente 5 kg = 12,5 % (estimation non certifiée). Prévoir correction de coût à l'utilisation selon pertes et facture réelle.
 ### Politique commerciale B2B pièces séparées
 **Par défaut, aucune commande de glace spécifique pour pièces isolées.** Acceptation de pièces déposées (Workshop, garagistes, particuliers) avec attente de **7 à 15 jours indicatifs**, regroupement des pièces avec une intervention véhicule déjà planifiée ; délai et faisabilité à confirmer suivant disponibilité des commandes de glace et planning. Planning de production en lots, rendez-vous d'enlèvement après finitions ; estimation photo/inspection avant devis. Les exceptions urgentes doivent être explicitement chiffrées comme **livraison dédiée** avec forfait express frais de port et pertes et accord préalable, pas absorbées par le tarif pro standard.
 ### Règle d'imputation
@@ -94,3 +94,19 @@ Tarifs de vente **proposés et non encore validés** pour lot de quatre : 350 �
 - La variation de couleur peut avoir plusieurs causes (condensation/givre, humidité résiduelle, contaminants, état de surface/oxydation, éclairage), et **ne permet pas à elle seule de conclure à une transformation du magnésium**. Éviter de prétendre que le froid modifie chimiquement la couleur du magnésium sans examen.
 - **État final inconnu à cette date** : le rendu après retour à température ambiante et séchage, et sa stabilité, sont à vérifier lors d'une inspection ultérieure avec photos au même éclairage. Ne pas présenter l'essai comme une restauration totale ou un résultat garanti.
 - Échanges clients/partenaire : expliquer le caractère expérimental de manière factuelle et positive, sans promettre de couleur, d'absence de variation visuelle ni de résultat définitif. Proposer un point de contrôle après stabilisation.
+
+
+## Actualisation Geladoc — 24/11/2026 (prioritaire sur les simulations antérieures)
+Facture FA/2026/01850 du 20/11/2026, reçue le 23/11, BL WH/BL/20396 du 19/11 : 40 kg à 1,28 €/kg, une caisse BT50 à 18,80 €, transport TRPAL 83,20 €, total 153,20 € HT. Transport en baisse de 28,60 € (-25,58 %) par rapport à FA/2026/01764 ; glace et caisse inchangées. Le transport de 83,20 € est confirmé pour cette commande uniquement, pas comme forfait contractuel tous volumes. Source : facture fournisseur reçue par Gmail.
+Simulation HT avec une caisse par 40 kg et une palette à 83,20 €, hors pertes (40 kg facturé, autres volumes non confirmés). Lot = 35 kg au coût livré proratisé + 8,75 € de carburant.
+
+| kg commandés | Total HT € | €/kg livré | Lot HT € |
+|---:|---:|---:|---:|
+| 40 | 153.20 | 3.8300 | 142.80 |
+| 80 | 223.20 | 2.7900 | 106.40 |
+| 120 | 293.20 | 2.4433 | 94.27 |
+| 160 | 363.20 | 2.2700 | 88.20 |
+| 200 | 433.20 | 2.1660 | 84.56 |
+| 240 | 503.20 | 2.0967 | 82.13 |
+
+Si 35 kg seulement utilisables sur les 40 kg facturés, coût réel du lot entier = 153,20 + 8,75 = 161,95 € HT ; coût glace utilisable 4,3771 €/kg. Hors main-d'œuvre, maintenance, amortissement. Conserver 111,80 € comme scénario prudent tant que le nouveau port n'est pas confirmé pour les volumes supérieurs.
